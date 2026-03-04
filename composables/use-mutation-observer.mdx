@@ -1,0 +1,295 @@
+---
+title: useMutationObserver
+description: MutationObserver composable with lifecycle management
+---
+
+## Overview
+
+MutationObserver composable for detecting DOM changes. Wraps the MutationObserver API with lifecycle management.
+
+## Features
+
+- MutationObserver API wrapper
+- Pause/resume/stop functionality
+- Automatic cleanup on unmount
+- SSR-safe (checks SUPPORTS_MUTATION_OBSERVER)
+- Hydration-aware
+- Configurable observation options
+
+## Function Signature
+
+```ts
+function useMutationObserver(
+  target: MaybeElementRef,
+  callback: (entries: MutationObserverRecord[]) => void,
+  options?: UseMutationObserverOptions
+): UseMutationObserverReturn
+```
+
+## Parameters
+
+<ParamField path="target" type="MaybeElementRef">
+  The element to observe.
+</ParamField>
+
+<ParamField path="callback" type="(entries: MutationObserverRecord[]) => void">
+  The callback to execute when a mutation is observed.
+</ParamField>
+
+<ParamField path="options" type="UseMutationObserverOptions">
+  <ParamField path="immediate" type="boolean" default="false">
+    Call the callback immediately with synthetic data.
+  </ParamField>
+
+  <ParamField path="once" type="boolean" default="false">
+    Stop observing after first mutation.
+  </ParamField>
+
+  <ParamField path="childList" type="boolean" default="true">
+    Observe additions and removals of child nodes.
+  </ParamField>
+
+  <ParamField path="attributes" type="boolean" default="false">
+    Observe changes to attributes.
+  </ParamField>
+
+  <ParamField path="characterData" type="boolean" default="false">
+    Observe changes to character data.
+  </ParamField>
+
+  <ParamField path="subtree" type="boolean" default="false">
+    Observe mutations in descendants.
+  </ParamField>
+
+  <ParamField path="attributeOldValue" type="boolean" default="false">
+    Record the previous value of changed attributes.
+  </ParamField>
+
+  <ParamField path="characterDataOldValue" type="boolean" default="false">
+    Record the previous value of changed character data.
+  </ParamField>
+
+  <ParamField path="attributeFilter" type="string[]">
+    Array of attribute names to observe.
+  </ParamField>
+</ParamField>
+
+## Return Value
+
+<ResponseField name="isActive" type="Readonly<Ref<boolean>>">
+  Whether the observer is currently active.
+</ResponseField>
+
+<ResponseField name="isPaused" type="Readonly<Ref<boolean>>">
+  Whether the observer is currently paused.
+</ResponseField>
+
+<ResponseField name="pause" type="() => void">
+  Pause observation.
+</ResponseField>
+
+<ResponseField name="resume" type="() => void">
+  Resume observation.
+</ResponseField>
+
+<ResponseField name="stop" type="() => void">
+  Stop observation and clean up.
+</ResponseField>
+
+## Examples
+
+### Observe child list changes
+
+```ts
+import { ref } from 'vue'
+import { useMutationObserver } from '@vuetify/v0'
+
+const container = ref<HTMLElement>()
+
+useMutationObserver(
+  container,
+  (mutations) => {
+    mutations.forEach((mutation) => {
+      if (mutation.type === 'childList') {
+        console.log('Added nodes:', mutation.addedNodes)
+        console.log('Removed nodes:', mutation.removedNodes)
+      }
+    })
+  },
+  { childList: true }
+)
+```
+
+### Observe attribute changes
+
+```ts
+const element = ref<HTMLElement>()
+
+useMutationObserver(
+  element,
+  (mutations) => {
+    mutations.forEach((mutation) => {
+      if (mutation.type === 'attributes') {
+        console.log('Attribute changed:', mutation.attributeName)
+      }
+    })
+  },
+  { 
+    attributes: true,
+    attributeOldValue: true 
+  }
+)
+```
+
+### Observe specific attributes
+
+```ts
+useMutationObserver(
+  element,
+  (mutations) => {
+    mutations.forEach((mutation) => {
+      console.log(`${mutation.attributeName} changed`)
+    })
+  },
+  { 
+    attributes: true,
+    attributeFilter: ['class', 'id', 'data-state'] 
+  }
+)
+```
+
+### Observe entire subtree
+
+```ts
+const container = ref<HTMLElement>()
+
+useMutationObserver(
+  container,
+  (mutations) => {
+    console.log(`${mutations.length} mutations detected`)
+  },
+  { 
+    childList: true,
+    subtree: true 
+  }
+)
+```
+
+### Pause and resume
+
+```ts
+const { pause, resume, isPaused } = useMutationObserver(
+  container,
+  handleMutations,
+  { childList: true }
+)
+
+// Temporarily pause
+pause()
+
+// Resume observing
+resume()
+```
+
+### Once mode
+
+```ts
+useMutationObserver(
+  element,
+  (mutations) => {
+    console.log('First mutation detected, stopping observer')
+  },
+  { 
+    childList: true,
+    once: true 
+  }
+)
+```
+
+### Track DOM changes in a list
+
+```vue
+<script setup>
+import { ref } from 'vue'
+import { useMutationObserver } from '@vuetify/v0'
+
+const listRef = ref<HTMLElement>()
+const itemCount = ref(0)
+
+useMutationObserver(
+  listRef,
+  (mutations) => {
+    mutations.forEach((mutation) => {
+      if (mutation.type === 'childList') {
+        itemCount.value = listRef.value?.children.length || 0
+      }
+    })
+  },
+  { childList: true }
+)
+</script>
+
+<template>
+  <div>
+    <p>Items: {{ itemCount }}</p>
+    <ul ref="listRef">
+      <!-- List items -->
+    </ul>
+  </div>
+</template>
+```
+
+## Mutation Record Properties
+
+<ResponseField name="type" type="'attributes' | 'childList' | 'characterData'">
+  The type of mutation.
+</ResponseField>
+
+<ResponseField name="target" type="Node">
+  The node affected by the mutation.
+</ResponseField>
+
+<ResponseField name="addedNodes" type="ObservableNodeList">
+  Nodes added to the tree.
+</ResponseField>
+
+<ResponseField name="removedNodes" type="ObservableNodeList">
+  Nodes removed from the tree.
+</ResponseField>
+
+<ResponseField name="previousSibling" type="Node | null">
+  The previous sibling of added or removed nodes.
+</ResponseField>
+
+<ResponseField name="nextSibling" type="Node | null">
+  The next sibling of added or removed nodes.
+</ResponseField>
+
+<ResponseField name="attributeName" type="string | null">
+  The name of the changed attribute.
+</ResponseField>
+
+<ResponseField name="attributeNamespace" type="string | null">
+  The namespace of the changed attribute.
+</ResponseField>
+
+<ResponseField name="oldValue" type="string | null">
+  The previous value (requires `attributeOldValue` or `characterDataOldValue`).
+</ResponseField>
+
+## Use Cases
+
+- **Dynamic content tracking**: Monitor when content is added or removed
+- **Attribute monitoring**: Track changes to class names, data attributes, etc.
+- **DOM validation**: Ensure DOM structure meets requirements
+- **Performance monitoring**: Detect excessive DOM mutations
+- **Debug tools**: Log DOM changes during development
+- **Rich text editors**: Track content changes in contentEditable elements
+
+## Notes
+
+- Automatically stops observing when `once: true` and a mutation occurs
+- Hydration-aware: defers setup until client-side hydration completes
+- SSR-safe: returns valid API with `isActive: false` when MutationObserver is not supported
+- `immediate` option provides synthetic data on first mount
+- Default observes `childList` only; explicitly enable other options as needed

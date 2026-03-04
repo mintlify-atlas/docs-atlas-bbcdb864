@@ -1,0 +1,468 @@
+---
+title: Constants
+description: Global constants for browser feature detection and environment checks
+---
+
+# Constants
+
+Global constants for browser feature detection and environment checks. All constants are exported from `#v0/constants`.
+
+## Import
+
+```ts
+import {
+  IN_BROWSER,
+  SUPPORTS_TOUCH,
+  SUPPORTS_MATCH_MEDIA,
+  SUPPORTS_OBSERVER,
+  SUPPORTS_INTERSECTION_OBSERVER,
+  SUPPORTS_MUTATION_OBSERVER,
+  version,
+  __LOGGER_ENABLED__
+} from '#v0/constants'
+```
+
+---
+
+## Environment Detection
+
+### IN_BROWSER
+
+SSR-safe check for browser environment.
+
+```ts
+const IN_BROWSER: boolean
+```
+
+<ResponseField name="value" type="boolean">
+  `true` if running in a browser environment, `false` during SSR
+</ResponseField>
+
+#### Implementation
+
+```ts
+export const IN_BROWSER = typeof window !== 'undefined'
+```
+
+#### Usage
+
+```ts
+import { IN_BROWSER } from '#v0/constants'
+
+if (IN_BROWSER) {
+  // Safe to access window, document, localStorage, etc.
+  window.addEventListener('resize', handleResize)
+}
+
+// Conditionally import browser-only code
+const storage = IN_BROWSER
+  ? window.localStorage
+  : new Map() // SSR fallback
+```
+
+```vue
+<script setup lang="ts">
+import { IN_BROWSER } from '#v0/constants'
+import { onMounted } from 'vue'
+
+if (IN_BROWSER) {
+  // Run immediately in browser
+  console.log('Browser detected')
+} else {
+  // Use onMounted for SSR-safe initialization
+  onMounted(() => {
+    console.log('Client hydrated')
+  })
+}
+</script>
+```
+
+---
+
+## Feature Detection
+
+### SUPPORTS_TOUCH
+
+Detects touch device support.
+
+```ts
+const SUPPORTS_TOUCH: boolean
+```
+
+<ResponseField name="value" type="boolean">
+  `true` if the device supports touch events
+</ResponseField>
+
+#### Implementation
+
+```ts
+export const SUPPORTS_TOUCH = IN_BROWSER && (
+  'ontouchstart' in window || window.navigator.maxTouchPoints > 0
+)
+```
+
+#### Usage
+
+```ts
+import { SUPPORTS_TOUCH } from '#v0/constants'
+
+if (SUPPORTS_TOUCH) {
+  element.addEventListener('touchstart', handleTouch)
+} else {
+  element.addEventListener('mousedown', handleMouse)
+}
+
+// Adjust UI for touch devices
+const buttonSize = SUPPORTS_TOUCH ? 'large' : 'medium'
+```
+
+---
+
+### SUPPORTS_MATCH_MEDIA
+
+Detects `matchMedia` API availability.
+
+```ts
+const SUPPORTS_MATCH_MEDIA: boolean
+```
+
+<ResponseField name="value" type="boolean">
+  `true` if `window.matchMedia` is available
+</ResponseField>
+
+#### Implementation
+
+```ts
+export const SUPPORTS_MATCH_MEDIA = IN_BROWSER &&
+  'matchMedia' in window &&
+  typeof window.matchMedia === 'function'
+```
+
+#### Usage
+
+```ts
+import { SUPPORTS_MATCH_MEDIA } from '#v0/constants'
+
+if (SUPPORTS_MATCH_MEDIA) {
+  const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
+  mediaQuery.addEventListener('change', handleThemeChange)
+}
+```
+
+```ts
+// Safe media query helper
+function useMediaQuery(query: string) {
+  if (!SUPPORTS_MATCH_MEDIA) return false
+  return window.matchMedia(query).matches
+}
+
+const isDark = useMediaQuery('(prefers-color-scheme: dark)')
+```
+
+---
+
+### SUPPORTS_OBSERVER
+
+Detects `ResizeObserver` API availability.
+
+```ts
+const SUPPORTS_OBSERVER: boolean
+```
+
+<ResponseField name="value" type="boolean">
+  `true` if `ResizeObserver` is available
+</ResponseField>
+
+#### Implementation
+
+```ts
+export const SUPPORTS_OBSERVER = IN_BROWSER && 'ResizeObserver' in window
+```
+
+#### Usage
+
+```ts
+import { SUPPORTS_OBSERVER } from '#v0/constants'
+
+if (SUPPORTS_OBSERVER) {
+  const observer = new ResizeObserver(entries => {
+    for (const entry of entries) {
+      console.log('Element resized:', entry.contentRect)
+    }
+  })
+  observer.observe(element)
+} else {
+  // Fallback: use window resize listener
+  window.addEventListener('resize', handleResize)
+}
+```
+
+---
+
+### SUPPORTS_INTERSECTION_OBSERVER
+
+Detects `IntersectionObserver` API availability.
+
+```ts
+const SUPPORTS_INTERSECTION_OBSERVER: boolean
+```
+
+<ResponseField name="value" type="boolean">
+  `true` if `IntersectionObserver` is available
+</ResponseField>
+
+#### Implementation
+
+```ts
+export const SUPPORTS_INTERSECTION_OBSERVER = IN_BROWSER &&
+  'IntersectionObserver' in window
+```
+
+#### Usage
+
+```ts
+import { SUPPORTS_INTERSECTION_OBSERVER } from '#v0/constants'
+
+if (SUPPORTS_INTERSECTION_OBSERVER) {
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        console.log('Element is visible')
+      }
+    })
+  })
+  observer.observe(element)
+} else {
+  // Fallback: assume always visible or use scroll listener
+  console.log('IntersectionObserver not supported')
+}
+```
+
+```ts
+// Lazy loading images
+if (SUPPORTS_INTERSECTION_OBSERVER) {
+  const lazyImages = document.querySelectorAll('img[data-src]')
+  const imageObserver = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        const img = entry.target as HTMLImageElement
+        img.src = img.dataset.src!
+        imageObserver.unobserve(img)
+      }
+    })
+  })
+
+  lazyImages.forEach(img => imageObserver.observe(img))
+}
+```
+
+---
+
+### SUPPORTS_MUTATION_OBSERVER
+
+Detects `MutationObserver` API availability.
+
+```ts
+const SUPPORTS_MUTATION_OBSERVER: boolean
+```
+
+<ResponseField name="value" type="boolean">
+  `true` if `MutationObserver` is available
+</ResponseField>
+
+#### Implementation
+
+```ts
+export const SUPPORTS_MUTATION_OBSERVER = IN_BROWSER &&
+  'MutationObserver' in window
+```
+
+#### Usage
+
+```ts
+import { SUPPORTS_MUTATION_OBSERVER } from '#v0/constants'
+
+if (SUPPORTS_MUTATION_OBSERVER) {
+  const observer = new MutationObserver(mutations => {
+    mutations.forEach(mutation => {
+      console.log('DOM changed:', mutation.type)
+    })
+  })
+
+  observer.observe(element, {
+    attributes: true,
+    childList: true,
+    subtree: true
+  })
+} else {
+  // Fallback: manual tracking or polling
+  console.log('MutationObserver not supported')
+}
+```
+
+---
+
+## Version
+
+### version
+
+The current version of `@vuetify/v0`.
+
+```ts
+const version: string
+```
+
+<ResponseField name="value" type="string">
+  Semantic version string (e.g., `'0.1.0'`)
+</ResponseField>
+
+#### Implementation
+
+```ts
+export const version = typeof __VERSION__ === 'undefined' ? '0.0.0' : __VERSION__
+```
+
+#### Usage
+
+```ts
+import { version } from '#v0/constants'
+
+console.log(`Running @vuetify/v0 ${version}`)
+
+// Feature detection based on version
+const [major, minor, patch] = version.split('.').map(Number)
+if (major >= 1) {
+  // Use new API
+}
+```
+
+---
+
+## Development
+
+### __LOGGER_ENABLED__
+
+Indicates whether logging is enabled.
+
+```ts
+const __LOGGER_ENABLED__: boolean
+```
+
+<ResponseField name="value" type="boolean">
+  `true` if logging is enabled (development mode or explicitly enabled)
+</ResponseField>
+
+<Warning>
+This is a build-time constant. It's automatically set based on the environment and should not be manually modified.
+</Warning>
+
+#### Implementation
+
+```ts
+export const __LOGGER_ENABLED__ = (
+  typeof __DEV__ !== 'undefined' && __DEV__
+) || (
+  typeof __VITE_LOGGER_ENABLED__ !== 'undefined' &&
+  __VITE_LOGGER_ENABLED__ === 'true'
+)
+```
+
+#### Usage
+
+```ts
+import { __LOGGER_ENABLED__ } from '#v0/constants'
+
+if (__LOGGER_ENABLED__) {
+  console.log('[v0] Debug information')
+}
+
+// Tree-shaking: dead code elimination in production
+if (__LOGGER_ENABLED__) {
+  // This entire block will be removed in production builds
+  console.group('[v0] Performance Metrics')
+  console.log('Render time:', performance.now())
+  console.groupEnd()
+}
+```
+
+---
+
+## HTML Elements
+
+### SELF_CLOSING_TAGS
+
+Set of HTML elements that are self-closing (void elements).
+
+```ts
+const SELF_CLOSING_TAGS: Set<SelfClosingElement>
+```
+
+These elements cannot have children and don't need closing tags:
+- `area`, `base`, `br`, `col`, `embed`, `hr`, `img`, `input`, `link`, `meta`, `source`, `track`, `wbr`
+
+#### Usage
+
+```ts
+import { SELF_CLOSING_TAGS } from '#v0/constants'
+
+if (SELF_CLOSING_TAGS.has(tagName)) {
+  // Don't try to append children
+}
+```
+
+---
+
+### COMMON_ELEMENTS
+
+Common HTML element types for polymorphic components.
+
+```ts
+const COMMON_ELEMENTS: Record<string, string>
+```
+
+#### Categories
+
+- **Layout**: `DIV`, `SPAN`, `SECTION`, `ARTICLE`, `ASIDE`, `HEADER`, `FOOTER`, `MAIN`, `NAV`
+- **Text**: `P`, `H1`, `H2`, `H3`, `H4`, `H5`, `H6`
+- **Interactive**: `BUTTON`, `A`, `INPUT`, `TEXTAREA`, `SELECT`, `LABEL`
+- **Lists**: `UL`, `OL`, `LI`, `DL`, `DT`, `DD`
+- **Media**: `IMG`, `VIDEO`, `AUDIO`, `CANVAS`, `SVG`
+- **Table**: `TABLE`, `THEAD`, `TBODY`, `TFOOT`, `TR`, `TH`, `TD`
+- **Form**: `FORM`, `FIELDSET`, `LEGEND`
+
+#### Usage
+
+```ts
+import { COMMON_ELEMENTS } from '#v0/constants'
+
+const element = COMMON_ELEMENTS.BUTTON // 'button'
+const container = COMMON_ELEMENTS.DIV   // 'div'
+```
+
+---
+
+### isSelfClosingTag
+
+Checks if an element is self-closing.
+
+```ts
+function isSelfClosingTag(tag: keyof HTMLElementTagNameMap): boolean
+```
+
+<ParamField path="tag" type="keyof HTMLElementTagNameMap" required>
+  The HTML tag name to check
+</ParamField>
+
+<ResponseField name="returns" type="boolean">
+  `true` if the tag is self-closing
+</ResponseField>
+
+#### Usage
+
+```ts
+import { isSelfClosingTag } from '#v0/constants'
+
+isSelfClosingTag('img')   // true
+isSelfClosingTag('div')   // false
+isSelfClosingTag('input') // true
+```

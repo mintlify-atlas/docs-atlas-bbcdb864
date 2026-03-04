@@ -1,0 +1,321 @@
+---
+title: Dialog
+description: Modal dialog component built on native HTML dialog element with focus trapping, backdrop, and keyboard handling.
+---
+
+## Overview
+
+Dialog provides a fully-featured modal dialog system using the native `<dialog>` element. It includes automatic focus trapping, backdrop dismissal, escape key handling, and z-index coordination for multiple overlays.
+
+## Installation
+
+```bash
+import { Dialog } from '@vuetify/v0'
+```
+
+<Warning>
+  Dialog requires `createStackPlugin` to be installed at the app level for z-index coordination.
+</Warning>
+
+## Basic Usage
+
+```vue
+<script setup lang="ts">
+import { Dialog } from '@vuetify/v0'
+</script>
+
+<template>
+  <Dialog.Root>
+    <Dialog.Activator>
+      Open Dialog
+    </Dialog.Activator>
+
+    <Dialog.Content>
+      <Dialog.Title>Dialog Title</Dialog.Title>
+      <Dialog.Description>Dialog description text.</Dialog.Description>
+
+      <p>Dialog content goes here.</p>
+
+      <Dialog.Close>Close</Dialog.Close>
+    </Dialog.Content>
+  </Dialog.Root>
+</template>
+```
+
+## v-model Binding
+
+Control dialog state externally:
+
+```vue
+<script setup lang="ts">
+import { ref } from 'vue'
+import { Dialog } from '@vuetify/v0'
+
+const isOpen = ref(false)
+</script>
+
+<template>
+  <Dialog.Root v-model="isOpen">
+    <Dialog.Activator>
+      Open Dialog
+    </Dialog.Activator>
+
+    <Dialog.Content>
+      <Dialog.Title>Controlled Dialog</Dialog.Title>
+      <Dialog.Close>Close</Dialog.Close>
+    </Dialog.Content>
+  </Dialog.Root>
+
+  <button @click="isOpen = true">Open from outside</button>
+</template>
+```
+
+## Blocking Dialogs
+
+Prevent backdrop dismissal for critical dialogs:
+
+```vue
+<Dialog.Root>
+  <Dialog.Activator>Open Critical Dialog</Dialog.Activator>
+
+  <Dialog.Content :blocking="true">
+    <Dialog.Title>Action Required</Dialog.Title>
+    <p>This dialog requires explicit user action.</p>
+    <Dialog.Close>Confirm</Dialog.Close>
+  </Dialog.Content>
+</Dialog.Root>
+```
+
+<Tip>
+  Use blocking dialogs for destructive actions or when explicit user confirmation is required.
+</Tip>
+
+## Disable Backdrop Dismissal
+
+```vue
+<Dialog.Content :close-on-click-outside="false">
+  <Dialog.Title>No Backdrop Dismissal</Dialog.Title>
+  <p>Must use close button.</p>
+  <Dialog.Close>Close</Dialog.Close>
+</Dialog.Content>
+```
+
+## Custom Namespace
+
+Use custom namespaces for nested dialog contexts:
+
+```vue
+<Dialog.Root namespace="custom-dialog">
+  <Dialog.Activator namespace="custom-dialog">
+    Open
+  </Dialog.Activator>
+
+  <Dialog.Content namespace="custom-dialog">
+    <Dialog.Title namespace="custom-dialog">Title</Dialog.Title>
+    <Dialog.Close namespace="custom-dialog">Close</Dialog.Close>
+  </Dialog.Content>
+</Dialog.Root>
+```
+
+## Component API
+
+### Dialog.Root
+
+Root component that manages dialog state and provides context.
+
+<ParamField path="as" type="string | Component" default="null">
+  Element or component to render as (renderless by default).
+</ParamField>
+
+<ParamField path="namespace" type="string" default="'v0:dialog'">
+  Namespace for dependency injection.
+</ParamField>
+
+<ParamField path="id" type="string">
+  Unique identifier for the dialog (auto-generated if not provided).
+</ParamField>
+
+<ParamField path="modelValue" type="boolean" default="false">
+  Controls the open/closed state of the dialog.
+</ParamField>
+
+#### Slot Props
+
+```typescript
+interface DialogRootSlotProps {
+  id: string
+  isOpen: boolean
+  open: () => void
+  close: () => void
+}
+```
+
+### Dialog.Activator
+
+Button that opens the dialog when clicked.
+
+<ParamField path="as" type="string | Component" default="'button'">
+  Element or component to render as.
+</ParamField>
+
+<ParamField path="namespace" type="string" default="'v0:dialog'">
+  Namespace for dependency injection.
+</ParamField>
+
+#### Slot Props
+
+```typescript
+interface DialogActivatorSlotProps {
+  isOpen: boolean
+  attrs: {
+    'type': 'button' | undefined
+    'aria-haspopup': 'dialog'
+    'aria-expanded': boolean
+    'data-dialog-open': '' | undefined
+  }
+}
+```
+
+### Dialog.Content
+
+Dialog content panel using native `<dialog>` element.
+
+<ParamField path="as" type="string | Component" default="'dialog'">
+  Element or component to render as.
+</ParamField>
+
+<ParamField path="namespace" type="string" default="'v0:dialog'">
+  Namespace for dependency injection.
+</ParamField>
+
+<ParamField path="closeOnClickOutside" type="boolean" default="true">
+  Close dialog when clicking outside content.
+</ParamField>
+
+<ParamField path="blocking" type="boolean" default="false">
+  When true, clicking the scrim will not dismiss this dialog. Use for critical dialogs requiring explicit user action.
+</ParamField>
+
+#### Events
+
+<ParamField path="cancel" type="(e: Event) => void">
+  Emitted when dialog is cancelled (e.g., via Escape key).
+</ParamField>
+
+<ParamField path="close" type="(e: Event) => void">
+  Emitted when dialog closes.
+</ParamField>
+
+#### Slot Props
+
+```typescript
+interface DialogContentSlotProps {
+  isOpen: boolean
+  globalTop: boolean
+  zIndex: number
+  attrs: {
+    'id': string
+    'role': 'dialog'
+    'aria-modal': 'true'
+    'aria-labelledby': string
+    'aria-describedby': string
+  }
+}
+```
+
+### Dialog.Title
+
+Accessible title for the dialog.
+
+<ParamField path="as" type="string | Component" default="'h2'">
+  Element or component to render as.
+</ParamField>
+
+<ParamField path="namespace" type="string" default="'v0:dialog'">
+  Namespace for dependency injection.
+</ParamField>
+
+#### Slot Props
+
+```typescript
+interface DialogTitleSlotProps {
+  attrs: {
+    id: string
+  }
+}
+```
+
+### Dialog.Description
+
+Accessible description for the dialog.
+
+<ParamField path="as" type="string | Component" default="'p'">
+  Element or component to render as.
+</ParamField>
+
+<ParamField path="namespace" type="string" default="'v0:dialog'">
+  Namespace for dependency injection.
+</ParamField>
+
+#### Slot Props
+
+```typescript
+interface DialogDescriptionSlotProps {
+  attrs: {
+    id: string
+  }
+}
+```
+
+### Dialog.Close
+
+Button that closes the dialog when clicked.
+
+<ParamField path="as" type="string | Component" default="'button'">
+  Element or component to render as.
+</ParamField>
+
+<ParamField path="namespace" type="string" default="'v0:dialog'">
+  Namespace for dependency injection.
+</ParamField>
+
+#### Slot Props
+
+```typescript
+interface DialogCloseSlotProps {
+  isOpen: boolean
+  attrs: {
+    'type': 'button' | undefined
+    'aria-label': 'Close'
+  }
+}
+```
+
+## Accessibility
+
+- Uses native `<dialog>` element with `showModal()` for proper modal behavior
+- Automatic focus trapping and restoration
+- Escape key handling built-in
+- ARIA attributes automatically managed:
+  - `role="dialog"`
+  - `aria-modal="true"`
+  - `aria-labelledby` links to Dialog.Title
+  - `aria-describedby` links to Dialog.Description
+- Backdrop click dismissal (can be disabled)
+
+## Context API
+
+```typescript
+import { useDialogContext } from '@vuetify/v0'
+
+const context = useDialogContext('v0:dialog')
+
+interface DialogContext {
+  isOpen: ShallowRef<boolean>
+  id: string
+  titleId: string
+  descriptionId: string
+  open: () => void
+  close: () => void
+}
+```

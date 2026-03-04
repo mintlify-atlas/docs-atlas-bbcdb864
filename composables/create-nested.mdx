@@ -1,0 +1,708 @@
+---
+title: createNested
+description: Hierarchical tree management with parent-child relationships, open/close state, cascading selection, and tree traversal utilities
+---
+
+## Overview
+
+The **createNested** composable extends `createGroup` to support parent-child relationships, tree traversal, and hierarchical state management. Perfect for tree views, nested navigation, file explorers, and organizational charts.
+
+## Signature
+
+```ts
+function createNested<
+  Z extends NestedTicketInput = NestedTicketInput,
+  E extends NestedTicket<Z> = NestedTicket<Z>
+>(options?: NestedOptions): NestedContext<Z, E>
+```
+
+<ParamField path="options" type="NestedOptions">
+  Configuration options
+  
+  <Expandable title="properties">
+    <ParamField path="open" type="'multiple' | 'single'" default="'multiple'">
+      Controls how nodes expand/collapse:
+      - `'multiple'`: Multiple nodes can be open simultaneously
+      - `'single'`: Only one node open at a time (accordion behavior)
+    </ParamField>
+    
+    <ParamField path="openAll" type="boolean" default="false">
+      Auto-open parent nodes when children are registered
+    </ParamField>
+    
+    <ParamField path="reveal" type="boolean" default="false">
+      When opening a node, also open all its ancestors (ensures visibility)
+    </ParamField>
+    
+    <ParamField path="selection" type="'cascade' | 'independent' | 'leaf'" default="'cascade'">
+      Controls how selection cascades:
+      - `'cascade'`: Selecting parent selects descendants; ancestors show mixed state
+      - `'independent'`: Each node selected independently
+      - `'leaf'`: Only leaf nodes selectable; selecting parent selects all leaf descendants
+    </ParamField>
+    
+    <ParamField path="active" type="'single' | 'multiple'" default="'single'">
+      Controls active/highlight state:
+      - `'single'`: Only one item active at a time
+      - `'multiple'`: Multiple items can be active
+    </ParamField>
+    
+    <ParamField path="mandatory" type="boolean | 'force'" default="false">
+      Mandatory selection enforcement (inherited from createGroup)
+    </ParamField>
+    
+    <ParamField path="multiple" type="boolean" default="true">
+      Allow multiple selections (inherited from createGroup)
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+<ResponseField name="NestedContext" type="object">
+  Nested tree instance with hierarchical methods
+  
+  <Expandable title="properties">
+    <ResponseField name="children" type="ReadonlyMap<ID, readonly ID[]>">
+      Map of parent IDs to arrays of child IDs
+    </ResponseField>
+    
+    <ResponseField name="parents" type="ReadonlyMap<ID, ID | undefined>">
+      Map of child IDs to parent ID (undefined for roots)
+    </ResponseField>
+    
+    <ResponseField name="roots" type="ComputedRef<E[]>">
+      Array of root items (items with no parent)
+    </ResponseField>
+    
+    <ResponseField name="leaves" type="ComputedRef<E[]>">
+      Array of leaf items (items with no children)
+    </ResponseField>
+    
+    <ResponseField name="openedIds" type="Reactive<Set<ID>>">
+      Set of opened/expanded item IDs
+    </ResponseField>
+    
+    <ResponseField name="openedItems" type="ComputedRef<Set<E>>">
+      Set of opened/expanded item instances
+    </ResponseField>
+    
+    <ResponseField name="activeIds" type="Reactive<Set<ID>>">
+      Set of active/highlighted item IDs
+    </ResponseField>
+    
+    <ResponseField name="activeItems" type="ComputedRef<Set<E>>">
+      Set of active/highlighted item instances
+    </ResponseField>
+    
+    <ResponseField name="activeIndexes" type="ComputedRef<Set<number>>">
+      Set of active item indexes
+    </ResponseField>
+    
+    <ResponseField name="open" type="(ids: ID | ID[]) => void">
+      Open/expand one or more nodes
+    </ResponseField>
+    
+    <ResponseField name="close" type="(ids: ID | ID[]) => void">
+      Close/collapse one or more nodes
+    </ResponseField>
+    
+    <ResponseField name="flip" type="(ids: ID | ID[]) => void">
+      Toggle open/closed state of one or more nodes
+    </ResponseField>
+    
+    <ResponseField name="opened" type="(id: ID) => boolean">
+      Check if a node is open
+    </ResponseField>
+    
+    <ResponseField name="unfold" type="(ids: ID | ID[]) => void">
+      Open node(s) and their immediate non-leaf children
+    </ResponseField>
+    
+    <ResponseField name="reveal" type="(ids: ID | ID[]) => void">
+      Reveal node(s) by opening all ancestors (makes visible without opening node itself)
+    </ResponseField>
+    
+    <ResponseField name="expand" type="(ids: ID | ID[]) => void">
+      Fully expand node(s) and all their non-leaf descendants
+    </ResponseField>
+    
+    <ResponseField name="expandAll" type="() => void">
+      Expand all non-leaf nodes in the tree
+    </ResponseField>
+    
+    <ResponseField name="collapseAll" type="() => void">
+      Collapse all nodes
+    </ResponseField>
+    
+    <ResponseField name="activate" type="(ids: ID | ID[]) => void">
+      Activate/highlight one or more nodes
+    </ResponseField>
+    
+    <ResponseField name="deactivate" type="(ids: ID | ID[]) => void">
+      Deactivate/unhighlight one or more nodes
+    </ResponseField>
+    
+    <ResponseField name="activated" type="(id: ID) => boolean">
+      Check if a node is active
+    </ResponseField>
+    
+    <ResponseField name="deactivateAll" type="() => void">
+      Deactivate all nodes
+    </ResponseField>
+    
+    <ResponseField name="getPath" type="(id: ID) => ID[]">
+      Get path from root to item (includes item)
+    </ResponseField>
+    
+    <ResponseField name="getAncestors" type="(id: ID) => ID[]">
+      Get all ancestors (excludes item)
+    </ResponseField>
+    
+    <ResponseField name="getDescendants" type="(id: ID) => ID[]">
+      Get all descendants
+    </ResponseField>
+    
+    <ResponseField name="isLeaf" type="(id: ID) => boolean">
+      Check if item is a leaf node
+    </ResponseField>
+    
+    <ResponseField name="getDepth" type="(id: ID) => number">
+      Get depth level (0 = root)
+    </ResponseField>
+    
+    <ResponseField name="isAncestorOf" type="(ancestorId: ID, descendantId: ID) => boolean">
+      Check if ancestorId is an ancestor of descendantId
+    </ResponseField>
+    
+    <ResponseField name="hasAncestor" type="(id: ID, ancestorId: ID) => boolean">
+      Check if id has ancestorId as an ancestor
+    </ResponseField>
+    
+    <ResponseField name="siblings" type="(id: ID) => ID[]">
+      Get sibling IDs (including self)
+    </ResponseField>
+    
+    <ResponseField name="position" type="(id: ID) => number">
+      Get 1-indexed position among siblings (for aria-posinset)
+    </ResponseField>
+    
+    <ResponseField name="toFlat" type="() => Array<{ id: ID, parentId: ID | undefined, value: unknown }>">
+      Convert tree to flat array with parentId references
+    </ResponseField>
+    
+    <ResponseField name="select" type="(ids: ID | ID[]) => void">
+      Select item(s) with cascading based on selection mode
+    </ResponseField>
+    
+    <ResponseField name="unselect" type="(ids: ID | ID[]) => void">
+      Unselect item(s) with cascading based on selection mode
+    </ResponseField>
+    
+    <ResponseField name="toggle" type="(ids: ID | ID[]) => void">
+      Toggle selection with cascading
+    </ResponseField>
+    
+    <ResponseField name="register" type="(registration?: NestedRegistration<Z>) => E">
+      Register a node with optional parentId and inline children
+    </ResponseField>
+    
+    <ResponseField name="unregister" type="(id: ID, cascade?: boolean) => void">
+      Unregister node. If `cascade: true`, removes all descendants; otherwise orphans them.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+## Usage
+
+### Basic Tree Structure
+
+```ts
+import { createNested } from '@vuetify/v0'
+
+const tree = createNested()
+
+const root = tree.register({ id: 'root', value: 'Root Folder' })
+const child1 = tree.register({ id: 'child-1', value: 'Documents', parentId: 'root' })
+const child2 = tree.register({ id: 'child-2', value: 'Photos', parentId: 'root' })
+const grandchild = tree.register({ id: 'gc-1', value: 'Vacation', parentId: 'child-2' })
+
+console.log(tree.getPath('gc-1')) // ['root', 'child-2', 'gc-1']
+console.log(tree.getDescendants('root')) // ['child-1', 'child-2', 'gc-1']
+console.log(tree.isLeaf('gc-1')) // true
+```
+
+### Inline Children
+
+```ts
+const tree = createNested()
+
+tree.register({
+  id: 'root',
+  value: 'Root',
+  children: [
+    {
+      id: 'child-1',
+      value: 'Child 1',
+      children: [
+        { id: 'grandchild-1', value: 'Grandchild 1' }
+      ]
+    },
+    { id: 'child-2', value: 'Child 2' }
+  ]
+})
+
+console.log(tree.size) // 4
+console.log(tree.getPath('grandchild-1')) // ['root', 'child-1', 'grandchild-1']
+```
+
+### Cascading Selection (Default)
+
+```ts
+const tree = createNested({ selection: 'cascade' })
+
+tree.register({ id: 'root', value: 'Root' })
+tree.register({ id: 'child-1', value: 'Child 1', parentId: 'root' })
+tree.register({ id: 'child-2', value: 'Child 2', parentId: 'root' })
+
+// Select parent selects all descendants
+tree.select('root')
+console.log(tree.selected('root')) // true
+console.log(tree.selected('child-1')) // true
+console.log(tree.selected('child-2')) // true
+
+// Unselect all
+tree.unselect('root')
+
+// Select one child - parent becomes mixed
+tree.select('child-1')
+console.log(tree.selected('child-1')) // true
+console.log(tree.mixed('root')) // true (indeterminate)
+
+// Select all children - parent becomes selected
+tree.select('child-2')
+console.log(tree.selected('root')) // true
+console.log(tree.mixed('root')) // false
+```
+
+### Independent Selection
+
+```ts
+const tree = createNested({ selection: 'independent' })
+
+tree.register({ id: 'root', value: 'Root' })
+tree.register({ id: 'child', value: 'Child', parentId: 'root' })
+
+// Selection doesn't cascade
+tree.select('root')
+console.log(tree.selected('root')) // true
+console.log(tree.selected('child')) // false
+console.log(tree.mixed('root')) // false
+```
+
+### Leaf-Only Selection
+
+```ts
+const tree = createNested({ selection: 'leaf' })
+
+tree.register({ id: 'root', value: 'Root' })
+tree.register({ id: 'branch', value: 'Branch', parentId: 'root' })
+tree.register({ id: 'leaf-1', value: 'Leaf 1', parentId: 'branch' })
+tree.register({ id: 'leaf-2', value: 'Leaf 2', parentId: 'branch' })
+
+// Selecting parent only selects leaf descendants
+tree.select('root')
+console.log(tree.selected('root')) // false (not a leaf)
+console.log(tree.selected('branch')) // false (not a leaf)
+console.log(tree.selected('leaf-1')) // true
+console.log(tree.selected('leaf-2')) // true
+```
+
+### Open/Close State
+
+```ts
+const tree = createNested()
+
+tree.register({ id: 'folder', value: 'My Folder' })
+tree.register({ id: 'file', value: 'document.txt', parentId: 'folder' })
+
+// Open folder to show contents
+tree.open('folder')
+console.log(tree.opened('folder')) // true
+
+// Close folder to hide contents
+tree.close('folder')
+console.log(tree.opened('folder')) // false
+
+// Toggle
+tree.flip('folder')
+console.log(tree.opened('folder')) // true
+```
+
+### Single Open Mode (Accordion)
+
+```ts
+const accordion = createNested({ open: 'single' })
+
+accordion.onboard([
+  { id: 'panel-1', value: 'Panel 1' },
+  { id: 'panel-2', value: 'Panel 2' },
+  { id: 'panel-3', value: 'Panel 3' },
+])
+
+accordion.open('panel-1')
+console.log(accordion.opened('panel-1')) // true
+
+// Opening another closes the first
+accordion.open('panel-2')
+console.log(accordion.opened('panel-1')) // false
+console.log(accordion.opened('panel-2')) // true
+```
+
+### Active State
+
+```ts
+const tree = createNested({ active: 'single' })
+
+tree.onboard([
+  { id: 'node-1', value: 'Node 1' },
+  { id: 'node-2', value: 'Node 2' },
+])
+
+tree.activate('node-1')
+console.log(tree.activated('node-1')) // true
+
+// Single mode clears previous active
+tree.activate('node-2')
+console.log(tree.activated('node-1')) // false
+console.log(tree.activated('node-2')) // true
+```
+
+### Tree Traversal
+
+```ts
+const tree = createNested()
+
+tree.register({ id: 'root', value: 'Root' })
+tree.register({ id: 'a', value: 'A', parentId: 'root' })
+tree.register({ id: 'b', value: 'B', parentId: 'root' })
+tree.register({ id: 'a1', value: 'A1', parentId: 'a' })
+tree.register({ id: 'a2', value: 'A2', parentId: 'a' })
+
+// Get full path
+console.log(tree.getPath('a1')) // ['root', 'a', 'a1']
+
+// Get ancestors
+console.log(tree.getAncestors('a1')) // ['root', 'a']
+
+// Get descendants
+console.log(tree.getDescendants('root')) // ['a', 'b', 'a1', 'a2']
+console.log(tree.getDescendants('a')) // ['a1', 'a2']
+
+// Check depth
+console.log(tree.getDepth('root')) // 0
+console.log(tree.getDepth('a')) // 1
+console.log(tree.getDepth('a1')) // 2
+
+// Check leaf status
+console.log(tree.isLeaf('a1')) // true
+console.log(tree.isLeaf('a')) // false
+```
+
+### Ancestor Relationships
+
+```ts
+const tree = createNested()
+
+tree.register({ id: 'root', value: 'Root' })
+tree.register({ id: 'child', value: 'Child', parentId: 'root' })
+tree.register({ id: 'grandchild', value: 'Grandchild', parentId: 'child' })
+
+console.log(tree.isAncestorOf('root', 'grandchild')) // true
+console.log(tree.isAncestorOf('child', 'grandchild')) // true
+console.log(tree.isAncestorOf('grandchild', 'root')) // false
+
+console.log(tree.hasAncestor('grandchild', 'root')) // true
+```
+
+### Siblings and Position
+
+```ts
+const tree = createNested()
+
+tree.register({ id: 'parent', value: 'Parent' })
+tree.register({ id: 'child-1', value: 'First', parentId: 'parent' })
+tree.register({ id: 'child-2', value: 'Second', parentId: 'parent' })
+tree.register({ id: 'child-3', value: 'Third', parentId: 'parent' })
+
+console.log(tree.siblings('child-2')) // ['child-1', 'child-2', 'child-3']
+console.log(tree.position('child-2')) // 2 (1-indexed for aria-posinset)
+```
+
+### Reveal and Expand
+
+```ts
+const tree = createNested()
+
+tree.register({ id: 'root', value: 'Root' })
+tree.register({ id: 'folder-1', value: 'Folder 1', parentId: 'root' })
+tree.register({ id: 'folder-2', value: 'Folder 2', parentId: 'folder-1' })
+tree.register({ id: 'file', value: 'file.txt', parentId: 'folder-2' })
+
+// Reveal file by opening ancestors
+tree.reveal('file')
+console.log(tree.opened('root')) // true
+console.log(tree.opened('folder-1')) // true
+console.log(tree.opened('folder-2')) // true
+console.log(tree.opened('file')) // false (reveal doesn't open the item itself)
+
+// Expand folder-1 and all non-leaf descendants
+tree.collapseAll()
+tree.expand('folder-1')
+console.log(tree.opened('folder-1')) // true
+console.log(tree.opened('folder-2')) // true (non-leaf descendant)
+console.log(tree.opened('file')) // false (leaf)
+```
+
+### Unregister with Cascade
+
+```ts
+const tree = createNested()
+
+tree.register({ id: 'root', value: 'Root' })
+tree.register({ id: 'child', value: 'Child', parentId: 'root' })
+tree.register({ id: 'grandchild', value: 'Grandchild', parentId: 'child' })
+
+// Orphan children (default)
+tree.unregister('root')
+console.log(tree.has('root')) // false
+console.log(tree.has('child')) // true (orphaned)
+console.log(tree.parents.get('child')) // undefined
+
+// Cascade delete
+tree.register({ id: 'root2', value: 'Root 2' })
+tree.register({ id: 'child2', value: 'Child 2', parentId: 'root2' })
+
+tree.unregister('root2', true) // cascade = true
+console.log(tree.has('root2')) // false
+console.log(tree.has('child2')) // false (deleted)
+```
+
+### Tree Component Example
+
+```vue
+<script setup lang="ts">
+import { createNested } from '@vuetify/v0'
+
+interface TreeNode extends NestedTicketInput {
+  label: string
+  icon?: string
+}
+
+const tree = createNested<TreeNode>({
+  selection: 'cascade',
+  open: 'multiple'
+})
+
+tree.onboard([
+  {
+    id: 'documents',
+    label: 'Documents',
+    icon: 'mdi-folder',
+    children: [
+      { id: 'work', label: 'Work', icon: 'mdi-briefcase' },
+      { id: 'personal', label: 'Personal', icon: 'mdi-account' },
+    ]
+  },
+  {
+    id: 'downloads',
+    label: 'Downloads',
+    icon: 'mdi-download'
+  }
+])
+</script>
+
+<template>
+  <div class="tree-view">
+    <TreeNode 
+      v-for="root in tree.roots.value" 
+      :key="root.id"
+      :node="root"
+      :tree="tree"
+    />
+  </div>
+</template>
+
+<!-- TreeNode.vue (recursive component) -->
+<template>
+  <div class="tree-node">
+    <div 
+      class="node-content"
+      :class="{ 
+        selected: node.isSelected.value,
+        active: node.isActive.value 
+      }"
+    >
+      <button 
+        v-if="!node.isLeaf.value"
+        @click="node.flip()"
+      >
+        {{ node.isOpen.value ? '▼' : '▶' }}
+      </button>
+      
+      <input
+        v-if="!node.isLeaf.value"
+        type="checkbox"
+        :checked="node.isSelected.value"
+        :indeterminate="node.isMixed.value"
+        @change="node.toggle()"
+      >
+      
+      <span @click="node.activate()">{{ node.label }}</span>
+    </div>
+    
+    <div v-if="node.isOpen.value" class="children">
+      <TreeNode
+        v-for="childId in tree.children.get(node.id)"
+        :key="childId"
+        :node="tree.get(childId)!"
+        :tree="tree"
+      />
+    </div>
+  </div>
+</template>
+```
+
+### Selection Modes Comparison
+
+```ts
+// Cascade mode (default)
+const cascade = createNested({ selection: 'cascade' })
+cascade.register({ id: 'parent', value: 'Parent' })
+cascade.register({ id: 'child', value: 'Child', parentId: 'parent' })
+cascade.select('parent')
+// Result: parent=selected, child=selected
+
+// Independent mode
+const independent = createNested({ selection: 'independent' })
+independent.register({ id: 'parent', value: 'Parent' })
+independent.register({ id: 'child', value: 'Child', parentId: 'parent' })
+independent.select('parent')
+// Result: parent=selected, child=unselected
+
+// Leaf mode
+const leaf = createNested({ selection: 'leaf' })
+leaf.register({ id: 'parent', value: 'Parent' })
+leaf.register({ id: 'child', value: 'Child', parentId: 'parent' })
+leaf.select('parent')
+// Result: parent=unselected, child=selected (child is leaf)
+```
+
+### Flatten Tree
+
+```ts
+const tree = createNested()
+
+tree.register({ id: 'root', value: 'Root' })
+tree.register({ id: 'child-1', value: 'Child 1', parentId: 'root' })
+tree.register({ id: 'child-2', value: 'Child 2', parentId: 'root' })
+
+const flat = tree.toFlat()
+// [
+//   { id: 'root', parentId: undefined, value: 'Root' },
+//   { id: 'child-1', parentId: 'root', value: 'Child 1' },
+//   { id: 'child-2', parentId: 'root', value: 'Child 2' }
+// ]
+```
+
+## Type Safety
+
+```ts
+interface FileNode extends NestedTicketInput {
+  name: string
+  type: 'file' | 'folder'
+  size?: number
+}
+
+const fileTree = createNested<FileNode>()
+
+const folder = fileTree.register({
+  name: 'Documents',
+  type: 'folder'
+})
+
+const file = fileTree.register({
+  name: 'README.md',
+  type: 'file',
+  size: 1024,
+  parentId: folder.id
+})
+
+// Type-safe access
+console.log(file.name) // string
+console.log(file.type) // 'file' | 'folder'
+console.log(file.size) // number | undefined
+console.log(file.isLeaf.value) // boolean
+```
+
+## Ticket-Level Methods
+
+```ts
+const tree = createNested()
+
+const ticket = tree.register({ id: 'node', value: 'Node' })
+
+// Open/close methods
+ticket.open()
+ticket.close()
+ticket.flip()
+
+// Activation
+ticket.activate()
+ticket.deactivate()
+
+// Tree traversal
+const path = ticket.getPath() // ID[]
+const ancestors = ticket.getAncestors() // ID[]
+const descendants = ticket.getDescendants() // ID[]
+
+// Relationships
+const sibs = ticket.siblings() // ID[]
+const pos = ticket.position() // number
+console.log(ticket.isAncestorOf('other-id')) // boolean
+console.log(ticket.hasAncestor('ancestor-id')) // boolean
+
+// State refs
+console.log(ticket.isOpen.value) // boolean
+console.log(ticket.isActive.value) // boolean
+console.log(ticket.isLeaf.value) // boolean
+console.log(ticket.depth.value) // number
+```
+
+## Context Pattern
+
+```ts
+import { createNestedContext } from '@vuetify/v0'
+
+export const [useFileTree, provideFileTree, fileTree] = 
+  createNestedContext({ selection: 'cascade' })
+
+// In parent component
+provideFileTree()
+
+// In child component
+const tree = useFileTree()
+tree.expandAll()
+```
+
+## Performance
+
+- Parent-child lookups: O(1) via Map
+- Tree traversal: O(d) for getPath where d = depth
+- Get descendants: O(n) breadth-first traversal
+- Cascading selection: O(n) where n = descendants
+- Open/close: O(1) Set operations
+
+## See Also
+
+- [createGroup](/composables/create-group) - Base multi-selection system
+- [createSelection](/composables/create-selection) - Selection tracking
+- [createBreadcrumbs](/composables/create-breadcrumbs) - Breadcrumb navigation

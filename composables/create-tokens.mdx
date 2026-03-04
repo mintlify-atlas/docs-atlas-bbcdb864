@@ -1,0 +1,436 @@
+---
+title: createTokens
+description: Design token registry with alias resolution and W3C Design Tokens format support.
+---
+
+## Overview
+
+Design token registry with automatic alias resolution, nested token flattening, and W3C Design Tokens format support. Features circular reference detection, path-based resolution with dot notation, and resolution caching for performance.
+
+## Basic Usage
+
+```ts
+import { createTokens } from '@vuetify/v0'
+
+const tokens = createTokens({
+  colors: {
+    primary: '#3b82f6',
+    secondary: '#6c757d',
+  },
+})
+
+console.log(tokens.resolve('colors.primary')) // '#3b82f6'
+console.log(tokens.size) // 2
+```
+
+## Function Signature
+
+```ts
+function createTokens<
+  Z extends TokenTicket = TokenTicket,
+  E extends TokenContext<Z> = TokenContext<Z>
+>(
+  tokens: TokenCollection,
+  options?: TokenOptions
+): E
+```
+
+### Parameters
+
+<ParamField path="tokens" type="TokenCollection" required>
+  Nested object containing design tokens
+  
+  ```ts
+  {
+    colors: {
+      blue: {
+        500: '#3b82f6',
+        600: '#2563eb',
+      },
+    },
+  }
+  ```
+</ParamField>
+
+<ParamField path="options" type="TokenOptions">
+  Configuration options
+  
+  <ParamField path="flat" type="boolean" default="false">
+    Whether to flatten nested token structures at depth 0
+  </ParamField>
+  
+  <ParamField path="prefix" type="string">
+    Optional prefix to prepend to all token IDs
+  </ParamField>
+</ParamField>
+
+### Returns
+
+<ResponseField name="TokenContext" type="object">
+  Token context with resolution methods
+  
+  <ResponseField name="resolve" type="function">
+    Resolve a token or alias to its value
+    
+    ```ts
+    const value = tokens.resolve('colors.primary')
+    const aliased = tokens.resolve('{colors.primary}')
+    ```
+  </ResponseField>
+  
+  <ResponseField name="isAlias" type="function">
+    Check if a value is an alias reference
+    
+    ```ts
+    tokens.isAlias('{colors.primary}') // true
+    tokens.isAlias('#3b82f6') // false
+    ```
+  </ResponseField>
+  
+  <ResponseField name="register" type="function">
+    Add a new token dynamically
+    
+    ```ts
+    tokens.register({ id: 'colors.tertiary', value: '#20c997' })
+    ```
+  </ResponseField>
+  
+  <ResponseField name="upsert" type="function">
+    Update or create a token
+    
+    ```ts
+    tokens.upsert('colors.primary', { value: '#1e40af' })
+    ```
+  </ResponseField>
+  
+  <ResponseField name="unregister" type="function">
+    Remove a token by ID
+    
+    ```ts
+    tokens.unregister('colors.tertiary')
+    ```
+  </ResponseField>
+  
+  <ResponseField name="collection" type="Registry">
+    Access underlying registry methods
+    
+    ```ts
+    tokens.collection.has('colors.primary') // true
+    tokens.collection.get('colors.primary') // { id: '...', value: '...' }
+    ```
+  </ResponseField>
+  
+  <ResponseField name="size" type="number">
+    Number of registered tokens
+  </ResponseField>
+</ResponseField>
+
+## Alias Resolution
+
+### Simple Aliases
+
+Reference other tokens using `{tokenPath}` syntax:
+
+```ts
+const tokens = createTokens({
+  primary: '#3b82f6',
+  accent: { $value: '{primary}' },
+})
+
+console.log(tokens.resolve('accent')) // '#3b82f6'
+```
+
+### Nested Aliases
+
+Resolve tokens from nested paths:
+
+```ts
+const tokens = createTokens({
+  colors: {
+    primary: '#3b82f6',
+  },
+  button: {
+    background: { $value: '{colors.primary}' },
+  },
+})
+
+console.log(tokens.resolve('button.background')) // '#3b82f6'
+```
+
+### Chained Aliases
+
+Aliases can reference other aliases:
+
+```ts
+const tokens = createTokens({
+  base: '#3b82f6',
+  primary: { $value: '{base}' },
+  accent: { $value: '{primary}' },
+})
+
+console.log(tokens.resolve('accent')) // '#3b82f6'
+```
+
+### Circular Reference Detection
+
+Prevents infinite loops with warning:
+
+```ts
+const tokens = createTokens({
+  a: { $value: '{b}' },
+  b: { $value: '{a}' },
+})
+
+console.log(tokens.resolve('a')) // undefined
+// Warns: "Circular alias detected for 'a'"
+```
+
+## W3C Design Tokens Format
+
+### Token Metadata
+
+Supports W3C Design Tokens specification:
+
+```ts
+const tokens = createTokens({
+  fontSize: {
+    $value: '16px',
+    $type: 'dimension',
+    $description: 'Base font size',
+  },
+  brandColor: {
+    $value: '#3b82f6',
+    $type: 'color',
+    $deprecated: 'Use primary instead',
+    $extensions: {
+      'com.figma.mode': 'light',
+    },
+  },
+})
+
+console.log(tokens.resolve('fontSize')) // '16px'
+console.log(tokens.resolve('brandColor')) // '#3b82f6'
+```
+
+### Complex Values
+
+Tokens can contain objects as values:
+
+```ts
+const tokens = createTokens({
+  shadow: {
+    $value: {
+      offsetX: '0px',
+      offsetY: '4px',
+      blur: '8px',
+      color: '#00000040',
+    },
+  },
+})
+
+console.log(tokens.resolve('shadow')) 
+// { offsetX: '0px', offsetY: '4px', blur: '8px', color: '#00000040' }
+```
+
+## Path-Based Resolution
+
+### Dot Notation
+
+Access nested tokens with dot notation:
+
+```ts
+const tokens = createTokens({
+  colors: {
+    blue: {
+      500: '#3b82f6',
+      600: '#2563eb',
+    },
+  },
+})
+
+console.log(tokens.resolve('colors.blue.500')) // '#3b82f6'
+console.log(tokens.resolve('colors.blue.600')) // '#2563eb'
+```
+
+### Partial Path Resolution
+
+Resolve segments within token values:
+
+```ts
+const tokens = createTokens({
+  palette: {
+    $value: {
+      primary: '#3b82f6',
+      secondary: '#6c757d',
+    },
+  },
+})
+
+console.log(tokens.resolve('{palette}.primary')) // '#3b82f6'
+```
+
+## Dynamic Token Management
+
+### Adding Tokens
+
+```ts
+const tokens = createTokens({
+  colors: {
+    primary: '#3b82f6',
+  },
+})
+
+// Add new token
+tokens.register({ 
+  id: 'colors.secondary', 
+  value: '#6c757d' 
+})
+
+console.log(tokens.size) // 2
+```
+
+### Updating Tokens
+
+```ts
+const tokens = createTokens({
+  colors: {
+    primary: '#3b82f6',
+  },
+})
+
+// Update existing token
+tokens.upsert('colors.primary', { value: '#2563eb' })
+
+console.log(tokens.resolve('colors.primary')) // '#2563eb'
+```
+
+### Removing Tokens
+
+```ts
+const tokens = createTokens({
+  colors: {
+    primary: '#3b82f6',
+    deprecated: '#999999',
+  },
+})
+
+tokens.unregister('colors.deprecated')
+
+console.log(tokens.collection.has('colors.deprecated')) // false
+```
+
+## Prefixing
+
+Namespace all tokens with a prefix:
+
+```ts
+const tokens = createTokens(
+  {
+    colors: {
+      primary: '#3b82f6',
+    },
+  },
+  { prefix: 'app' }
+)
+
+console.log(tokens.collection.has('app.colors.primary')) // true
+console.log(tokens.resolve('app.colors.primary')) // '#3b82f6'
+```
+
+## Context Pattern
+
+Use dependency injection for global token access:
+
+```ts
+import { createTokensContext } from '@vuetify/v0'
+
+export const [useTokens, provideTokens, tokens] = createTokensContext({
+  namespace: 'v0:tokens',
+  tokens: {
+    colors: {
+      primary: '#3b82f6',
+      secondary: '#6c757d',
+    },
+  },
+})
+
+// Parent component
+provideTokens()
+
+// Child component
+const tokens = useTokens()
+const primary = tokens.resolve('colors.primary')
+```
+
+## TypeScript
+
+### Token Types
+
+```ts
+import type { TokenCollection, TokenAlias } from '@vuetify/v0'
+
+const tokens: TokenCollection = {
+  colors: {
+    primary: '#3b82f6',
+    accent: { $value: '{colors.primary}' } as TokenAlias,
+  },
+}
+
+const context = createTokens(tokens)
+```
+
+### Primitive Values
+
+Tokens support all primitive types:
+
+```ts
+const tokens = createTokens({
+  // Strings
+  color: '#3b82f6',
+  
+  // Numbers
+  fontSize: 16,
+  lineHeight: 1.5,
+  
+  // Booleans
+  darkMode: true,
+  
+  // Null
+  placeholder: null,
+  
+  // Functions
+  transform: (value: number) => value * 2,
+})
+```
+
+## Performance
+
+### Resolution Caching
+
+Resolved values are automatically cached:
+
+```ts
+const tokens = createTokens({
+  primary: '#3b82f6',
+  accent: { $value: '{primary}' },
+})
+
+// First call resolves and caches
+tokens.resolve('accent') // Resolves
+
+// Subsequent calls use cache
+tokens.resolve('accent') // Cached
+```
+
+Cache is cleared on token mutations:
+
+```ts
+tokens.upsert('primary', { value: '#2563eb' })
+// Cache cleared, next resolve() will re-compute
+```
+
+## Related
+
+- [useTheme](/composables/use-theme) - Theme system built on tokens
+- [useLocale](/composables/use-locale) - Locale system using tokens
+- [createRegistry](/composables/create-registry) - Base registry primitive

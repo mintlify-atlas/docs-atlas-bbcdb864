@@ -1,0 +1,462 @@
+---
+title: Building Components
+description: Learn how to build custom components using Vuetify Zero primitives with real-world examples
+---
+
+# Building Components
+
+Vuetify Zero provides headless UI primitives that you can compose to build custom components. This guide shows practical examples of building components with Dialog, Tabs, and Checkbox.
+
+## Understanding Primitives
+
+Vuetify Zero components are **headless** - they provide logic, accessibility, and state management without imposing any visual style. Each component is structured as a namespace with sub-components:
+
+```vue
+<Dialog.Root>
+  <Dialog.Activator />
+  <Dialog.Content>
+    <Dialog.Title />
+    <Dialog.Description />
+    <Dialog.Close />
+  </Dialog.Content>
+</Dialog.Root>
+```
+
+## Building a Dialog Component
+
+<Steps>
+
+<Step title="Import the Dialog primitive">
+
+Start by importing the Dialog namespace from `@vuetify/v0`:
+
+```vue
+<script setup lang="ts">
+import { Dialog } from '@vuetify/v0'
+import { ref } from 'vue'
+
+const isOpen = ref(false)
+</script>
+```
+
+</Step>
+
+<Step title="Structure the Dialog">
+
+Build the dialog using sub-components. The `Dialog.Root` manages state via `v-model`:
+
+```vue
+<template>
+  <Dialog.Root v-model="isOpen">
+    <Dialog.Activator
+      class="px-4 py-2 bg-primary text-on-primary rounded"
+    >
+      Open Dialog
+    </Dialog.Activator>
+
+    <Dialog.Content
+      class="fixed inset-0 z-modal flex items-center justify-center"
+    >
+      <div class="bg-surface p-6 rounded-lg shadow-xl max-w-md">
+        <Dialog.Title class="text-xl font-semibold mb-2">
+          Confirm Action
+        </Dialog.Title>
+        
+        <Dialog.Description class="text-on-surface-variant mb-4">
+          Are you sure you want to proceed? This action cannot be undone.
+        </Dialog.Description>
+
+        <div class="flex gap-2 justify-end">
+          <Dialog.Close class="px-4 py-2 bg-surface-variant rounded">
+            Cancel
+          </Dialog.Close>
+          <Dialog.Close class="px-4 py-2 bg-primary text-on-primary rounded">
+            Confirm
+          </Dialog.Close>
+        </div>
+      </div>
+    </Dialog.Content>
+  </Dialog.Root>
+</template>
+```
+
+</Step>
+
+<Step title="Use slot props for advanced control">
+
+Access dialog state through slot props:
+
+```vue
+<Dialog.Root v-model="isOpen" v-slot="{ isOpen, close }">
+  <Dialog.Activator>
+    {{ isOpen ? 'Close' : 'Open' }} Dialog
+  </Dialog.Activator>
+  
+  <Dialog.Content v-if="isOpen">
+    <Dialog.Title>Dynamic Dialog</Dialog.Title>
+    <button @click="close">Close programmatically</button>
+  </Dialog.Content>
+</Dialog.Root>
+```
+
+</Step>
+
+</Steps>
+
+<Tip>
+  The `Dialog.Content` component uses the native `<dialog>` element for accessibility and proper focus management.
+</Tip>
+
+## Building a Tabs Component
+
+<Steps>
+
+<Step title="Set up the Tabs structure">
+
+Tabs use a `Root` component that manages selection state:
+
+```vue
+<script setup lang="ts">
+import { Tabs } from '@vuetify/v0'
+import { ref } from 'vue'
+
+const selected = ref('profile')
+</script>
+
+<template>
+  <Tabs.Root v-model="selected">
+    <Tabs.List 
+      label="Account settings"
+      class="flex gap-2 border-b border-divider"
+    >
+      <Tabs.Item 
+        value="profile"
+        class="px-4 py-2 data-[selected]:border-b-2 data-[selected]:border-primary"
+      >
+        Profile
+      </Tabs.Item>
+      <Tabs.Item 
+        value="password"
+        class="px-4 py-2 data-[selected]:border-b-2 data-[selected]:border-primary"
+      >
+        Password
+      </Tabs.Item>
+      <Tabs.Item 
+        value="billing" 
+        disabled
+        class="px-4 py-2 opacity-50 cursor-not-allowed"
+      >
+        Billing
+      </Tabs.Item>
+    </Tabs.List>
+
+    <Tabs.Panel value="profile" class="p-4">
+      <h3>Profile Settings</h3>
+      <p>Update your profile information here.</p>
+    </Tabs.Panel>
+    
+    <Tabs.Panel value="password" class="p-4">
+      <h3>Password Settings</h3>
+      <p>Change your password here.</p>
+    </Tabs.Panel>
+    
+    <Tabs.Panel value="billing" class="p-4">
+      <h3>Billing Settings</h3>
+      <p>Manage your billing information here.</p>
+    </Tabs.Panel>
+  </Tabs.Root>
+</template>
+```
+
+</Step>
+
+<Step title="Configure keyboard navigation">
+
+Tabs support automatic and manual activation modes:
+
+```vue
+<Tabs.Root 
+  v-model="selected"
+  activation="manual"
+  orientation="vertical"
+  :circular="true"
+>
+  <!-- Tabs content -->
+</Tabs.Root>
+```
+
+**Props:**
+- `activation`: `'automatic'` (arrow keys select) or `'manual'` (Enter/Space required)
+- `orientation`: `'horizontal'` or `'vertical'` for keyboard navigation
+- `circular`: Whether navigation wraps around
+- `mandatory`: Tab selection behavior (`false`, `true`, or `'force'`)
+
+</Step>
+
+<Step title="Use TypeScript generics">
+
+Tabs support generic types for type-safe values:
+
+```vue
+<script setup lang="ts" generic="T extends string">
+import { Tabs } from '@vuetify/v0'
+
+type TabValue = 'profile' | 'password' | 'billing'
+
+const selected = ref<TabValue>('profile')
+</script>
+
+<template>
+  <Tabs.Root v-model="selected">
+    <!-- TypeScript ensures only valid values are used -->
+  </Tabs.Root>
+</template>
+```
+
+</Step>
+
+</Steps>
+
+## Building Checkbox Components
+
+<Steps>
+
+<Step title="Create a standalone checkbox">
+
+Checkboxes work standalone or within groups:
+
+```vue
+<script setup lang="ts">
+import { Checkbox } from '@vuetify/v0'
+import { ref } from 'vue'
+
+const agreed = ref(false)
+</script>
+
+<template>
+  <label class="flex items-center gap-2 cursor-pointer">
+    <Checkbox.Root 
+      v-model="agreed"
+      class="w-5 h-5 border-2 border-on-surface rounded data-[state=checked]:bg-primary data-[state=checked]:border-primary"
+    >
+      <Checkbox.Indicator class="flex items-center justify-center text-on-primary">
+        <svg viewBox="0 0 24 24" class="w-4 h-4">
+          <path 
+            fill="currentColor" 
+            d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"
+          />
+        </svg>
+      </Checkbox.Indicator>
+    </Checkbox.Root>
+    I agree to the terms and conditions
+  </label>
+</template>
+```
+
+</Step>
+
+<Step title="Build a checkbox group">
+
+Use `Checkbox.Group` for multiple checkboxes:
+
+```vue
+<script setup lang="ts">
+import { Checkbox } from '@vuetify/v0'
+import { ref } from 'vue'
+
+const selected = ref<string[]>(['email'])
+</script>
+
+<template>
+  <Checkbox.Group v-model="selected" class="space-y-2">
+    <label class="flex items-center gap-2">
+      <Checkbox.Root 
+        value="email"
+        class="w-5 h-5 border-2 rounded data-[state=checked]:bg-primary"
+      >
+        <Checkbox.Indicator>✓</Checkbox.Indicator>
+      </Checkbox.Root>
+      Email notifications
+    </label>
+    
+    <label class="flex items-center gap-2">
+      <Checkbox.Root 
+        value="sms"
+        class="w-5 h-5 border-2 rounded data-[state=checked]:bg-primary"
+      >
+        <Checkbox.Indicator>✓</Checkbox.Indicator>
+      </Checkbox.Root>
+      SMS notifications
+    </label>
+    
+    <label class="flex items-center gap-2">
+      <Checkbox.Root 
+        value="push"
+        class="w-5 h-5 border-2 rounded data-[state=checked]:bg-primary"
+      >
+        <Checkbox.Indicator>✓</Checkbox.Indicator>
+      </Checkbox.Root>
+      Push notifications
+    </label>
+  </Checkbox.Group>
+</template>
+```
+
+</Step>
+
+<Step title="Add a select-all checkbox">
+
+Use `Checkbox.SelectAll` for bulk selection:
+
+```vue
+<Checkbox.Group v-model="selected">
+  <label class="flex items-center gap-2 font-semibold mb-3">
+    <Checkbox.SelectAll
+      class="w-5 h-5 border-2 rounded data-[state=checked]:bg-primary data-[state=indeterminate]:bg-surface-variant"
+    >
+      <Checkbox.Indicator v-slot="{ isMixed }" class="flex items-center justify-center">
+        <span v-if="isMixed">−</span>
+        <span v-else>✓</span>
+      </Checkbox.Indicator>
+    </Checkbox.SelectAll>
+    Select All
+  </label>
+  
+  <!-- Individual checkboxes -->
+</Checkbox.Group>
+```
+
+</Step>
+
+<Step title="Handle form submission">
+
+Add the `name` prop for form integration:
+
+```vue
+<form @submit="handleSubmit">
+  <Checkbox.Root 
+    v-model="agreed" 
+    name="terms"
+    value="accepted"
+  >
+    <Checkbox.Indicator>✓</Checkbox.Indicator>
+  </Checkbox.Root>
+</form>
+```
+
+This automatically creates a hidden input for native form submission.
+
+</Step>
+
+</Steps>
+
+<Warning>
+  Always wrap checkbox elements in a `<label>` for better accessibility and larger click targets.
+</Warning>
+
+## Component Composition Patterns
+
+### Using Context API
+
+All primitives use Vue's provide/inject for communication:
+
+```ts
+import { useDialogContext } from '@vuetify/v0'
+
+// Inside a child component
+const dialog = useDialogContext()
+
+function closeDialog() {
+  dialog.close()
+}
+```
+
+### Custom Namespaces
+
+Isolate multiple instances with custom namespaces:
+
+```vue
+<Dialog.Root namespace="modal:delete">
+  <!-- ... -->
+</Dialog.Root>
+
+<Dialog.Root namespace="modal:edit">
+  <!-- ... -->
+</Dialog.Root>
+```
+
+### Slot Props vs Context
+
+**Slot props** are best for simple cases:
+
+```vue
+<Tabs.Root v-slot="{ select, isDisabled }">
+  <button @click="select('tab-1')" :disabled="isDisabled">
+    Custom Control
+  </button>
+</Tabs.Root>
+```
+
+**Context** is better for deeply nested components:
+
+```vue
+<script setup>
+import { useTabsRoot } from '@vuetify/v0'
+
+const tabs = useTabsRoot()
+
+function goToNextTab() {
+  tabs.next()
+}
+</script>
+```
+
+## Best Practices
+
+<Steps>
+
+### Start with the Root
+
+Always begin with the root component - it provides context to children.
+
+### Use Data Attributes for Styling
+
+Primitives expose `data-*` attributes for state-based styling:
+
+- `data-selected`: Selected state
+- `data-disabled`: Disabled state  
+- `data-state`: Checkbox/Switch state (`checked`, `unchecked`, `indeterminate`)
+
+See the [Styling Guide](/guides/styling) for details.
+
+### Leverage TypeScript
+
+Use generics for type-safe values:
+
+```ts
+const tabs = ref<'profile' | 'settings'>('profile')
+```
+
+See the [TypeScript Guide](/guides/typescript) for more.
+
+### Consider SSR
+
+For server-side rendering, use `useHydration` and check `IN_BROWSER`:
+
+```ts
+import { IN_BROWSER } from '@vuetify/v0'
+
+if (IN_BROWSER) {
+  // Browser-only code
+}
+```
+
+See the [SSR Guide](/guides/ssr) for details.
+
+</Steps>
+
+## Next Steps
+
+- [Styling Guide](/guides/styling) - Learn how to style components
+- [TypeScript Guide](/guides/typescript) - Type-safe component usage
+- [Component Reference](/components) - Explore all available primitives

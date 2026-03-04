@@ -1,0 +1,484 @@
+---
+title: Group
+description: Headless multi-selection component for building custom checkbox groups, tag selectors, and multi-select interfaces
+---
+
+# Group
+
+A headless multi-selection component that provides the foundation for building custom multi-select interfaces. The Group component manages selection state and provides context to child items without imposing any specific UI.
+
+## Features
+
+- **Multi-selection**: Select multiple items simultaneously
+- **Tri-state support**: Items support selected, unselected, and mixed/indeterminate states
+- **Batch operations**: selectAll, unselectAll, toggleAll methods
+- **Flexible constraints**: Optional enrollment, mandatory selection modes
+- **Renderless**: No default UI, complete styling control
+- **Type-safe**: Full TypeScript support with generic value types
+
+## Basic Usage
+
+<CodeGroup>
+```vue Basic
+<script setup lang="ts">
+import { Group } from '@vuetify/v0'
+import { ref } from 'vue'
+
+const selected = ref<string[]>([])
+</script>
+
+<template>
+  <Group.Root v-model="selected">
+    <Group.Item value="typescript" v-slot="{ attrs, isSelected }">
+      <button v-bind="attrs" :class="{ selected: isSelected }">
+        TypeScript
+      </button>
+    </Group.Item>
+    <Group.Item value="vue" v-slot="{ attrs, isSelected }">
+      <button v-bind="attrs" :class="{ selected: isSelected }">
+        Vue
+      </button>
+    </Group.Item>
+    <Group.Item value="vite" v-slot="{ attrs, isSelected }">
+      <button v-bind="attrs" :class="{ selected: isSelected }">
+        Vite
+      </button>
+    </Group.Item>
+  </Group.Root>
+</template>
+```
+
+```vue With Batch Operations
+<script setup lang="ts">
+import { Group } from '@vuetify/v0'
+import { ref } from 'vue'
+
+const selected = ref<string[]>([])
+</script>
+
+<template>
+  <Group.Root v-model="selected" v-slot="{ selectAll, unselectAll, isMixed }">
+    <div class="controls">
+      <button @click="selectAll">Select All</button>
+      <button @click="unselectAll">Clear</button>
+      <span v-if="isMixed">Some selected</span>
+    </div>
+
+    <Group.Item value="item1" v-slot="{ attrs, isSelected }">
+      <button v-bind="attrs" :class="{ selected: isSelected }">
+        Item 1
+      </button>
+    </Group.Item>
+    <Group.Item value="item2" v-slot="{ attrs, isSelected }">
+      <button v-bind="attrs" :class="{ selected: isSelected }">
+        Item 2
+      </button>
+    </Group.Item>
+  </Group.Root>
+</template>
+```
+</CodeGroup>
+
+## Components
+
+### Group.Root
+
+Root component that manages multi-selection state and provides context to child items.
+
+<ParamField path="modelValue" type="T | T[]">
+  Array of selected values
+</ParamField>
+
+<ParamField path="disabled" type="boolean" default="false">
+  Disables all items in the group
+</ParamField>
+
+<ParamField path="enroll" type="boolean" default="false">
+  Auto-select all non-disabled items on mount
+</ParamField>
+
+<ParamField path="mandatory" type="boolean | 'force'" default="false">
+  - `false`: No constraints (items can be freely selected/deselected)
+  - `true`: Prevents deselecting the last selected item
+  - `'force'`: Auto-selects first non-disabled item on mount
+</ParamField>
+
+<ParamField path="namespace" type="string" default="'v0:group'">
+  Context namespace for dependency injection (must match GroupItem namespace)
+</ParamField>
+
+#### Slot Props
+
+<ParamField path="isDisabled" type="boolean">
+  Whether the group is disabled
+</ParamField>
+
+<ParamField path="isNoneSelected" type="boolean">
+  Whether no items are selected
+</ParamField>
+
+<ParamField path="isAllSelected" type="boolean">
+  Whether all selectable (non-disabled) items are selected
+</ParamField>
+
+<ParamField path="isMixed" type="boolean">
+  Whether some but not all items are selected
+</ParamField>
+
+<ParamField path="select" type="(id: ID | ID[]) => void">
+  Select one or more items by ID
+</ParamField>
+
+<ParamField path="unselect" type="(id: ID | ID[]) => void">
+  Unselect one or more items by ID
+</ParamField>
+
+<ParamField path="toggle" type="(id: ID | ID[]) => void">
+  Toggle selection state of one or more items by ID
+</ParamField>
+
+<ParamField path="selectAll" type="() => void">
+  Select all non-disabled items
+</ParamField>
+
+<ParamField path="unselectAll" type="() => void">
+  Unselect all items (respects mandatory setting)
+</ParamField>
+
+<ParamField path="toggleAll" type="() => void">
+  Toggle between all selected and none selected
+</ParamField>
+
+<ParamField path="attrs" type="object">
+  Contains `aria-multiselectable="true"`
+</ParamField>
+
+### Group.Item
+
+Represents a selectable item within the group. Automatically registers with parent and unregisters on unmount.
+
+<ParamField path="value" type="unknown" required>
+  Value associated with this item
+</ParamField>
+
+<ParamField path="id" type="string">
+  Unique identifier (auto-generated if not provided)
+</ParamField>
+
+<ParamField path="label" type="string">
+  Optional display label (passed to slot props)
+</ParamField>
+
+<ParamField path="disabled" type="boolean | Ref<boolean>" default="false">
+  Disables this specific item
+</ParamField>
+
+<ParamField path="indeterminate" type="boolean | Ref<boolean>" default="false">
+  Sets this item to indeterminate/mixed state
+</ParamField>
+
+<ParamField path="namespace" type="string" default="'v0:group'">
+  Context namespace (must match Group.Root namespace)
+</ParamField>
+
+#### Slot Props
+
+<ParamField path="isSelected" type="boolean">
+  Whether this item is selected
+</ParamField>
+
+<ParamField path="isMixed" type="boolean">
+  Whether this item is in indeterminate state
+</ParamField>
+
+<ParamField path="isDisabled" type="boolean">
+  Whether this item is disabled (own disabled state OR group disabled)
+</ParamField>
+
+<ParamField path="select" type="() => void">
+  Select this item
+</ParamField>
+
+<ParamField path="unselect" type="() => void">
+  Unselect this item
+</ParamField>
+
+<ParamField path="toggle" type="() => void">
+  Toggle this item's selection state
+</ParamField>
+
+<ParamField path="mix" type="() => void">
+  Set this item to indeterminate state
+</ParamField>
+
+<ParamField path="unmix" type="() => void">
+  Clear indeterminate state
+</ParamField>
+
+<ParamField path="attrs" type="object">
+  Pre-computed attributes:
+  - `role="checkbox"`
+  - `aria-checked`: boolean or `"mixed"`
+  - `aria-disabled`: boolean
+  - `data-selected`, `data-disabled`, `data-mixed`
+</ParamField>
+
+## Advanced Examples
+
+### Tag Selector
+
+```vue
+<script setup lang="ts">
+import { Group } from '@vuetify/v0'
+import { ref } from 'vue'
+
+const tags = ['bug', 'feature', 'enhancement', 'documentation']
+const selectedTags = ref<string[]>(['bug'])
+</script>
+
+<template>
+  <div class="tag-selector">
+    <Group.Root v-model="selectedTags">
+      <Group.Item 
+        v-for="tag in tags" 
+        :key="tag" 
+        :value="tag"
+        v-slot="{ attrs, isSelected, toggle }"
+      >
+        <button 
+          v-bind="attrs"
+          @click="toggle"
+          class="tag"
+          :class="{ selected: isSelected }"
+        >
+          {{ tag }}
+        </button>
+      </Group.Item>
+    </Group.Root>
+  </div>
+</template>
+
+<style>
+.tag {
+  padding: 4px 12px;
+  border-radius: 16px;
+  border: 1px solid #ccc;
+  background: white;
+  cursor: pointer;
+}
+
+.tag.selected {
+  background: #4CAF50;
+  color: white;
+  border-color: #4CAF50;
+}
+</style>
+```
+
+### Hierarchical Selection with Indeterminate
+
+```vue
+<script setup lang="ts">
+import { Group } from '@vuetify/v0'
+import { ref, computed } from 'vue'
+
+const childrenA = ref<string[]>([])
+const childrenB = ref<string[]>([])
+
+const parentAState = computed(() => {
+  if (childrenA.value.length === 0) return false
+  if (childrenA.value.length === 2) return true
+  return 'mixed'
+})
+</script>
+
+<template>
+  <div class="hierarchy">
+    <!-- Parent A -->
+    <Group.Item 
+      value="parent-a" 
+      :indeterminate="parentAState === 'mixed'"
+      v-slot="{ attrs, isMixed, isSelected, toggle }"
+    >
+      <button v-bind="attrs" @click="toggle">
+        <span v-if="isMixed">−</span>
+        <span v-else-if="isSelected">✓</span>
+        <span v-else>☐</span>
+        Parent A
+      </button>
+    </Group.Item>
+
+    <!-- Children of A -->
+    <div class="children">
+      <Group.Root v-model="childrenA">
+        <Group.Item value="a1" v-slot="{ attrs, isSelected }">
+          <button v-bind="attrs">
+            <span v-if="isSelected">✓</span>
+            <span v-else>☐</span>
+            Child A1
+          </button>
+        </Group.Item>
+        <Group.Item value="a2" v-slot="{ attrs, isSelected }">
+          <button v-bind="attrs">
+            <span v-if="isSelected">✓</span>
+            <span v-else>☐</span>
+            Child A2
+          </button>
+        </Group.Item>
+      </Group.Root>
+    </div>
+  </div>
+</template>
+```
+
+### Filter Selection with Counters
+
+```vue
+<script setup lang="ts">
+import { Group } from '@vuetify/v0'
+import { ref, computed } from 'vue'
+
+const filters = ref<string[]>([])
+
+const filterOptions = [
+  { value: 'in-stock', label: 'In Stock', count: 42 },
+  { value: 'on-sale', label: 'On Sale', count: 18 },
+  { value: 'new', label: 'New Arrivals', count: 7 },
+  { value: 'featured', label: 'Featured', count: 12 },
+]
+
+const activeFilterCount = computed(() => filters.value.length)
+</script>
+
+<template>
+  <div class="filter-panel">
+    <div class="filter-header">
+      <h3>Filters</h3>
+      <span class="badge" v-if="activeFilterCount > 0">
+        {{ activeFilterCount }} active
+      </span>
+    </div>
+
+    <Group.Root v-model="filters" v-slot="{ unselectAll }">
+      <button v-if="activeFilterCount > 0" @click="unselectAll" class="clear-btn">
+        Clear all
+      </button>
+
+      <Group.Item 
+        v-for="option in filterOptions"
+        :key="option.value"
+        :value="option.value"
+        v-slot="{ attrs, isSelected, toggle }"
+      >
+        <button 
+          v-bind="attrs"
+          @click="toggle"
+          class="filter-option"
+          :class="{ active: isSelected }"
+        >
+          <span class="checkbox">
+            <span v-if="isSelected">✓</span>
+          </span>
+          <span class="label">{{ option.label }}</span>
+          <span class="count">{{ option.count }}</span>
+        </button>
+      </Group.Item>
+    </Group.Root>
+  </div>
+</template>
+```
+
+### Mandatory Selection
+
+```vue
+<script setup lang="ts">
+import { Group } from '@vuetify/v0'
+import { ref } from 'vue'
+
+const required = ref<string[]>([])
+</script>
+
+<template>
+  <Group.Root v-model="required" mandatory="force">
+    <p>At least one option must be selected:</p>
+    
+    <Group.Item value="email" v-slot="{ attrs, isSelected }">
+      <label>
+        <input type="checkbox" v-bind="attrs" :checked="isSelected" />
+        Email notifications
+      </label>
+    </Group.Item>
+    
+    <Group.Item value="sms" v-slot="{ attrs, isSelected }">
+      <label>
+        <input type="checkbox" v-bind="attrs" :checked="isSelected" />
+        SMS notifications
+      </label>
+    </Group.Item>
+    
+    <Group.Item value="push" v-slot="{ attrs, isSelected }">
+      <label>
+        <input type="checkbox" v-bind="attrs" :checked="isSelected" />
+        Push notifications
+      </label>
+    </Group.Item>
+  </Group.Root>
+</template>
+```
+
+## Use Cases
+
+### When to Use Group
+
+- **Custom multi-select UI**: When Checkbox component styling is too constraining
+- **Tag selectors**: Selecting multiple tags or categories
+- **Filter panels**: Multi-select filters for data tables or search results
+- **Pill selectors**: Chip-like selection interfaces
+- **Custom checkbox groups**: When you need full control over checkbox appearance
+
+### When to Use Alternatives
+
+| Component | Use When |
+|-----------|----------|
+| **Checkbox** | You want standard checkbox UI with minimal styling |
+| **Selection** | You need to switch between single and multi-select modes |
+| **Single** | You only need single-selection (mutually exclusive options) |
+
+## Accessibility
+
+- Items render with `role="checkbox"` and `aria-checked` by default
+- Supports `aria-disabled` for disabled items
+- Group includes `aria-multiselectable="true"`
+- No keyboard navigation built-in (add via your own event handlers)
+
+<Note>
+The Group component is renderless and provides ARIA attributes via slot props. You're responsible for binding these attributes and implementing keyboard navigation if needed.
+</Note>
+
+## Type Safety
+
+Full TypeScript support with generic value types:
+
+```typescript
+import type { 
+  GroupRootProps,
+  GroupItemProps,
+  GroupRootSlotProps,
+  GroupItemSlotProps
+} from '@vuetify/v0'
+
+// Type-safe with specific value types
+const selected = ref<string[]>([])
+```
+
+## Comparison with Checkbox
+
+| Feature | Group | Checkbox |
+|---------|-------|----------|
+| **UI** | Fully custom, renderless | Structured with Root/Indicator |
+| **Styling** | Complete control | Semantic checkbox structure |
+| **Form integration** | Manual | Automatic with `name` prop |
+| **Use case** | Custom interfaces | Standard form checkboxes |
+| **Complexity** | Lower-level primitive | Higher-level component |
+
+Use **Group** when building custom selection UIs. Use **Checkbox** for standard form checkboxes.

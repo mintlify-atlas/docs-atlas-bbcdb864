@@ -1,0 +1,349 @@
+---
+title: Breadcrumbs
+description: Responsive breadcrumb navigation with automatic overflow handling
+---
+
+## Overview
+
+Breadcrumbs provides a responsive navigation trail that automatically handles overflow by showing an ellipsis indicator. It uses createBreadcrumbs composable with Group and Overflow contexts to determine which items fit in the available space.
+
+## Sub-Components
+
+- **Breadcrumbs.Root**: Container that manages breadcrumb state and overflow
+- **Breadcrumbs.List**: Semantic list wrapper with role="list"
+- **Breadcrumbs.Item**: Individual breadcrumb item with self-measurement
+- **Breadcrumbs.Link**: Navigable breadcrumb link (anchor by default)
+- **Breadcrumbs.Page**: Current page indicator with aria-current="page"
+- **Breadcrumbs.Divider**: Visual separator between items
+- **Breadcrumbs.Ellipsis**: Indicator shown when items are truncated
+
+## Usage
+
+```vue
+<script setup lang="ts">
+import { Breadcrumbs } from '@vuetify/v0'
+</script>
+
+<template>
+  <Breadcrumbs.Root>
+    <Breadcrumbs.List>
+      <Breadcrumbs.Item text="Home">
+        <Breadcrumbs.Link href="/">Home</Breadcrumbs.Link>
+      </Breadcrumbs.Item>
+
+      <Breadcrumbs.Divider />
+
+      <Breadcrumbs.Ellipsis />
+
+      <Breadcrumbs.Item text="Products">
+        <Breadcrumbs.Link href="/products">Products</Breadcrumbs.Link>
+      </Breadcrumbs.Item>
+
+      <Breadcrumbs.Divider />
+
+      <Breadcrumbs.Item text="Shoes">
+        <Breadcrumbs.Page>Shoes</Breadcrumbs.Page>
+      </Breadcrumbs.Item>
+    </Breadcrumbs.List>
+  </Breadcrumbs.Root>
+</template>
+```
+
+## Breadcrumbs.Root
+
+### Props
+
+<ParamField path="as" type="DOMElement | null" default="'nav'">
+  The HTML element to render as
+</ParamField>
+
+<ParamField path="namespace" type="string" default="'v0:breadcrumbs'">
+  Namespace for dependency injection
+</ParamField>
+
+<ParamField path="divider" type="string" default="'/'">
+  Default divider character/text
+</ParamField>
+
+<ParamField path="ellipsis" type="string" default="'…'">
+  Default ellipsis character/text
+</ParamField>
+
+<ParamField path="gap" type="number" default="8">
+  Gap between items in pixels
+</ParamField>
+
+<ParamField path="label" type="string">
+  Accessible label for the navigation landmark
+</ParamField>
+
+### Slot Props
+
+<ParamField path="isOverflowing" type="boolean">
+  Whether items are being truncated
+</ParamField>
+
+<ParamField path="capacity" type="number">
+  Number of items that fit in available space
+</ParamField>
+
+<ParamField path="total" type="number">
+  Total number of registered items
+</ParamField>
+
+<ParamField path="depth" type="number">
+  Current depth of the breadcrumb path
+</ParamField>
+
+<ParamField path="isRoot" type="boolean">
+  Whether at root level
+</ParamField>
+
+<ParamField path="first" type="() => void">
+  Navigate to root
+</ParamField>
+
+<ParamField path="prev" type="() => void">
+  Navigate up one level
+</ParamField>
+
+<ParamField path="select" type="(id: ID) => void">
+  Navigate to a specific item
+</ParamField>
+
+<ParamField path="attrs" type="object">
+  Attributes to bind to the root element
+</ParamField>
+
+## Breadcrumbs.List
+
+### Props
+
+<ParamField path="as" type="DOMElement | null" default="'ol'">
+  The HTML element to render as
+</ParamField>
+
+## Breadcrumbs.Item
+
+### Props
+
+<ParamField path="as" type="DOMElement | null" default="'li'">
+  The HTML element to render as
+</ParamField>
+
+<ParamField path="text" type="string">
+  Text content for the item (used for accessibility)
+</ParamField>
+
+### Slot Props
+
+<ParamField path="id" type="string">
+  Unique identifier
+</ParamField>
+
+<ParamField path="isSelected" type="boolean">
+  Whether this item is currently visible
+</ParamField>
+
+<ParamField path="attrs" type="object">
+  Attributes to bind to the item element
+</ParamField>
+
+## Breadcrumbs.Link
+
+### Props
+
+<ParamField path="as" type="DOMElement | null" default="'a'">
+  The HTML element to render as
+</ParamField>
+
+<ParamField path="href" type="string">
+  Link URL
+</ParamField>
+
+## Breadcrumbs.Page
+
+### Props
+
+<ParamField path="as" type="DOMElement | null" default="'span'">
+  The HTML element to render as
+</ParamField>
+
+### Slot Props
+
+<ParamField path="attrs" type="object">
+  Attributes including aria-current="page"
+</ParamField>
+
+## Breadcrumbs.Divider
+
+### Props
+
+<ParamField path="as" type="DOMElement | null" default="'li'">
+  The HTML element to render as
+</ParamField>
+
+<ParamField path="divider" type="string">
+  Override the divider character from Root
+</ParamField>
+
+### Slot Props
+
+<ParamField path="divider" type="string">
+  The divider character to display
+</ParamField>
+
+## Breadcrumbs.Ellipsis
+
+### Props
+
+<ParamField path="as" type="DOMElement | null" default="'li'">
+  The HTML element to render as
+</ParamField>
+
+<ParamField path="ellipsis" type="string">
+  Override the ellipsis character from Root
+</ParamField>
+
+### Slot Props
+
+<ParamField path="ellipsis" type="string">
+  The ellipsis character to display
+</ParamField>
+
+## Examples
+
+<Tabs>
+  <Tab title="Basic">
+    ```vue
+    <template>
+      <Breadcrumbs.Root>
+        <Breadcrumbs.List>
+          <Breadcrumbs.Item text="Home">
+            <Breadcrumbs.Link href="/">Home</Breadcrumbs.Link>
+          </Breadcrumbs.Item>
+
+          <Breadcrumbs.Divider />
+
+          <Breadcrumbs.Item text="Products">
+            <Breadcrumbs.Page>Products</Breadcrumbs.Page>
+          </Breadcrumbs.Item>
+        </Breadcrumbs.List>
+      </Breadcrumbs.Root>
+    </template>
+    ```
+  </Tab>
+
+  <Tab title="With Overflow">
+    ```vue
+    <template>
+      <Breadcrumbs.Root>
+        <Breadcrumbs.List>
+          <Breadcrumbs.Item text="Home">
+            <Breadcrumbs.Link href="/">Home</Breadcrumbs.Link>
+          </Breadcrumbs.Item>
+
+          <Breadcrumbs.Divider />
+
+          <Breadcrumbs.Ellipsis />
+
+          <Breadcrumbs.Item text="Category">
+            <Breadcrumbs.Link href="/category">Category</Breadcrumbs.Link>
+          </Breadcrumbs.Item>
+
+          <Breadcrumbs.Divider />
+
+          <Breadcrumbs.Item text="Current">
+            <Breadcrumbs.Page>Current</Breadcrumbs.Page>
+          </Breadcrumbs.Item>
+        </Breadcrumbs.List>
+      </Breadcrumbs.Root>
+    </template>
+    ```
+  </Tab>
+
+  <Tab title="Custom Divider">
+    ```vue
+    <template>
+      <Breadcrumbs.Root divider=">">
+        <Breadcrumbs.List>
+          <Breadcrumbs.Item text="Home">
+            <Breadcrumbs.Link href="/">Home</Breadcrumbs.Link>
+          </Breadcrumbs.Item>
+
+          <Breadcrumbs.Divider />
+
+          <Breadcrumbs.Item text="Products">
+            <Breadcrumbs.Link href="/products">Products</Breadcrumbs.Link>
+          </Breadcrumbs.Item>
+
+          <!-- Override divider for specific separator -->
+          <Breadcrumbs.Divider divider="|" />
+
+          <Breadcrumbs.Item text="Shoes">
+            <Breadcrumbs.Page>Shoes</Breadcrumbs.Page>
+          </Breadcrumbs.Item>
+        </Breadcrumbs.List>
+      </Breadcrumbs.Root>
+    </template>
+    ```
+  </Tab>
+
+  <Tab title="Custom Divider with SVG">
+    ```vue
+    <template>
+      <Breadcrumbs.Root>
+        <Breadcrumbs.List>
+          <Breadcrumbs.Item text="Home">
+            <Breadcrumbs.Link href="/">Home</Breadcrumbs.Link>
+          </Breadcrumbs.Item>
+
+          <Breadcrumbs.Divider>
+            <svg class="size-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path d="M9 5l7 7-7 7" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" />
+            </svg>
+          </Breadcrumbs.Divider>
+
+          <Breadcrumbs.Item text="Products">
+            <Breadcrumbs.Page>Products</Breadcrumbs.Page>
+          </Breadcrumbs.Item>
+        </Breadcrumbs.List>
+      </Breadcrumbs.Root>
+    </template>
+    ```
+  </Tab>
+
+  <Tab title="With Slot Props">
+    ```vue
+    <template>
+      <Breadcrumbs.Root>
+        <template #default="{ isOverflowing, capacity, total }">
+          <div>Showing {{ capacity }} of {{ total }} items</div>
+          <div v-if="isOverflowing">Some items are hidden</div>
+
+          <Breadcrumbs.List>
+            <!-- items -->
+          </Breadcrumbs.List>
+        </template>
+      </Breadcrumbs.Root>
+    </template>
+    ```
+  </Tab>
+</Tabs>
+
+## Accessibility
+
+- Root renders as `<nav>` by default with `aria-label="Breadcrumb"`
+- List has `role="list"` for proper semantic structure
+- Page has `aria-current="page"` to indicate current location
+- Divider and Ellipsis have `aria-hidden="true"` as they are decorative
+
+```vue
+<template>
+  <Breadcrumbs.Root label="Site navigation">
+    <Breadcrumbs.List>
+      <!-- items -->
+    </Breadcrumbs.List>
+  </Breadcrumbs.Root>
+</template>
+```

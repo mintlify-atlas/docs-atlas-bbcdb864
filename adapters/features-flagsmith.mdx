@@ -1,0 +1,297 @@
+---
+title: Flagsmith Adapter
+description: Flagsmith feature flag adapter for Vuetify Zero
+---
+
+# Flagsmith Adapter
+
+The `FlagsmithFeatureAdapter` integrates Flagsmith feature flags with Vuetify Zero's `useFeatures` composable.
+
+## Import
+
+```typescript
+import { FlagsmithFeatureAdapter } from '@vuetify/v0/features/adapters/flagsmith'
+```
+
+## Installation
+
+Install the Flagsmith SDK as a peer dependency:
+
+```bash
+pnpm add flagsmith
+```
+
+## Basic Usage
+
+```typescript
+import { createApp } from 'vue'
+import { createFeaturesPlugin } from '@vuetify/v0/features'
+import { FlagsmithFeatureAdapter } from '@vuetify/v0/features/adapters/flagsmith'
+import flagsmith from 'flagsmith'
+
+const app = createApp(App)
+
+const adapter = new FlagsmithFeatureAdapter(flagsmith, {
+  environmentID: 'your-environment-id',
+  api: 'https://edge.api.flagsmith.com/api/v1/'
+})
+
+app.use(createFeaturesPlugin({
+  adapter
+}))
+```
+
+## With User Context
+
+```typescript
+import { createFeaturesPlugin } from '@vuetify/v0/features'
+import { FlagsmithFeatureAdapter } from '@vuetify/v0/features/adapters/flagsmith'
+import flagsmith from 'flagsmith'
+
+const adapter = new FlagsmithFeatureAdapter(flagsmith, {
+  environmentID: 'your-environment-id',
+  identity: 'user-123',
+  traits: {
+    email: 'user@example.com',
+    plan: 'pro'
+  }
+})
+
+const app = createApp(App)
+app.use(createFeaturesPlugin({ adapter }))
+```
+
+## Using in Components
+
+```vue
+<script setup lang="ts">
+import { useFeatures } from '@vuetify/v0/features'
+
+const features = useFeatures()
+
+// Check if feature is enabled
+const hasNewUI = computed(() => features.has('new-ui'))
+
+// Get feature variation
+const theme = computed(() => features.variation('theme', 'default'))
+</script>
+
+<template>
+  <div>
+    <NewUI v-if="hasNewUI" />
+    <OldUI v-else />
+    
+    <div :class="`theme-${theme}`">
+      Content
+    </div>
+  </div>
+</template>
+```
+
+## Feature Flags
+
+### Boolean Flags
+
+```typescript
+const features = useFeatures()
+
+// Check if enabled
+if (features.has('dark-mode')) {
+  // Feature is enabled
+}
+
+// Get all selected features
+features.selectedIds.value // ['dark-mode', 'new-dashboard']
+```
+
+### Flags with Variations
+
+```typescript
+const features = useFeatures()
+
+// Get variation value
+const buttonColor = features.variation('button-style', 'blue')
+// Returns the variation value or 'blue' fallback
+
+// Variation structure
+interface FlagWithVariation {
+  $value: boolean        // Flag enabled state
+  $variation: unknown    // Variation data
+}
+```
+
+## Configuration Options
+
+```typescript
+import type { IInitConfig } from 'flagsmith'
+
+const adapter = new FlagsmithFeatureAdapter(flagsmith, {
+  // Required
+  environmentID: string
+  
+  // Optional
+  api?: string                    // API URL
+  identity?: string               // User identity
+  traits?: Record<string, any>    // User traits
+  defaultFlags?: IFlags           // Default flags
+  onChange?: (oldFlags, params, loadingState) => void
+  cacheFlags?: boolean
+  enableAnalytics?: boolean
+  preventFetch?: boolean
+})
+```
+
+## Change Detection
+
+The adapter automatically syncs flag changes:
+
+```typescript
+import { watch } from 'vue'
+
+const features = useFeatures()
+
+watch(features.selectedIds, (newFlags) => {
+  console.log('Flags changed:', newFlags)
+})
+```
+
+## Custom onChange Handler
+
+```typescript
+const adapter = new FlagsmithFeatureAdapter(flagsmith, {
+  environmentID: 'your-env-id',
+  onChange: (oldFlags, params, loadingState) => {
+    console.log('Flags updated:', loadingState)
+    
+    // Custom logic on flag changes
+    if (loadingState.isFetching) {
+      console.log('Fetching flags...')
+    }
+  }
+})
+```
+
+## Multiple Adapters
+
+```typescript
+import { FlagsmithFeatureAdapter } from '@vuetify/v0/features/adapters/flagsmith'
+import { PostHogFeatureAdapter } from '@vuetify/v0/features/adapters/posthog'
+import flagsmith from 'flagsmith'
+import posthog from 'posthog-js'
+
+const flagsmithAdapter = new FlagsmithFeatureAdapter(flagsmith, {
+  environmentID: 'flagsmith-env-id'
+})
+
+const posthogAdapter = new PostHogFeatureAdapter(posthog)
+
+app.use(createFeaturesPlugin({
+  adapter: [flagsmithAdapter, posthogAdapter]
+}))
+
+// Features from both sources are merged
+```
+
+## TypeScript
+
+```typescript
+import type { IFlagsmith, IInitConfig } from 'flagsmith'
+
+const client: IFlagsmith = flagsmith
+
+const config: IInitConfig = {
+  environmentID: 'env-123',
+  identity: 'user-456'
+}
+
+const adapter = new FlagsmithFeatureAdapter(client, config)
+```
+
+## Flag Format
+
+Flagsmith flags are transformed to Vuetify Zero format:
+
+```typescript
+// Flagsmith flag
+{
+  'feature-name': {
+    enabled: true,
+    value: 'variant-a'
+  }
+}
+
+// Transformed to
+{
+  'feature-name': {
+    $value: true,
+    $variation: 'variant-a'
+  }
+}
+
+// Boolean-only flag
+{
+  'simple-flag': {
+    enabled: true,
+    value: null
+  }
+}
+
+// Transformed to
+{
+  'simple-flag': true
+}
+```
+
+## Cleanup
+
+The adapter automatically stops listening to flag changes when the app unmounts:
+
+```typescript
+// Cleanup is handled automatically
+const adapter = new FlagsmithFeatureAdapter(flagsmith, config)
+
+// On app unmount, adapter.dispose() is called automatically
+```
+
+## API Reference
+
+### Constructor
+
+```typescript
+class FlagsmithFeatureAdapter implements FeaturesAdapterInterface
+
+constructor(
+  client: IFlagsmith,
+  options: IInitConfig
+)
+```
+
+### Parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `client` | `IFlagsmith` | Flagsmith client instance |
+| `options` | `IInitConfig` | Flagsmith initialization config |
+
+### Methods
+
+| Method | Description |
+|--------|-------------|
+| `setup(onUpdate)` | Initialize adapter and register onChange handler |
+| `dispose()` | Stop listening to flag changes |
+
+### Flag Structure
+
+```typescript
+type FeaturesAdapterFlags = Record<string, boolean | {
+  $value: boolean
+  $variation: unknown
+}>
+```
+
+## See Also
+
+- [LaunchDarkly Adapter](/adapters/features-launchdarkly) - LaunchDarkly integration
+- [PostHog Adapter](/adapters/features-posthog) - PostHog feature flags
+- [useFeatures](/composables/use-features) - Feature flags composable
+- [Flagsmith Documentation](https://docs.flagsmith.com/) - Official Flagsmith docs

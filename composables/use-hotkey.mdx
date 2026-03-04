@@ -1,0 +1,221 @@
+---
+title: useHotkey
+description: Hotkey listener with key combination and sequence support
+---
+
+## Overview
+
+Hotkey listener composable with key combination and sequence support. Platform-aware with automatic cleanup.
+
+## Features
+
+- Key combination support (`ctrl+k`, `shift+enter`)
+- Key sequence support (`g-h` for GitHub-style shortcuts)
+- Platform-aware modifiers (Mac: cmd→meta, others: cmd→ctrl)
+- Input focus detection (skip when typing in inputs)
+- Sequence timeout with automatic reset
+- Key alias normalization
+- Pause/resume/stop functionality
+- Automatic cleanup on scope disposal
+- SSR-safe (no-op when not in browser)
+
+## Function Signature
+
+```ts
+function useHotkey(
+  keys: MaybeRefOrGetter<string | undefined>,
+  callback: (e: KeyboardEvent) => void,
+  options?: UseHotkeyOptions
+): UseHotkeyReturn
+```
+
+## Parameters
+
+<ParamField path="keys" type="MaybeRefOrGetter<string | undefined>">
+  The hotkey string (e.g., 'ctrl+k', 'g-h'). Can be reactive.
+</ParamField>
+
+<ParamField path="callback" type="(e: KeyboardEvent) => void">
+  The function to call when the hotkey is triggered.
+</ParamField>
+
+<ParamField path="options" type="UseHotkeyOptions">
+  <ParamField path="event" type="'keydown' | 'keyup'" default="'keydown'">
+    The keyboard event type to listen for.
+  </ParamField>
+
+  <ParamField path="inputs" type="boolean" default="false">
+    Whether to trigger the callback when an input element is focused.
+  </ParamField>
+
+  <ParamField path="preventDefault" type="boolean" default="true">
+    Whether to prevent the default browser action.
+  </ParamField>
+
+  <ParamField path="stopPropagation" type="boolean" default="false">
+    Whether to stop event propagation.
+  </ParamField>
+
+  <ParamField path="sequenceTimeout" type="number" default="1000">
+    Timeout in ms before a key sequence resets.
+  </ParamField>
+</ParamField>
+
+## Return Value
+
+<ResponseField name="isActive" type="Readonly<Ref<boolean>>">
+  Whether the hotkey listener is currently active.
+</ResponseField>
+
+<ResponseField name="isPaused" type="Readonly<Ref<boolean>>">
+  Whether the hotkey listener is currently paused.
+</ResponseField>
+
+<ResponseField name="pause" type="() => void">
+  Pause listening (removes listener but keeps configuration).
+</ResponseField>
+
+<ResponseField name="resume" type="() => void">
+  Resume listening after pause.
+</ResponseField>
+
+<ResponseField name="stop" type="() => void">
+  Stop listening and clean up.
+</ResponseField>
+
+## Examples
+
+### Simple combination
+
+```ts
+import { useHotkey } from '@vuetify/v0'
+
+const { isActive, pause, resume } = useHotkey('ctrl+k', () => {
+  console.log('Command palette opened')
+})
+```
+
+### Key sequence (GitHub-style)
+
+```ts
+useHotkey('g-h', () => {
+  console.log('Go home')
+})
+```
+
+### With options
+
+```ts
+useHotkey('escape', closeModal, { 
+  inputs: true,
+  preventDefault: true 
+})
+```
+
+### Pause/resume control
+
+```ts
+const { pause, resume, isPaused } = useHotkey('ctrl+s', saveDocument)
+
+// Temporarily disable
+pause()
+console.log(isPaused.value) // true
+
+// Re-enable
+resume()
+console.log(isPaused.value) // false
+```
+
+### Reactive hotkey
+
+```ts
+const currentHotkey = ref('ctrl+k')
+
+useHotkey(currentHotkey, () => {
+  console.log('Hotkey triggered')
+})
+
+// Change hotkey dynamically
+currentHotkey.value = 'ctrl+p'
+```
+
+### Multiple modifiers
+
+```ts
+useHotkey('ctrl+shift+k', () => {
+  console.log('Complex combo')
+})
+```
+
+### Arrow key sequences
+
+```ts
+useHotkey('up-down', () => {
+  console.log('Konami code part 1')
+})
+```
+
+### Platform-aware shortcuts
+
+```ts
+// On Mac: cmd+k, on Windows/Linux: ctrl+k
+useHotkey('cmd+k', openCommandPalette)
+```
+
+## Supported Key Aliases
+
+### Modifiers
+- `ctrl` / `control`
+- `shift`
+- `alt` / `option`
+- `meta` / `cmd` / `command`
+
+### Arrow Keys
+- `up` → `ArrowUp`
+- `down` → `ArrowDown`
+- `left` → `ArrowLeft`
+- `right` → `ArrowRight`
+
+### Common Keys
+- `esc` → `Escape`
+- `space` → ` `
+- `return` → `Enter`
+- `del` → `Delete`
+
+## Key Combinations
+
+Use `+` to combine keys:
+
+```ts
+'ctrl+k'        // Ctrl + K
+'shift+enter'   // Shift + Enter
+'ctrl+shift+k'  // Ctrl + Shift + K
+```
+
+## Key Sequences
+
+Use `-` to create sequences:
+
+```ts
+'g-h'           // Press G, then H
+'g-i-t'         // Press G, then I, then T
+'ctrl+k-p'      // Press Ctrl+K, then P
+```
+
+## Input Focus Detection
+
+By default, hotkeys are ignored when text inputs are focused:
+
+- `<input type="text">`, `<input type="email">`, etc.
+- `<textarea>`
+- Elements with `contentEditable`
+- Elements with ARIA roles: `textbox`, `searchbox`, `combobox`, `spinbutton`
+
+Set `inputs: true` to override this behavior.
+
+## Notes
+
+- Platform-aware: `cmd` maps to `meta` on Mac, `ctrl` elsewhere
+- Sequences reset after `sequenceTimeout` milliseconds
+- Input detection helps prevent conflicts with form fields
+- SSR-safe: returns valid API structure with no-op listeners

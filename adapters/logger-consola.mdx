@@ -1,0 +1,306 @@
+---
+title: Consola Adapter
+description: Consola logger adapter for Vuetify Zero
+---
+
+# Consola Adapter
+
+The `ConsolaLoggerAdapter` integrates the Consola logging library with Vuetify Zero's `useLogger` composable.
+
+## Import
+
+```typescript
+import { ConsolaLoggerAdapter } from '@vuetify/v0/logger/adapters/consola'
+```
+
+## Installation
+
+Install Consola as a peer dependency:
+
+```bash
+pnpm add consola
+```
+
+## Basic Usage
+
+```typescript
+import { createApp } from 'vue'
+import { createLoggerPlugin } from '@vuetify/v0/logger'
+import { ConsolaLoggerAdapter } from '@vuetify/v0/logger/adapters/consola'
+import { createConsola } from 'consola'
+
+const consola = createConsola({
+  level: 3, // Info level
+  fancy: true
+})
+
+const adapter = new ConsolaLoggerAdapter(consola)
+
+const app = createApp(App)
+app.use(createLoggerPlugin({
+  adapter,
+  level: 'info'
+}))
+```
+
+## Using in Components
+
+```vue
+<script setup lang="ts">
+import { useLogger } from '@vuetify/v0/logger'
+
+const logger = useLogger()
+
+function handleSubmit(data: FormData) {
+  logger.debug('Form submitted', data)
+  
+  try {
+    // Process form
+    logger.info('Form processed successfully')
+  } catch (error) {
+    logger.error('Form processing failed', error)
+  }
+}
+</script>
+```
+
+## Log Levels
+
+```typescript
+import { useLogger } from '@vuetify/v0/logger'
+
+const logger = useLogger()
+
+// Available log methods
+logger.trace('Trace message')   // Level 0
+logger.debug('Debug message')   // Level 1
+logger.info('Info message')     // Level 2
+logger.warn('Warning message')  // Level 3
+logger.error('Error message')   // Level 4
+logger.fatal('Fatal message')   // Level 5
+```
+
+## Consola Configuration
+
+```typescript
+import { createConsola } from 'consola'
+import { ConsolaLoggerAdapter } from '@vuetify/v0/logger/adapters/consola'
+
+const consola = createConsola({
+  level: 4,                    // Log level (0-5)
+  fancy: true,                 // Fancy output
+  formatOptions: {
+    colors: true,
+    date: true,
+    compact: false
+  },
+  throttle: 1000,             // Throttle duplicates
+  throttleMin: 5              // Min throttle count
+})
+
+const adapter = new ConsolaLoggerAdapter(consola)
+```
+
+## With Custom Reporters
+
+```typescript
+import { createConsola } from 'consola'
+import { ConsolaLoggerAdapter } from '@vuetify/v0/logger/adapters/consola'
+
+const consola = createConsola({
+  reporters: [
+    // Browser reporter for client
+    {
+      log: (logObj) => {
+        console.log(`[${logObj.type}]`, logObj.args)
+      }
+    }
+  ]
+})
+
+const adapter = new ConsolaLoggerAdapter(consola)
+```
+
+## Scoped Loggers
+
+```typescript
+import { createConsola } from 'consola'
+import { ConsolaLoggerAdapter } from '@vuetify/v0/logger/adapters/consola'
+
+// Create scoped consola instance
+const authConsola = createConsola().withTag('auth')
+const apiConsola = createConsola().withTag('api')
+
+const authAdapter = new ConsolaLoggerAdapter(authConsola)
+const apiAdapter = new ConsolaLoggerAdapter(apiConsola)
+
+// Use different adapters for different contexts
+const authLogger = createLogger({ adapter: authAdapter })
+const apiLogger = createLogger({ adapter: apiAdapter })
+
+authLogger.info('User logged in') // [auth] User logged in
+apiLogger.info('API called')      // [api] API called
+```
+
+## Structured Logging
+
+```typescript
+import { useLogger } from '@vuetify/v0/logger'
+
+const logger = useLogger()
+
+// Log with structured data
+logger.info('User action', {
+  userId: 123,
+  action: 'purchase',
+  amount: 99.99,
+  timestamp: new Date()
+})
+
+// Log errors with context
+logger.error('API request failed', {
+  endpoint: '/api/users',
+  status: 500,
+  error: error.message
+})
+```
+
+## Dynamic Log Level
+
+```typescript
+import { createConsola } from 'consola'
+import { useLogger } from '@vuetify/v0/logger'
+
+const consola = createConsola({ level: 3 })
+const adapter = new ConsolaLoggerAdapter(consola)
+
+const logger = useLogger()
+
+// Change log level at runtime
+logger.level('debug')
+logger.debug('Now visible') // Logged
+
+logger.level('error')
+logger.debug('Now hidden')  // Not logged
+logger.error('Still visible') // Logged
+```
+
+## TypeScript
+
+```typescript
+import type { ConsolaInstance } from 'consola'
+import { createConsola } from 'consola'
+import { ConsolaLoggerAdapter } from '@vuetify/v0/logger/adapters/consola'
+
+const consola: ConsolaInstance = createConsola({
+  level: 3
+})
+
+const adapter = new ConsolaLoggerAdapter(consola)
+
+// Fully typed
+adapter.debug('message', { foo: 'bar' })
+```
+
+## Fallback Behavior
+
+The adapter handles missing `trace` and `fatal` methods:
+
+```typescript
+// If consola doesn't have trace(), falls back to debug()
+logger.trace('message') // Uses consola.debug()
+
+// If consola doesn't have fatal(), falls back to error() with [FATAL] prefix
+logger.fatal('critical error') // Uses consola.error('[FATAL]', 'critical error')
+```
+
+## Error Handling
+
+The adapter requires a valid Consola instance:
+
+```typescript
+import { ConsolaLoggerAdapter } from '@vuetify/v0/logger/adapters/consola'
+
+try {
+  const adapter = new ConsolaLoggerAdapter(null)
+} catch (error) {
+  // Error: Consola instance is required for ConsolaLoggerAdapter
+}
+```
+
+## Production Configuration
+
+```typescript
+import { createConsola } from 'consola'
+import { ConsolaLoggerAdapter } from '@vuetify/v0/logger/adapters/consola'
+
+const isProd = import.meta.env.PROD
+
+const consola = createConsola({
+  level: isProd ? 3 : 1,  // Info in prod, debug in dev
+  fancy: !isProd,         // Fancy only in dev
+  formatOptions: {
+    colors: !isProd,
+    date: isProd
+  }
+})
+
+const adapter = new ConsolaLoggerAdapter(consola)
+```
+
+## API Reference
+
+### Constructor
+
+```typescript
+class ConsolaLoggerAdapter implements LoggerAdapter
+
+constructor(consolaInstance: ConsolaInstance)
+```
+
+### Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `consolaInstance` | `ConsolaInstance` | Yes | Consola logger instance |
+
+### Methods
+
+| Method | Description |
+|--------|-------------|
+| `debug(message, ...args)` | Log debug message |
+| `info(message, ...args)` | Log info message |
+| `warn(message, ...args)` | Log warning message |
+| `error(message, ...args)` | Log error message |
+| `trace(message, ...args)` | Log trace message (fallback to debug) |
+| `fatal(message, ...args)` | Log fatal message (fallback to error) |
+
+## Consola Features
+
+The adapter inherits all Consola features:
+
+- **Fancy formatting** - Colorful, well-structured output
+- **Scoped loggers** - Tag-based logger instances
+- **Throttling** - Prevent duplicate log spam
+- **Custom reporters** - Integrate with external services
+- **Universal** - Works in Node.js and browsers
+
+## Performance
+
+<Note>
+Consola is optimized for both development and production. In production, disable fancy formatting and reduce log level for better performance:
+
+```typescript
+const consola = createConsola({
+  level: 3,      // Info and above
+  fancy: false   // Disable formatting
+})
+```
+</Note>
+
+## See Also
+
+- [Pino Adapter](/adapters/logger-pino) - Pino logger integration
+- [V0 Adapter](/adapters/logger-v0) - Built-in console logger
+- [useLogger](/composables/use-logger) - Logger composable
+- [Consola Documentation](https://github.com/unjs/consola) - Official Consola docs

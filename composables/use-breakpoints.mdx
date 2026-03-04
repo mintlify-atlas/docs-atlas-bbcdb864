@@ -1,0 +1,201 @@
+---
+title: useBreakpoints
+description: Responsive breakpoint detection composable with window resize handling
+---
+
+Reactive breakpoint detection for responsive layouts and conditional rendering based on screen size.
+
+## Features
+
+- Window matchMedia integration
+- Six built-in breakpoints (xs, sm, md, lg, xl, xxl)
+- Automatic resize listener with cleanup
+- SSR-safe (checks IN_BROWSER)
+- Hydration-aware
+- Custom breakpoint configuration
+
+## Installation
+
+```ts
+import { createBreakpointsPlugin } from '@vuetify/v0'
+
+const app = createApp(App)
+app.use(createBreakpointsPlugin())
+```
+
+## Basic Usage
+
+```vue
+<script setup lang="ts">
+import { useBreakpoints } from '@vuetify/v0'
+
+const breakpoints = useBreakpoints()
+</script>
+
+<template>
+  <div>
+    <p v-if="breakpoints.xs.value">Extra small screen</p>
+    <p v-if="breakpoints.sm.value">Small screen</p>
+    <p v-if="breakpoints.mdAndUp.value">Medium screen and larger</p>
+    <p>Current: {{ breakpoints.name.value }}</p>
+    <p>Width: {{ breakpoints.width.value }}px</p>
+  </div>
+</template>
+```
+
+## API Reference
+
+### createBreakpoints()
+
+Creates a breakpoints instance.
+
+<ParamField path="options" type="BreakpointsOptions">
+  Configuration options
+  
+  <ParamField path="mobileBreakpoint" type="BreakpointName | number" default="'lg'">
+    The breakpoint at which the layout switches to mobile
+  </ParamField>
+  
+  <ParamField path="breakpoints" type="Partial<Record<BreakpointName, number>>">
+    Custom breakpoint values
+    
+    Default values:
+    - xs: 0
+    - sm: 600
+    - md: 840
+    - lg: 1145
+    - xl: 1545
+    - xxl: 2138
+  </ParamField>
+</ParamField>
+
+**Returns:** `BreakpointsContext`
+
+### BreakpointsContext
+
+<ResponseField name="breakpoints" type="Readonly<Record<BreakpointName, number>>">
+  The configured breakpoint values
+</ResponseField>
+
+<ResponseField name="name" type="Readonly<ShallowRef<BreakpointName>>">
+  The current breakpoint name (xs, sm, md, lg, xl, xxl)
+</ResponseField>
+
+<ResponseField name="width" type="Readonly<ShallowRef<number>>">
+  The current window width in pixels
+</ResponseField>
+
+<ResponseField name="height" type="Readonly<ShallowRef<number>>">
+  The current window height in pixels
+</ResponseField>
+
+<ResponseField name="isMobile" type="Readonly<ShallowRef<boolean>>">
+  Whether the current width is below the mobile breakpoint
+</ResponseField>
+
+<ResponseField name="xs" type="Readonly<ShallowRef<boolean>>">
+  Whether the current breakpoint is xs
+</ResponseField>
+
+<ResponseField name="sm" type="Readonly<ShallowRef<boolean>>">
+  Whether the current breakpoint is sm
+</ResponseField>
+
+<ResponseField name="md" type="Readonly<ShallowRef<boolean>>">
+  Whether the current breakpoint is md
+</ResponseField>
+
+<ResponseField name="lg" type="Readonly<ShallowRef<boolean>>">
+  Whether the current breakpoint is lg
+</ResponseField>
+
+<ResponseField name="xl" type="Readonly<ShallowRef<boolean>>">
+  Whether the current breakpoint is xl
+</ResponseField>
+
+<ResponseField name="xxl" type="Readonly<ShallowRef<boolean>>">
+  Whether the current breakpoint is xxl
+</ResponseField>
+
+<ResponseField name="smAndUp" type="Readonly<ShallowRef<boolean>>">
+  Whether the current breakpoint is sm or larger
+</ResponseField>
+
+<ResponseField name="mdAndUp" type="Readonly<ShallowRef<boolean>>">
+  Whether the current breakpoint is md or larger
+</ResponseField>
+
+<ResponseField name="lgAndUp" type="Readonly<ShallowRef<boolean>>">
+  Whether the current breakpoint is lg or larger
+</ResponseField>
+
+<ResponseField name="xlAndUp" type="Readonly<ShallowRef<boolean>>">
+  Whether the current breakpoint is xl or larger
+</ResponseField>
+
+<ResponseField name="xxlAndUp" type="Readonly<ShallowRef<boolean>>">
+  Whether the current breakpoint is xxl or larger
+</ResponseField>
+
+<ResponseField name="smAndDown" type="Readonly<ShallowRef<boolean>>">
+  Whether the current breakpoint is sm or smaller
+</ResponseField>
+
+<ResponseField name="mdAndDown" type="Readonly<ShallowRef<boolean>>">
+  Whether the current breakpoint is md or smaller
+</ResponseField>
+
+<ResponseField name="lgAndDown" type="Readonly<ShallowRef<boolean>>">
+  Whether the current breakpoint is lg or smaller
+</ResponseField>
+
+<ResponseField name="xlAndDown" type="Readonly<ShallowRef<boolean>>">
+  Whether the current breakpoint is xl or smaller
+</ResponseField>
+
+<ResponseField name="xxlAndDown" type="Readonly<ShallowRef<boolean>>">
+  Whether the current breakpoint is xxl or smaller
+</ResponseField>
+
+<ResponseField name="update" type="() => void">
+  Manually trigger breakpoint update
+</ResponseField>
+
+## Custom Breakpoints
+
+```ts
+import { createBreakpointsPlugin } from '@vuetify/v0'
+
+app.use(createBreakpointsPlugin({
+  mobileBreakpoint: 'md',
+  breakpoints: {
+    xs: 0,
+    sm: 480,
+    md: 768,
+    lg: 1024,
+    xl: 1440,
+    xxl: 1920,
+  },
+}))
+```
+
+## Conditional Rendering
+
+```vue
+<script setup lang="ts">
+import { useBreakpoints } from '@vuetify/v0'
+
+const breakpoints = useBreakpoints()
+</script>
+
+<template>
+  <nav>
+    <button v-if="breakpoints.mdAndDown.value">Menu</button>
+    <div v-else class="nav-links">
+      <a href="#">Home</a>
+      <a href="#">About</a>
+      <a href="#">Contact</a>
+    </div>
+  </nav>
+</template>
+```

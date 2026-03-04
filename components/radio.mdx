@@ -1,0 +1,467 @@
+---
+title: Radio
+description: Accessible radio button component with single-selection, keyboard navigation, and form integration
+---
+
+# Radio
+
+A headless radio button component that provides accessible, single-selection functionality. Radio buttons allow users to select exactly one option from a set of choices.
+
+## Features
+
+- **Single-selection**: Only one radio can be selected at a time within a group
+- **Keyboard navigation**: Arrow keys navigate between options with roving tabindex
+- **Activation modes**: Automatic (selection follows focus) or manual (requires Enter/Space)
+- **Full accessibility**: ARIA radiogroup pattern with proper roles and states
+- **Form integration**: Automatic hidden input generation for native form submission
+- **Flexible rendering**: Works with any element via `as` prop or renderless mode
+
+## Basic Usage
+
+<CodeGroup>
+```vue Basic
+<script setup lang="ts">
+import { Radio } from '@vuetify/v0'
+import { ref } from 'vue'
+
+const selected = ref<string>()
+</script>
+
+<template>
+  <Radio.Group v-model="selected">
+    <label>
+      <Radio.Root value="small">
+        <Radio.Indicator>●</Radio.Indicator>
+      </Radio.Root>
+      Small
+    </label>
+    <label>
+      <Radio.Root value="medium">
+        <Radio.Indicator>●</Radio.Indicator>
+      </Radio.Root>
+      Medium
+    </label>
+    <label>
+      <Radio.Root value="large">
+        <Radio.Indicator>●</Radio.Indicator>
+      </Radio.Root>
+      Large
+    </label>
+  </Radio.Group>
+</template>
+```
+
+```vue With Form
+<script setup lang="ts">
+import { Radio } from '@vuetify/v0'
+import { ref } from 'vue'
+
+const size = ref('medium')
+</script>
+
+<template>
+  <form @submit.prevent="handleSubmit">
+    <Radio.Group v-model="size" name="product_size">
+      <label>
+        <Radio.Root value="small">
+          <Radio.Indicator>●</Radio.Indicator>
+        </Radio.Root>
+        Small ($10)
+      </label>
+      <label>
+        <Radio.Root value="medium">
+          <Radio.Indicator>●</Radio.Indicator>
+        </Radio.Root>
+        Medium ($15)
+      </label>
+      <label>
+        <Radio.Root value="large">
+          <Radio.Indicator>●</Radio.Indicator>
+        </Radio.Root>
+        Large ($20)
+      </label>
+    </Radio.Group>
+    <button type="submit">Add to Cart</button>
+  </form>
+</template>
+```
+</CodeGroup>
+
+## Components
+
+### Radio.Group
+
+Container for managing radio buttons with single-selection behavior.
+
+<ParamField path="modelValue" type="T">
+  The currently selected value
+</ParamField>
+
+<ParamField path="name" type="string">
+  Form field name shared by all radios. Enables native form submission
+</ParamField>
+
+<ParamField path="disabled" type="boolean" default="false">
+  Disables all radio buttons in the group
+</ParamField>
+
+<ParamField path="mandatory" type="boolean | 'force'" default="false">
+  - `false`: Selection can be cleared (not typical for radios)
+  - `true`: Selection cannot be cleared once set
+  - `'force'`: Auto-selects first non-disabled item on mount
+</ParamField>
+
+<ParamField path="activation" type="'automatic' | 'manual'" default="'automatic'">
+  - `'automatic'`: Arrow keys change selection (ARIA standard)
+  - `'manual'`: Arrow keys only move focus, Enter/Space to select
+</ParamField>
+
+<ParamField path="label" type="string">
+  Accessible name for the radio group
+</ParamField>
+
+<ParamField path="as" type="string" default="'div'">
+  HTML element to render as
+</ParamField>
+
+<ParamField path="renderless" type="boolean" default="false">
+  Render only slot content without wrapper
+</ParamField>
+
+<ParamField path="namespace" type="string" default="'v0:radio:group'">
+  Context namespace for child radios
+</ParamField>
+
+#### Slot Props
+
+<ParamField path="isDisabled" type="boolean">
+  Whether the group is disabled
+</ParamField>
+
+<ParamField path="isNoneSelected" type="boolean">
+  Whether no radio is selected
+</ParamField>
+
+<ParamField path="activation" type="'automatic' | 'manual'">
+  Current activation mode
+</ParamField>
+
+<ParamField path="attrs" type="object">
+  Pre-computed ARIA attributes including `role="radiogroup"`
+</ParamField>
+
+### Radio.Root
+
+Individual radio button component. Must be used within `Radio.Group`.
+
+<ParamField path="value" type="unknown" required>
+  Value associated with this radio button
+</ParamField>
+
+<ParamField path="disabled" type="boolean | Ref<boolean>" default="false">
+  Disables this specific radio button
+</ParamField>
+
+<ParamField path="label" type="string">
+  Optional display label (passed to slot props)
+</ParamField>
+
+<ParamField path="id" type="string">
+  Unique identifier (auto-generated if not provided)
+</ParamField>
+
+<ParamField path="form" type="string">
+  Associate with a form element by ID
+</ParamField>
+
+<ParamField path="as" type="string" default="'button'">
+  HTML element to render as
+</ParamField>
+
+<ParamField path="renderless" type="boolean" default="false">
+  Render only slot content without wrapper
+</ParamField>
+
+<ParamField path="namespace" type="string" default="'v0:radio:root'">
+  Context namespace for child components
+</ParamField>
+
+<ParamField path="groupNamespace" type="string" default="'v0:radio:group'">
+  Namespace for connecting to parent group
+</ParamField>
+
+#### Slot Props
+
+<ParamField path="isChecked" type="boolean">
+  Whether this radio is selected
+</ParamField>
+
+<ParamField path="isDisabled" type="boolean">
+  Whether this radio is disabled
+</ParamField>
+
+<ParamField path="select" type="() => void">
+  Function to select this radio
+</ParamField>
+
+<ParamField path="attrs" type="object">
+  Pre-computed ARIA and data attributes including:
+  - `role="radio"`
+  - `aria-checked`
+  - `tabindex` (roving tabindex: 0 for selected/first, -1 for others)
+  - `data-state="checked" | "unchecked"`
+</ParamField>
+
+### Radio.Indicator
+
+Visual indicator that displays when the radio is selected.
+
+<ParamField path="as" type="string" default="'span'">
+  HTML element to render as
+</ParamField>
+
+<ParamField path="renderless" type="boolean" default="false">
+  Render only slot content without wrapper
+</ParamField>
+
+<ParamField path="namespace" type="string" default="'v0:radio:root'">
+  Context namespace to inject from parent
+</ParamField>
+
+#### Slot Props
+
+<ParamField path="isChecked" type="boolean">
+  Whether the radio is selected
+</ParamField>
+
+<ParamField path="attrs" type="object">
+  Contains `data-state` and visibility style
+</ParamField>
+
+<Note>
+The indicator is automatically hidden via `visibility: hidden` when the radio is not selected.
+</Note>
+
+### Radio.HiddenInput
+
+Hidden input for native form submission. Automatically rendered when `name` prop is provided to `Radio.Group`.
+
+<ParamField path="name" type="string">
+  Form field name (inherited from group if not provided)
+</ParamField>
+
+<ParamField path="value" type="unknown">
+  Value to submit (overrides context value)
+</ParamField>
+
+<ParamField path="form" type="string">
+  Associate with form by ID (overrides context form)
+</ParamField>
+
+<ParamField path="namespace" type="string" default="'v0:radio:root'">
+  Context namespace to inject from parent
+</ParamField>
+
+## Advanced Examples
+
+### Manual Activation Mode
+
+```vue
+<script setup lang="ts">
+import { Radio } from '@vuetify/v0'
+import { ref } from 'vue'
+
+const filter = ref('all')
+</script>
+
+<template>
+  <Radio.Group v-model="filter" activation="manual">
+    <label>
+      <Radio.Root value="all">
+        <Radio.Indicator>●</Radio.Indicator>
+      </Radio.Root>
+      All items
+    </label>
+    <label>
+      <Radio.Root value="active">
+        <Radio.Indicator>●</Radio.Indicator>
+      </Radio.Root>
+      Active only
+    </label>
+    <label>
+      <Radio.Root value="archived">
+        <Radio.Indicator>●</Radio.Indicator>
+      </Radio.Root>
+      Archived only
+    </label>
+  </Radio.Group>
+</template>
+```
+
+<Note>
+In manual mode, arrow keys only move focus. Users must press Enter or Space to actually change the selection. This is useful for toolbar radio groups where you want deliberate selection.
+</Note>
+
+### Mandatory Selection
+
+```vue
+<script setup lang="ts">
+import { Radio } from '@vuetify/v0'
+import { ref } from 'vue'
+
+const plan = ref<string>()
+</script>
+
+<template>
+  <Radio.Group v-model="plan" mandatory="force">
+    <label>
+      <Radio.Root value="free">
+        <Radio.Indicator>●</Radio.Indicator>
+      </Radio.Root>
+      Free Plan
+    </label>
+    <label>
+      <Radio.Root value="pro">
+        <Radio.Indicator>●</Radio.Indicator>
+      </Radio.Root>
+      Pro Plan ($9/mo)
+    </label>
+    <label>
+      <Radio.Root value="enterprise">
+        <Radio.Indicator>●</Radio.Indicator>
+      </Radio.Root>
+      Enterprise
+    </label>
+  </Radio.Group>
+</template>
+```
+
+### Renderless Mode
+
+```vue
+<script setup lang="ts">
+import { Radio } from '@vuetify/v0'
+import { ref } from 'vue'
+
+const theme = ref('light')
+</script>
+
+<template>
+  <Radio.Group v-model="theme" renderless v-slot="{ attrs }">
+    <div v-bind="attrs" class="theme-selector">
+      <Radio.Root value="light" renderless v-slot="{ attrs, isChecked }">
+        <button 
+          v-bind="attrs"
+          class="theme-option"
+          :class="{ selected: isChecked }"
+        >
+          <Radio.Indicator renderless v-slot="{ isChecked }">
+            <svg v-if="isChecked" class="checkmark">
+              <circle cx="12" cy="12" r="6" />
+            </svg>
+          </Radio.Indicator>
+          Light theme
+        </button>
+      </Radio.Root>
+
+      <Radio.Root value="dark" renderless v-slot="{ attrs, isChecked }">
+        <button 
+          v-bind="attrs"
+          class="theme-option"
+          :class="{ selected: isChecked }"
+        >
+          <Radio.Indicator renderless v-slot="{ isChecked }">
+            <svg v-if="isChecked" class="checkmark">
+              <circle cx="12" cy="12" r="6" />
+            </svg>
+          </Radio.Indicator>
+          Dark theme
+        </button>
+      </Radio.Root>
+    </div>
+  </Radio.Group>
+</template>
+```
+
+### Disabled Options
+
+```vue
+<script setup lang="ts">
+import { Radio } from '@vuetify/v0'
+import { ref } from 'vue'
+
+const shipping = ref('standard')
+const isPremiumUser = ref(false)
+</script>
+
+<template>
+  <Radio.Group v-model="shipping" name="shipping_method">
+    <label>
+      <Radio.Root value="standard">
+        <Radio.Indicator>●</Radio.Indicator>
+      </Radio.Root>
+      Standard (5-7 days) - Free
+    </label>
+    <label>
+      <Radio.Root value="express">
+        <Radio.Indicator>●</Radio.Indicator>
+      </Radio.Root>
+      Express (2-3 days) - $10
+    </label>
+    <label>
+      <Radio.Root value="overnight" :disabled="!isPremiumUser">
+        <Radio.Indicator>●</Radio.Indicator>
+      </Radio.Root>
+      Overnight - Premium members only
+    </label>
+  </Radio.Group>
+</template>
+```
+
+## Accessibility
+
+### ARIA Radiogroup Pattern
+
+The Radio component implements the [WAI-ARIA radiogroup pattern](https://www.w3.org/WAI/ARIA/apg/patterns/radio/):
+
+- Uses `role="radiogroup"` on the group container
+- Uses `role="radio"` and `aria-checked` on each radio button
+- Implements roving tabindex for keyboard navigation
+- Only one radio is tabbable at a time (selected radio, or first if none selected)
+
+### Keyboard Navigation
+
+- **Tab**: Moves focus into/out of the radio group
+- **Arrow keys**: Navigate between radio buttons
+  - In automatic mode: Selects the focused radio
+  - In manual mode: Only moves focus
+- **Space/Enter**: Selects the focused radio (always works in both modes)
+
+### Screen Reader Support
+
+- Group announces as "radiogroup" with optional label
+- Each radio announces its label, checked state, and position
+- Disabled radios are announced as "disabled"
+
+## Type Safety
+
+All components are fully typed with TypeScript generics:
+
+```typescript
+import type { 
+  RadioGroupProps,
+  RadioRootProps,
+  RadioIndicatorProps,
+  RadioActivation, // 'automatic' | 'manual'
+  RadioState // 'checked' | 'unchecked'
+} from '@vuetify/v0'
+```
+
+## Comparison with Other Components
+
+| Component | Selection | Use Case |
+|-----------|-----------|----------|
+| Radio | Single, mandatory | One choice from mutually exclusive options |
+| Checkbox | Multiple, optional | Multiple independent choices |
+| Switch | Single boolean | On/off toggle state |
+| Select | Single or multiple | Large lists with search/filtering |

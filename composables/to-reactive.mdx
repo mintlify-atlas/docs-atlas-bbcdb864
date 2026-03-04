@@ -1,0 +1,320 @@
+---
+title: toReactive
+description: Convert values and refs into reactive proxies with automatic ref unwrapping
+---
+
+# toReactive
+
+Utility function to convert values and refs into reactive proxies with deep ref unwrapping.
+
+## Overview
+
+Creates reactive versions of plain objects while automatically unwrapping nested refs. Supports Maps, Sets, arrays, and objects with full proxy support.
+
+**Key Features:**
+- Automatic ref unwrapping at all nesting levels
+- Deep reactive proxying
+- Map and Set support with ref unwrapping
+- Nested object/array reactivity
+- Type preservation
+- Perfect for reactive state derived from refs
+
+## Signature
+
+```ts
+function toReactive<Z extends object>(
+  objectRef: MaybeRef<Z>,
+): UnwrapNestedRefs<Z>
+```
+
+## Parameters
+
+<ParamField path="objectRef" type="MaybeRef<Z>" required>
+  The object or ref to convert. Can be a plain object, array, Map, or Set.
+</ParamField>
+
+## Return Value
+
+<ResponseField name="proxy" type="UnwrapNestedRefs<Z>">
+  Reactive proxy that automatically unwraps refs and maintains reactivity.
+</ResponseField>
+
+## Basic Usage
+
+### Plain Objects
+
+```ts
+import { ref } from 'vue'
+import { toReactive } from '@vuetify/v0'
+
+// Convert ref to reactive
+const state = ref({ name: 'John', age: 30 })
+const rstate = toReactive(state)
+
+console.log(rstate.name) // 'John' (no .value needed)
+rstate.age = 31 // Updates original ref
+
+// Convert plain object to reactive
+const plain = { count: 0 }
+const reactive = toReactive(plain)
+reactive.count++ // Now reactive
+```
+
+### Automatic Ref Unwrapping
+
+```ts
+import { ref } from 'vue'
+import { toReactive } from '@vuetify/v0'
+
+const nameRef = ref('Alice')
+const ageRef = ref(25)
+
+const userRef = ref({
+  name: nameRef,
+  age: ageRef,
+})
+
+const user = toReactive(userRef)
+
+// Refs are automatically unwrapped
+console.log(user.name) // 'Alice' (not ref)
+console.log(user.age)  // 25
+
+// Setting values updates underlying refs
+user.name = 'Bob'
+console.log(nameRef.value) // 'Bob'
+```
+
+### Arrays
+
+```ts
+import { ref } from 'vue'
+import { toReactive } from '@vuetify/v0'
+
+const items = ref([1, 2, 3])
+const reactiveItems = toReactive(items)
+
+reactiveItems.push(4)
+console.log(items.value) // [1, 2, 3, 4]
+
+reactiveItems[0] = 10
+console.log(items.value[0]) // 10
+```
+
+## Advanced Usage
+
+### Map Collections
+
+```ts
+import { ref } from 'vue'
+import { toReactive } from '@vuetify/v0'
+
+const mapRef = ref(new Map([
+  ['key1', 'value1'],
+  ['key2', ref('value2')],
+]))
+
+const reactiveMap = toReactive(mapRef)
+
+// Automatically unwraps ref values
+console.log(reactiveMap.get('key1')) // 'value1'
+console.log(reactiveMap.get('key2')) // 'value2' (unwrapped)
+
+// Setting values
+reactiveMap.set('key3', 'value3')
+console.log(mapRef.value.get('key3')) // 'value3'
+
+// Updating ref values
+reactiveMap.set('key2', 'updated')
+console.log(reactiveMap.get('key2')) // 'updated'
+
+// Iteration with unwrapping
+for (const [key, value] of reactiveMap) {
+  console.log(key, value) // Values are unwrapped
+}
+
+Array.from(reactiveMap.values()) // All values unwrapped
+```
+
+### Set Collections
+
+```ts
+import { ref } from 'vue'
+import { toReactive } from '@vuetify/v0'
+
+const setRef = ref(new Set([ref('a'), ref('b')]))
+const reactiveSet = toReactive(setRef)
+
+// Iteration unwraps refs
+for (const value of reactiveSet) {
+  console.log(value) // 'a', 'b' (unwrapped)
+}
+
+reactiveSet.add('c')
+console.log(setRef.value.has('c')) // true
+```
+
+### Nested Structures
+
+```ts
+import { ref } from 'vue'
+import { toReactive } from '@vuetify/v0'
+
+const data = ref({
+  user: {
+    name: ref('John'),
+    profile: {
+      bio: ref('Developer'),
+      age: ref(30),
+    },
+  },
+  items: [ref(1), ref(2), ref(3)],
+})
+
+const reactive = toReactive(data)
+
+// All nested refs are unwrapped
+console.log(reactive.user.name) // 'John'
+console.log(reactive.user.profile.bio) // 'Developer'
+console.log(reactive.items[0]) // 1
+
+// Updates propagate to original refs
+reactive.user.profile.age = 31
+console.log(data.value.user.profile.age.value) // 31
+```
+
+### Dynamic Updates
+
+```ts
+import { ref, watchEffect } from 'vue'
+import { toReactive } from '@vuetify/v0'
+
+const stateRef = ref({ count: 0 })
+const state = toReactive(stateRef)
+
+watchEffect(() => {
+  console.log('Count:', state.count)
+})
+
+// Changing ref triggers watchers
+stateRef.value = { count: 5 } // Logs: Count: 5
+
+// Changing proxy also triggers watchers
+state.count = 10 // Logs: Count: 10
+```
+
+## Type Safety
+
+```ts
+import { ref } from 'vue'
+import { toReactive } from '@vuetify/v0'
+import type { UnwrapNestedRefs } from 'vue'
+
+interface User {
+  name: string
+  age: number
+  settings: {
+    theme: string
+    notifications: boolean
+  }
+}
+
+const userRef = ref<User>({
+  name: 'Alice',
+  age: 25,
+  settings: {
+    theme: 'dark',
+    notifications: true,
+  },
+})
+
+// Type is preserved and unwrapped
+const user: UnwrapNestedRefs<User> = toReactive(userRef)
+
+user.name = 'Bob' // Type-safe
+user.settings.theme = 'light' // Nested properties type-safe
+```
+
+## Use Cases
+
+### Component State
+
+```vue
+<script setup lang="ts">
+import { ref } from 'vue'
+import { toReactive } from '@vuetify/v0'
+
+const propsRef = ref({
+  title: 'Hello',
+  count: 0,
+  enabled: true,
+})
+
+const props = toReactive(propsRef)
+
+function increment() {
+  props.count++
+}
+</script>
+
+<template>
+  <div>
+    <h1>{{ props.title }}</h1>
+    <p>Count: {{ props.count }}</p>
+    <button @click="increment" :disabled="!props.enabled">
+      Increment
+    </button>
+  </div>
+</template>
+```
+
+### Composable Return Values
+
+```ts
+import { ref } from 'vue'
+import { toReactive } from '@vuetify/v0'
+
+export function useCounter(initial = 0) {
+  const state = ref({
+    count: initial,
+    double: computed(() => state.value.count * 2),
+  })
+
+  const reactive = toReactive(state)
+
+  function increment() {
+    reactive.count++
+  }
+
+  function decrement() {
+    reactive.count--
+  }
+
+  return {
+    state: reactive,
+    increment,
+    decrement,
+  }
+}
+
+// Usage - no .value needed
+const { state, increment } = useCounter()
+console.log(state.count) // 0
+increment()
+console.log(state.count) // 1
+```
+
+## Notes
+
+- For plain objects, returns `reactive(object)` directly
+- For refs, creates a proxy that unwraps nested refs automatically
+- Maps and Sets get specialized proxies for proper collection behavior
+- All operations maintain reactivity through Vue's reactive system
+- Property descriptors are preserved (with `configurable: true` override)
+- Works with circular references and complex nested structures
+
+## Related
+
+- [toArray](/composables/to-array) - Array normalization utility
+- [Vue reactive](https://vuejs.org/api/reactivity-core.html#reactive) - Core reactive API
+- [Vue ref](https://vuejs.org/api/reactivity-core.html#ref) - Ref API

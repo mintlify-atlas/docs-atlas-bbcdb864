@@ -1,0 +1,204 @@
+---
+title: useEventListener
+description: Event listener composable with automatic cleanup on scope disposal
+---
+
+## Overview
+
+Attaches event listeners with automatic cleanup on scope disposal. Supports Window, Document, and HTMLElement targets with reactive events, listeners, and options.
+
+## Features
+
+- Supports Window, Document, and HTMLElement targets
+- Reactive targets, events, and listeners
+- Event options support (capture, passive, once)
+- Automatic removeEventListener on unmount
+- Multiple overloads for type safety
+- Convenience functions for common use cases
+
+## Function Signature
+
+```ts
+// HTMLElement target
+function useEventListener<E extends keyof HTMLElementEventMap>(
+  target: MaybeRefOrGetter<HTMLElement | null | undefined>,
+  event: MaybeRefOrGetter<MaybeArray<E>>,
+  listener: MaybeRef<MaybeArray<(this: HTMLElement, event: HTMLElementEventMap[E]) => void>>,
+  options?: MaybeRefOrGetter<boolean | AddEventListenerOptions>
+): CleanupFunction
+
+// Document target
+function useEventListener<E extends keyof DocumentEventMap>(
+  target: Document,
+  event: MaybeRefOrGetter<MaybeArray<E>>,
+  listener: MaybeRef<MaybeArray<(this: Document, event: DocumentEventMap[E]) => void>>,
+  options?: MaybeRefOrGetter<boolean | AddEventListenerOptions>
+): CleanupFunction
+
+// Window target
+function useEventListener<E extends keyof WindowEventMap>(
+  target: Window,
+  event: MaybeRefOrGetter<MaybeArray<E>>,
+  listener: MaybeRef<MaybeArray<(this: Window, event: WindowEventMap[E]) => void>>,
+  options?: MaybeRefOrGetter<boolean | AddEventListenerOptions>
+): CleanupFunction
+```
+
+## Parameters
+
+<ParamField path="target" type="MaybeRefOrGetter<EventTarget | null | undefined>">
+  The target to attach the event listener to (Window, Document, or HTMLElement).
+</ParamField>
+
+<ParamField path="event" type="MaybeRefOrGetter<MaybeArray<string>>">
+  The event(s) to listen for. Can be a string or array of strings.
+</ParamField>
+
+<ParamField path="listener" type="MaybeRef<MaybeArray<EventHandler>>">
+  The event listener(s). Can be a single function or array of functions.
+</ParamField>
+
+<ParamField path="options" type="MaybeRefOrGetter<boolean | AddEventListenerOptions>">
+  Event listener options (capture, passive, once).
+</ParamField>
+
+## Return Value
+
+<ResponseField name="cleanup" type="() => void">
+  Function to remove the event listener.
+</ResponseField>
+
+## Examples
+
+### Basic usage
+
+```ts
+import { ref } from 'vue'
+import { useEventListener } from '@vuetify/v0'
+
+const buttonRef = ref<HTMLElement>()
+
+useEventListener(buttonRef, 'click', (event) => {
+  console.log('Button clicked', event)
+})
+```
+
+### Multiple events
+
+```ts
+const inputRef = ref<HTMLInputElement>()
+
+useEventListener(inputRef, ['input', 'blur', 'focus'], (event) => {
+  console.log('Input event:', event.type)
+})
+```
+
+### Reactive events
+
+```ts
+const isTouchDevice = ref(false)
+const eventType = computed(() => 
+  isTouchDevice.value ? 'touchstart' : 'mousedown'
+)
+
+useEventListener(element, eventType, handleInteraction)
+```
+
+### Multiple listeners
+
+```ts
+const trackClick = () => console.log('Analytics')
+const updateUI = () => console.log('UI update')
+
+useEventListener(button, 'click', [trackClick, updateUI])
+```
+
+### Event options
+
+```ts
+// Passive listener for better scroll performance
+useEventListener(
+  scrollContainer,
+  'scroll',
+  handleScroll,
+  { passive: true }
+)
+
+// Capture phase
+useEventListener(
+  document,
+  'click',
+  handleCapture,
+  { capture: true }
+)
+```
+
+### Manual cleanup
+
+```ts
+const stopListening = useEventListener(element, 'click', handler)
+
+// Remove listener early
+stopListening()
+```
+
+### Window events
+
+```ts
+import { useWindowEventListener } from '@vuetify/v0'
+
+const windowSize = ref({ width: 0, height: 0 })
+
+useWindowEventListener('resize', () => {
+  windowSize.value = {
+    width: window.innerWidth,
+    height: window.innerHeight
+  }
+})
+```
+
+### Document events
+
+```ts
+import { useDocumentEventListener } from '@vuetify/v0'
+
+useDocumentEventListener('keydown', (e) => {
+  if (e.ctrlKey && e.key === 's') {
+    e.preventDefault()
+    saveDocument()
+  }
+})
+```
+
+## Convenience Functions
+
+### useWindowEventListener
+
+```ts
+function useWindowEventListener<E extends keyof WindowEventMap>(
+  event: MaybeRefOrGetter<MaybeArray<E>>,
+  listener: MaybeRef<MaybeArray<(this: Window, event: WindowEventMap[E]) => void>>,
+  options?: MaybeRefOrGetter<boolean | AddEventListenerOptions>
+): CleanupFunction
+```
+
+Attaches an event listener to the window. Returns a no-op function during SSR.
+
+### useDocumentEventListener
+
+```ts
+function useDocumentEventListener<E extends keyof DocumentEventMap>(
+  event: MaybeRefOrGetter<MaybeArray<E>>,
+  listener: MaybeRef<MaybeArray<(this: Document, event: DocumentEventMap[E]) => void>>,
+  options?: MaybeRefOrGetter<boolean | AddEventListenerOptions>
+): CleanupFunction
+```
+
+Attaches an event listener to the document. Returns a no-op function during SSR.
+
+## Notes
+
+- Listeners are automatically removed on scope disposal
+- Reactive changes to event, listener, or options are automatically handled
+- SSR-safe: window/document helpers return no-op functions during SSR
+- Use the `once` option for one-time event listeners

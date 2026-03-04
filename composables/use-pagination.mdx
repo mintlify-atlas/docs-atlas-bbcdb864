@@ -1,0 +1,490 @@
+---
+title: usePagination
+description: Lightweight pagination composable for navigating through pages
+---
+
+# usePagination
+
+Lightweight pagination composable for navigating through pages of data.
+
+## Overview
+
+Unlike registry-based composables, pagination tracks a single bounded integer within a range, making it efficient for large page counts.
+
+**Key Features:**
+- No registry overhead - just a bounded integer
+- Direct ref support for v-model compatibility
+- Navigation methods: `next`, `prev`, `first`, `last`
+- Computed visible items with ellipsis support
+- Trinity pattern for dependency injection
+- Efficient for millions of pages
+- Reactive page calculations
+
+## Functions
+
+### createPagination
+
+Create a pagination instance.
+
+```ts
+function createPagination(
+  options?: PaginationOptions,
+): PaginationContext
+```
+
+### createPaginationContext
+
+Create a pagination context with dependency injection support.
+
+```ts
+function createPaginationContext(
+  options?: PaginationContextOptions,
+): ContextTrinity<PaginationContext>
+```
+
+### usePagination
+
+Returns the current pagination context from dependency injection.
+
+```ts
+function usePagination(
+  namespace?: string,
+): PaginationContext
+```
+
+## Types
+
+```ts
+type PaginationTicket =
+  | { type: 'page', value: number }
+  | { type: 'ellipsis', value: string }
+
+interface PaginationOptions {
+  page?: number | ShallowRef<number>
+  itemsPerPage?: MaybeRefOrGetter<number>
+  size?: MaybeRefOrGetter<number>
+  visible?: MaybeRefOrGetter<number>
+  ellipsis?: string | false
+}
+
+interface PaginationContext {
+  page: ShallowRef<number>
+  itemsPerPage: number
+  size: number
+  pages: number
+  ellipsis: string | false
+  items: ComputedRef<PaginationTicket[]>
+  pageStart: ComputedRef<number>
+  pageStop: ComputedRef<number>
+  isFirst: ComputedRef<boolean>
+  isLast: ComputedRef<boolean>
+  first: () => void
+  last: () => void
+  next: () => void
+  prev: () => void
+  select: (value: number) => void
+}
+```
+
+## Parameters
+
+<ParamField path="options" type="PaginationOptions">
+  Configuration options for pagination.
+
+  <ParamField path="page" type="number | ShallowRef<number>" default="1">
+    Initial page (1-indexed) or ref for v-model support.
+  </ParamField>
+
+  <ParamField path="itemsPerPage" type="MaybeRefOrGetter<number>" default="10">
+    Number of items per page.
+  </ParamField>
+
+  <ParamField path="size" type="MaybeRefOrGetter<number>" default="0">
+    Total number of items across all pages.
+  </ParamField>
+
+  <ParamField path="visible" type="MaybeRefOrGetter<number>" default="7">
+    Maximum number of visible page buttons.
+  </ParamField>
+
+  <ParamField path="ellipsis" type="string | false" default="'...'">
+    Ellipsis character. Set to `false` to disable.
+  </ParamField>
+</ParamField>
+
+## Context Properties
+
+<ResponseField name="page" type="ShallowRef<number>">
+  Current page number (1-indexed). Mutable for v-model.
+</ResponseField>
+
+<ResponseField name="itemsPerPage" type="number">
+  Items per page (readonly getter).
+</ResponseField>
+
+<ResponseField name="size" type="number">
+  Total number of items (readonly getter).
+</ResponseField>
+
+<ResponseField name="pages" type="number">
+  Total number of pages, computed from `size / itemsPerPage`.
+</ResponseField>
+
+<ResponseField name="items" type="ComputedRef<PaginationTicket[]>">
+  Visible page numbers and ellipsis for rendering pagination UI.
+</ResponseField>
+
+<ResponseField name="pageStart" type="ComputedRef<number>">
+  Start index (0-indexed) of items on current page.
+</ResponseField>
+
+<ResponseField name="pageStop" type="ComputedRef<number>">
+  End index (exclusive, 0-indexed) of items on current page.
+</ResponseField>
+
+<ResponseField name="isFirst" type="ComputedRef<boolean>">
+  Whether current page is the first page.
+</ResponseField>
+
+<ResponseField name="isLast" type="ComputedRef<boolean>">
+  Whether current page is the last page.
+</ResponseField>
+
+<ResponseField name="first" type="() => void">
+  Navigate to first page.
+</ResponseField>
+
+<ResponseField name="last" type="() => void">
+  Navigate to last page.
+</ResponseField>
+
+<ResponseField name="next" type="() => void">
+  Navigate to next page (no-op on last page).
+</ResponseField>
+
+<ResponseField name="prev" type="() => void">
+  Navigate to previous page (no-op on first page).
+</ResponseField>
+
+<ResponseField name="select" type="(value: number) => void">
+  Navigate to specific page (clamped to valid range).
+</ResponseField>
+
+## Basic Usage
+
+### Simple Pagination
+
+```vue
+<script setup lang="ts">
+import { ref } from 'vue'
+import { createPagination } from '@vuetify/v0'
+
+const items = ref(Array.from({ length: 100 }, (_, i) => `Item ${i + 1}`))
+const pagination = createPagination({ size: items.value.length })
+
+const visibleItems = computed(() => {
+  return items.value.slice(
+    pagination.pageStart.value,
+    pagination.pageStop.value,
+  )
+})
+</script>
+
+<template>
+  <div>
+    <ul>
+      <li v-for="item in visibleItems" :key="item">{{ item }}</li>
+    </ul>
+    
+    <div class="pagination">
+      <button @click="pagination.first()" :disabled="pagination.isFirst.value">
+        First
+      </button>
+      <button @click="pagination.prev()" :disabled="pagination.isFirst.value">
+        Previous
+      </button>
+      
+      <button
+        v-for="ticket in pagination.items.value"
+        :key="ticket.type === 'page' ? ticket.value : ticket.value"
+        @click="ticket.type === 'page' && pagination.select(ticket.value)"
+        :disabled="ticket.type === 'ellipsis'"
+        :class="{ active: ticket.type === 'page' && ticket.value === pagination.page.value }"
+      >
+        {{ ticket.value }}
+      </button>
+      
+      <button @click="pagination.next()" :disabled="pagination.isLast.value">
+        Next
+      </button>
+      <button @click="pagination.last()" :disabled="pagination.isLast.value">
+        Last
+      </button>
+    </div>
+  </div>
+</template>
+```
+
+### v-model Support
+
+```vue
+<script setup lang="ts">
+import { ref } from 'vue'
+import { createPagination } from '@vuetify/v0'
+
+const page = ref(1)
+const pagination = createPagination({ page, size: 100 })
+
+// page.value and pagination.page.value are synced
+watch(page, (newPage) => {
+  console.log('Page changed to:', newPage)
+})
+</script>
+
+<template>
+  <div>
+    <p>Current page: {{ page }}</p>
+    <input v-model.number="page" type="number" min="1" :max="pagination.pages">
+  </div>
+</template>
+```
+
+## Advanced Usage
+
+### Dynamic Items Per Page
+
+```vue
+<script setup lang="ts">
+import { ref } from 'vue'
+import { createPagination } from '@vuetify/v0'
+
+const itemsPerPage = ref(10)
+const pagination = createPagination({
+  size: 1000,
+  itemsPerPage,
+})
+</script>
+
+<template>
+  <div>
+    <select v-model.number="itemsPerPage">
+      <option :value="10">10 per page</option>
+      <option :value="25">25 per page</option>
+      <option :value="50">50 per page</option>
+      <option :value="100">100 per page</option>
+    </select>
+    
+    <p>Showing {{ pagination.pageStart.value + 1 }} - {{ pagination.pageStop.value }} of {{ pagination.size }}</p>
+  </div>
+</template>
+```
+
+### Server-Side Pagination
+
+```vue
+<script setup lang="ts">
+import { ref, watch } from 'vue'
+import { createPagination } from '@vuetify/v0'
+
+const items = ref([])
+const loading = ref(false)
+const totalItems = ref(0)
+
+const pagination = createPagination({
+  size: totalItems,
+  itemsPerPage: 20,
+})
+
+watch(() => pagination.page.value, async (page) => {
+  loading.value = true
+  try {
+    const response = await fetch(`/api/items?page=${page}&limit=20`)
+    const data = await response.json()
+    items.value = data.items
+    totalItems.value = data.total
+  } finally {
+    loading.value = false
+  }
+}, { immediate: true })
+</script>
+
+<template>
+  <div>
+    <div v-if="loading">Loading...</div>
+    <ul v-else>
+      <li v-for="item in items" :key="item.id">{{ item.name }}</li>
+    </ul>
+    
+    <!-- Pagination controls -->
+  </div>
+</template>
+```
+
+### Custom Ellipsis
+
+```ts
+import { createPagination } from '@vuetify/v0'
+
+const pagination = createPagination({
+  size: 1000,
+  ellipsis: '…', // Unicode ellipsis
+})
+
+// Or disable ellipsis
+const noEllipsis = createPagination({
+  size: 1000,
+  ellipsis: false,
+})
+```
+
+### Dependency Injection
+
+```ts
+// composables/usePagination.ts
+import { createPaginationContext } from '@vuetify/v0'
+
+export const [
+  useTablePagination,
+  provideTablePagination,
+  tablePagination,
+] = createPaginationContext({
+  namespace: 'app:table-pagination',
+  itemsPerPage: 25,
+})
+```
+
+```vue
+<!-- Parent.vue -->
+<script setup lang="ts">
+import { ref } from 'vue'
+import { provideTablePagination } from '@/composables/usePagination'
+
+const totalItems = ref(1000)
+provideTablePagination(
+  createPagination({ size: totalItems, itemsPerPage: 25 })
+)
+</script>
+
+<template>
+  <DataTable />
+</template>
+```
+
+```vue
+<!-- DataTable.vue -->
+<script setup lang="ts">
+import { useTablePagination } from '@/composables/usePagination'
+
+const pagination = useTablePagination()
+</script>
+
+<template>
+  <div>
+    <button @click="pagination.prev()" :disabled="pagination.isFirst.value">
+      Previous
+    </button>
+    <span>Page {{ pagination.page.value }} of {{ pagination.pages }}</span>
+    <button @click="pagination.next()" :disabled="pagination.isLast.value">
+      Next
+    </button>
+  </div>
+</template>
+```
+
+## Pagination UI Patterns
+
+### Compact (3 visible)
+
+```ts
+const pagination = createPagination({ size: 1000, visible: 3 })
+// [1, 50, 100] - Always shows first, current, last
+```
+
+### Standard (7 visible)
+
+```ts
+const pagination = createPagination({ size: 1000, visible: 7 })
+// [1, 2, 3, 4, 5, ..., 100] - Near start
+// [1, ..., 9, 10, 11, ..., 100] - In middle
+// [1, ..., 96, 97, 98, 99, 100] - Near end
+```
+
+### Extended (11 visible)
+
+```ts
+const pagination = createPagination({ size: 1000, visible: 11 })
+// More page buttons visible before ellipsis
+```
+
+## Edge Cases
+
+```ts
+import { createPagination } from '@vuetify/v0'
+
+// Single page
+const single = createPagination({ size: 5, itemsPerPage: 10 })
+single.pages // 1
+single.next() // No-op
+single.prev() // No-op
+
+// Empty data
+const empty = createPagination({ size: 0 })
+empty.pages // 0
+empty.items.value // []
+
+// Large data
+const huge = createPagination({ size: 10_000_000 })
+huge.pages // 1,000,000
+huge.items.value.length // Still < 20 (efficient)
+```
+
+## Type Safety
+
+```ts
+import { createPagination } from '@vuetify/v0'
+import type { PaginationContext, PaginationTicket } from '@vuetify/v0'
+
+const pagination: PaginationContext = createPagination({ size: 100 })
+
+pagination.items.value.forEach((ticket: PaginationTicket) => {
+  if (ticket.type === 'page') {
+    console.log('Page:', ticket.value) // number
+  } else {
+    console.log('Ellipsis:', ticket.value) // string
+  }
+})
+```
+
+## Performance
+
+```ts
+import { createPagination } from '@vuetify/v0'
+
+// Efficiently handles millions of pages
+const pagination = createPagination({
+  size: 100_000_000, // 100M items
+  itemsPerPage: 100,
+})
+
+// No registry entries created
+// Computes visible range on-demand
+pagination.page.value = 500_000 // Instant
+pagination.items.value // ~7 items computed
+```
+
+## Notes
+
+- Page numbers are 1-indexed (not 0-indexed)
+- `pageStart` and `pageStop` are 0-indexed for array slicing
+- Navigation methods are bounds-checked (won't go below 1 or above pages)
+- `select()` clamps values to valid range
+- Empty or negative size returns 0 pages
+- NaN size returns empty items array
+- Ellipsis appears when pages exceed visible count
+- Works with reactive `itemsPerPage` and `size`
+
+## Related
+
+- [useFilter](/composables/use-filter) - Array filtering
+- [useVirtual](/composables/use-virtual) - Virtual scrolling
+- [createDataTable](/composables/create-data-table) - Uses pagination internally

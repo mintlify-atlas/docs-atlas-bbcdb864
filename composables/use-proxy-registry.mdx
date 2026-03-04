@@ -1,0 +1,242 @@
+---
+title: useProxyRegistry
+description: Reactive proxy composable for registry keys, values, entries, and size with automatic event-based updates
+---
+
+## Overview
+
+The **useProxyRegistry** composable creates a reactive proxy that transforms a registry's Map-based data into reactive refs. It automatically updates when the registry changes by listening to registry events.
+
+Perfect for exposing registry data as reactive computed properties in Vue components.
+
+## Signature
+
+```ts
+function useProxyRegistry<Z extends RegistryTicket = RegistryTicket>(
+  registry: RegistryContext<Z>,
+  options?: ProxyRegistryOptions
+): ProxyRegistryContext<Z>
+```
+
+<ParamField path="registry" type="RegistryContext" required>
+  Registry instance to proxy. Must have `events: true` option enabled.
+</ParamField>
+
+<ParamField path="options" type="ProxyRegistryOptions">
+  Configuration options
+  
+  <Expandable title="properties">
+    <ParamField path="deep" type="boolean" default="false">
+      Use deep reactivity (`reactive`) instead of shallow (`shallowReactive`). Set to `true` for nested object reactivity.
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+<ResponseField name="ProxyRegistryContext" type="object">
+  Reactive proxy with auto-updating properties
+  
+  <Expandable title="properties">
+    <ResponseField name="keys" type="ID[]">
+      Reactive array of all ticket IDs
+    </ResponseField>
+    
+    <ResponseField name="values" type="Z[]">
+      Reactive array of all tickets
+    </ResponseField>
+    
+    <ResponseField name="entries" type="[ID, Z][]">
+      Reactive array of [ID, ticket] pairs
+    </ResponseField>
+    
+    <ResponseField name="size" type="number">
+      Reactive size of the registry
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+## Usage
+
+### Basic Usage
+
+```vue
+<script setup lang="ts">
+import { createRegistry, useProxyRegistry } from '@vuetify/v0'
+
+const registry = createRegistry({ events: true })
+const proxy = useProxyRegistry(registry)
+
+registry.register({ value: 'Item 1' })
+registry.register({ value: 'Item 2' })
+</script>
+
+<template>
+  <div>
+    <p>Total items: {{ proxy.size }}</p>
+    <ul>
+      <li v-for="ticket in proxy.values" :key="ticket.id">
+        {{ ticket.value }}
+      </li>
+    </ul>
+  </div>
+</template>
+```
+
+### Deep Reactivity
+
+```ts
+import { createRegistry, useProxyRegistry } from '@vuetify/v0'
+
+const registry = createRegistry({ events: true })
+const proxy = useProxyRegistry(registry, { deep: true })
+
+registry.register({ 
+  value: { 
+    nested: { data: 'Deep' } 
+  } 
+})
+
+// Deep reactivity allows watching nested properties
+watch(() => proxy.values[0]?.value.nested.data, (newVal) => {
+  console.log('Nested data changed:', newVal)
+})
+```
+
+### Computed Properties
+
+```ts
+import { computed } from 'vue'
+import { createRegistry, useProxyRegistry } from '@vuetify/v0'
+
+const registry = createRegistry({ events: true })
+const proxy = useProxyRegistry(registry)
+
+const isEmpty = computed(() => proxy.size === 0)
+const firstItem = computed(() => proxy.values[0])
+const itemCount = computed(() => proxy.values.length)
+```
+
+### Automatic Cleanup
+
+```ts
+import { effectScope } from 'vue'
+
+const scope = effectScope()
+
+scope.run(() => {
+  const proxy = useProxyRegistry(registry)
+  // Event listeners are registered
+})
+
+// Stop scope to cleanup listeners
+scope.stop()
+// Event listeners are automatically removed
+```
+
+### Multiple Proxies
+
+```ts
+const registry = createRegistry({ events: true })
+
+// Create multiple proxies on the same registry
+const proxy1 = useProxyRegistry(registry)
+const proxy2 = useProxyRegistry(registry)
+
+registry.register({ value: 'Item 1' })
+
+// Both proxies update
+console.log(proxy1.size) // 1
+console.log(proxy2.size) // 1
+```
+
+## Requirements
+
+<Warning>
+  The registry **must** be created with `events: true` option for `useProxyRegistry` to work.
+</Warning>
+
+```ts
+// ✅ Correct
+const registry = createRegistry({ events: true })
+const proxy = useProxyRegistry(registry)
+
+// ❌ Won't work - no events
+const registry = createRegistry()
+const proxy = useProxyRegistry(registry) // Updates won't be detected
+```
+
+## Event Listeners
+
+The proxy automatically listens to these registry events:
+
+- `register:ticket` - Updates when tickets are added
+- `unregister:ticket` - Updates when tickets are removed
+- `update:ticket` - Updates when tickets are modified
+- `clear:registry` - Updates when registry is cleared
+
+## Performance
+
+- Uses `shallowReactive` by default for optimal performance
+- Only top-level properties (keys, values, entries, size) are reactive
+- Use `deep: true` only when nested reactivity is needed
+- Automatic cleanup via `onScopeDispose` prevents memory leaks
+
+## Type Safety
+
+```ts
+interface TaskTicket extends RegistryTicket {
+  label: string
+  completed: boolean
+}
+
+const registry = createRegistry<TaskTicket>({ events: true })
+const proxy = useProxyRegistry<TaskTicket>(registry)
+
+// proxy.values is typed as TaskTicket[]
+const firstTask = proxy.values[0]
+if (firstTask) {
+  console.log(firstTask.label) // Type-safe
+}
+```
+
+## Use Cases
+
+### List Rendering
+
+```vue
+<template>
+  <ul>
+    <li v-for="ticket in proxy.values" :key="ticket.id">
+      {{ ticket.value }}
+    </li>
+  </ul>
+</template>
+```
+
+### Empty State
+
+```vue
+<template>
+  <div v-if="proxy.size === 0">
+    No items found
+  </div>
+  <ul v-else>
+    <li v-for="ticket in proxy.values" :key="ticket.id">
+      {{ ticket.value }}
+    </li>
+  </ul>
+</template>
+```
+
+### Filtered Lists
+
+```ts
+const activeItems = computed(() => 
+  proxy.values.filter(ticket => !ticket.disabled)
+)
+```
+
+## See Also
+
+- [createRegistry](/composables/create-registry) - Create a registry instance
+- [createSelection](/composables/create-selection) - Registry with selection tracking
+- [createGroup](/composables/create-group) - Multi-selection with batch operations

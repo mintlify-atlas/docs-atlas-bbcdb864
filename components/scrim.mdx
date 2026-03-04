@@ -1,0 +1,265 @@
+---
+title: Scrim
+description: Backdrop/overlay component that integrates with the stack system for coordinated z-index management.
+---
+
+## Overview
+
+Scrim renders backdrop layers for overlays like dialogs and popovers. It integrates with `useStack` to automatically render one backdrop per active overlay with proper z-index stacking and dismissal behavior.
+
+## Installation
+
+```bash
+import { Scrim } from '@vuetify/v0'
+```
+
+<Warning>
+  Scrim requires `createStackPlugin` to be installed at the app level.
+</Warning>
+
+## Setup
+
+Install the stack plugin in your app:
+
+```typescript
+import { createApp } from 'vue'
+import { createStackPlugin } from '@vuetify/v0'
+import App from './App.vue'
+
+const app = createApp(App)
+app.use(createStackPlugin())
+app.mount('#app')
+```
+
+## Basic Usage
+
+```vue
+<script setup lang="ts">
+import { Scrim } from '@vuetify/v0'
+</script>
+
+<template>
+  <!-- Add once to app root or layout -->
+  <Scrim class="fixed inset-0 bg-black/50" />
+</template>
+```
+
+<Tip>
+  Scrim automatically renders one backdrop per active overlay. You only need one Scrim component in your entire app.
+</Tip>
+
+## Styling
+
+The Scrim component handles z-index automatically. Style the backdrop appearance:
+
+```vue
+<Scrim class="fixed inset-0 bg-black/30 backdrop-blur-sm" />
+```
+
+### Custom Opacity Stacking
+
+```vue
+<Scrim class="fixed inset-0 bg-black/20" />
+```
+
+Multiple scrims naturally create opacity stacking:
+- First overlay: 20% opacity
+- Second overlay: 20% + 20% = 36% opacity
+- Third overlay: 20% + 20% + 20% = 49% opacity
+
+## Transitions
+
+Add enter/leave animations:
+
+```vue
+<Scrim
+  transition="fade"
+  class="fixed inset-0 bg-black/50"
+/>
+```
+
+```css
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.2s;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
+```
+
+### Custom Transition
+
+```vue
+<Scrim
+  transition="scrim-slide"
+  class="fixed inset-0 bg-black/50"
+/>
+```
+
+```css
+.scrim-slide-enter-active,
+.scrim-slide-leave-active {
+  transition: all 0.3s ease;
+}
+
+.scrim-slide-enter-from,
+.scrim-slide-leave-to {
+  opacity: 0;
+  transform: scale(0.95);
+}
+```
+
+## Teleport Control
+
+By default, Scrim teleports to `<body>`. Disable or customize:
+
+```vue
+<!-- Disable teleport -->
+<Scrim
+  :teleport="false"
+  class="fixed inset-0 bg-black/50"
+/>
+
+<!-- Custom teleport target -->
+<Scrim
+  teleport-to="#app-root"
+  class="fixed inset-0 bg-black/50"
+/>
+```
+
+## Custom Element
+
+Render as different element:
+
+```vue
+<Scrim
+  as="section"
+  class="fixed inset-0 bg-black/50"
+/>
+```
+
+## Blocking Overlays
+
+Scrims automatically respect blocking state from overlays:
+
+```vue
+<Dialog.Root>
+  <Dialog.Activator>Open</Dialog.Activator>
+  
+  <!-- Scrim won't dismiss this dialog -->
+  <Dialog.Content :blocking="true">
+    <Dialog.Title>Blocking Dialog</Dialog.Title>
+    <p>Must use explicit close button.</p>
+    <Dialog.Close>Close</Dialog.Close>
+  </Dialog.Content>
+</Dialog.Root>
+
+<Scrim class="fixed inset-0 bg-black/50" />
+```
+
+## Slot Props
+
+Access scrim layer information:
+
+```vue
+<Scrim v-slot="{ ticket, zIndex, isBlocking }" class="fixed inset-0">
+  <div
+    :style="{ opacity: isBlocking ? 0.8 : 0.5 }"
+    class="absolute inset-0 bg-black"
+  />
+  
+  <div class="absolute top-4 right-4 text-white text-xs">
+    Layer {{ ticket.index + 1 }} (z-index: {{ zIndex }})
+  </div>
+</Scrim>
+```
+
+## Component API
+
+### Props
+
+<ParamField path="as" type="string | Component" default="'div'">
+  Element or component to render as.
+</ParamField>
+
+<ParamField path="transition" type="string" default="'fade'">
+  Transition name for enter/leave animations.
+</ParamField>
+
+<ParamField path="teleport" type="boolean" default="true">
+  Whether to teleport the scrim to the body element.
+</ParamField>
+
+<ParamField path="teleportTo" type="string | HTMLElement" default="'body'">
+  Target selector or element for teleport.
+</ParamField>
+
+### Slot Props
+
+```typescript
+interface ScrimSlotProps {
+  ticket: StackTicket
+  zIndex: number
+  isBlocking: boolean
+  dismiss: () => void
+}
+```
+
+<ParamField path="ticket" type="StackTicket">
+  The stack ticket for this scrim layer.
+</ParamField>
+
+<ParamField path="zIndex" type="number">
+  Z-index for this scrim layer (one below the overlay).
+</ParamField>
+
+<ParamField path="isBlocking" type="boolean">
+  Whether this ticket's overlay blocks scrim dismissal.
+</ParamField>
+
+<ParamField path="dismiss" type="() => void">
+  Function to dismiss this overlay (respects blocking state).
+</ParamField>
+
+## How It Works
+
+1. **Stack Integration**: Scrim subscribes to `useStack()` to get active overlays
+2. **Auto-render**: Renders one backdrop per `selectedItems` in the stack
+3. **Z-index**: Each scrim is positioned at `overlay.zIndex - 1`
+4. **Dismissal**: Clicking non-blocking scrims dismisses their overlay
+5. **Transitions**: Uses `<TransitionGroup>` for smooth enter/leave
+
+## Multiple Overlays
+
+With multiple overlays, Scrim automatically stacks:
+
+```vue
+<!-- First dialog opens -->
+<Scrim /> <!-- Renders 1 scrim at z-index 1999 -->
+
+<!-- Second dialog opens -->
+<Scrim /> <!-- Renders 2 scrims at z-index 1999, 2009 -->
+
+<!-- First dialog closes -->
+<Scrim /> <!-- Renders 1 scrim at z-index 2009 -->
+```
+
+<Tip>
+  The cumulative visual effect of multiple semi-transparent scrims creates natural depth perception for nested overlays.
+</Tip>
+
+## Accessibility
+
+- Scrims are purely visual and don't interfere with focus management
+- Click handlers respect blocking state
+- Z-index coordination ensures proper stacking order
+- Overlays handle their own ARIA attributes and focus trapping
+
+## TypeScript
+
+```typescript
+import type { ScrimProps, ScrimSlotProps } from '@vuetify/v0'
+```

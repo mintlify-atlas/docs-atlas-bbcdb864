@@ -1,0 +1,383 @@
+---
+title: useStack
+description: Overlay z-index stacking composable with automatic z-index management
+---
+
+Overlay z-index stacking with automatic z-index calculation, global top tracking, and auto-cleanup.
+
+## Features
+
+- Global reactive registry of active overlays
+- Automatic z-index calculation based on selection order
+- `globalTop` tracking - is this overlay topmost?
+- Manual select/unselect for explicit control
+- Auto-cleanup when registered within component setup
+- Blocking mode for critical dialogs
+
+## Installation
+
+```ts
+import { createStackPlugin } from '@vuetify/v0'
+
+const app = createApp(App)
+app.use(createStackPlugin({ 
+  baseZIndex: 2000,
+  increment: 10,
+}))
+```
+
+## Basic Usage
+
+```vue
+<script setup lang="ts">
+import { useStack } from '@vuetify/v0'
+import { ref, watch } from 'vue'
+
+const stack = useStack()
+const isOpen = ref(false)
+
+const ticket = stack.register({
+  onDismiss: () => { isOpen.value = false },
+})
+
+watch(isOpen, v => v ? ticket.select() : ticket.unselect())
+</script>
+
+<template>
+  <div>
+    <button @click="isOpen = true">Open Dialog</button>
+    
+    <div v-if="isOpen" :style="{ zIndex: ticket.zIndex.value }">
+      <p>Dialog content</p>
+      <button @click="ticket.dismiss()">Close</button>
+    </div>
+    
+    <div 
+      v-if="stack.isActive.value" 
+      class="scrim"
+      :style="{ zIndex: stack.scrimZIndex.value }"
+      @click="stack.top.value?.dismiss()"
+    />
+  </div>
+</template>
+```
+
+## API Reference
+
+### createStackPlugin()
+
+Creates a stack plugin.
+
+<ParamField path="options" type="StackPluginOptions">
+  Plugin configuration
+  
+  <ParamField path="baseZIndex" type="number" default="2000">
+    Base z-index when stack is empty. First overlay receives this z-index.
+  </ParamField>
+  
+  <ParamField path="increment" type="number" default="10">
+    Z-index increment between overlays
+    
+    Gap allows room for overlay-internal elements (dropdowns, tooltips within dialogs).
+  </ParamField>
+  
+  <ParamField path="namespace" type="string" default="'v0:stack'">
+    The namespace for the stack context
+  </ParamField>
+</ParamField>
+
+### StackContext
+
+<ResponseField name="size" type="number">
+  Number of registered overlays
+</ResponseField>
+
+<ResponseField name="isActive" type="Readonly<Ref<boolean>>">
+  Whether any overlays are selected (active)
+  
+  Use for conditional scrim rendering.
+</ResponseField>
+
+<ResponseField name="top" type="Readonly<Ref<StackTicket | undefined>>">
+  The topmost selected overlay ticket
+  
+  Access to the current top overlay for inspection.
+</ResponseField>
+
+<ResponseField name="scrimZIndex" type="Readonly<Ref<number>>">
+  Z-index for the scrim (one below top overlay)
+  
+  Position scrim behind the topmost overlay but above all others.
+</ResponseField>
+
+<ResponseField name="isBlocking" type="Readonly<Ref<boolean>>">
+  Whether the topmost overlay blocks scrim clicks
+  
+  When true, the topmost overlay has `blocking: true` and scrim clicks should be ignored.
+</ResponseField>
+
+<ResponseField name="register" type="(input?: Partial<StackTicketInput>) => StackTicket">
+  Register an overlay ticket
+  
+  When called within component setup, the ticket is automatically unregistered when the component unmounts.
+  
+  Example:
+  ```ts
+  const ticket = stack.register({
+    onDismiss: () => console.log('dismissed'),
+    blocking: false,
+  })
+  ```
+</ResponseField>
+
+<ResponseField name="unregister" type="(id: ID) => void">
+  Manually unregister an overlay
+</ResponseField>
+
+<ResponseField name="select" type="(id: ID) => void">
+  Activate an overlay
+</ResponseField>
+
+<ResponseField name="unselect" type="(id: ID) => void">
+  Deactivate an overlay
+</ResponseField>
+
+### StackTicket
+
+<ResponseField name="id" type="ID">
+  Unique identifier for this overlay
+</ResponseField>
+
+<ResponseField name="zIndex" type="ComputedRef<number>">
+  The calculated z-index for this overlay
+  
+  Automatically calculated based on selection order. First selected overlay gets baseZIndex, each subsequent adds increment.
+</ResponseField>
+
+<ResponseField name="globalTop" type="ComputedRef<boolean>">
+  Whether this overlay is the topmost in the global stack
+  
+  Useful for determining which overlay should handle global keyboard events (e.g., Escape key).
+</ResponseField>
+
+<ResponseField name="blocking" type="boolean">
+  Whether this overlay blocks scrim dismissal
+</ResponseField>
+
+<ResponseField name="onDismiss" type="() => void | undefined">
+  Callback invoked when the overlay should be dismissed
+</ResponseField>
+
+<ResponseField name="isSelected" type="Ref<boolean>">
+  Whether this overlay is currently active
+</ResponseField>
+
+<ResponseField name="select" type="() => void">
+  Activate this overlay
+</ResponseField>
+
+<ResponseField name="unselect" type="() => void">
+  Deactivate this overlay
+</ResponseField>
+
+<ResponseField name="toggle" type="() => void">
+  Toggle overlay active state
+</ResponseField>
+
+<ResponseField name="dismiss" type="() => void">
+  Dismiss this overlay
+  
+  If blocking is false, calls onDismiss callback and unselects.
+  If blocking is true, does nothing.
+</ResponseField>
+
+## Examples
+
+### Modal Dialog
+
+```vue
+<script setup lang="ts">
+import { useStack } from '@vuetify/v0'
+import { ref, watch } from 'vue'
+
+const stack = useStack()
+const isOpen = ref(false)
+
+const ticket = stack.register({
+  onDismiss: () => { isOpen.value = false },
+})
+
+watch(isOpen, v => v ? ticket.select() : ticket.unselect())
+</script>
+
+<template>
+  <div>
+    <button @click="isOpen = true">Open Modal</button>
+    
+    <Teleport to="body">
+      <div v-if="isOpen" class="modal" :style="{ zIndex: ticket.zIndex.value }">
+        <div class="modal-content">
+          <h2>Modal Title</h2>
+          <p>Modal content</p>
+          <button @click="ticket.dismiss()">Close</button>
+        </div>
+      </div>
+    </Teleport>
+  </div>
+</template>
+```
+
+### Global Scrim
+
+```vue
+<script setup lang="ts">
+import { useStack } from '@vuetify/v0'
+
+const stack = useStack()
+
+const handleScrimClick = () => {
+  if (!stack.isBlocking.value) {
+    stack.top.value?.dismiss()
+  }
+}
+</script>
+
+<template>
+  <Teleport to="body">
+    <div
+      v-if="stack.isActive.value"
+      class="scrim"
+      :style="{ zIndex: stack.scrimZIndex.value }"
+      @click="handleScrimClick"
+    />
+  </Teleport>
+</template>
+
+<style>
+.scrim {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+}
+</style>
+```
+
+### Blocking Dialog
+
+```vue
+<script setup lang="ts">
+import { useStack } from '@vuetify/v0'
+import { ref, watch } from 'vue'
+
+const stack = useStack()
+const isOpen = ref(false)
+
+const ticket = stack.register({
+  blocking: true, // Cannot dismiss with scrim click
+  onDismiss: () => { isOpen.value = false },
+})
+
+watch(isOpen, v => v ? ticket.select() : ticket.unselect())
+</script>
+
+<template>
+  <div>
+    <button @click="isOpen = true">Open Critical Dialog</button>
+    
+    <div v-if="isOpen" :style="{ zIndex: ticket.zIndex.value }">
+      <h2>Confirm Action</h2>
+      <p>This action cannot be undone.</p>
+      <button @click="ticket.unselect()">Cancel</button>
+      <button @click="handleConfirm">Confirm</button>
+    </div>
+  </div>
+</template>
+```
+
+### Multiple Overlays
+
+```vue
+<script setup lang="ts">
+import { useStack } from '@vuetify/v0'
+import { ref, watch } from 'vue'
+
+const stack = useStack()
+
+const dialog1Open = ref(false)
+const dialog2Open = ref(false)
+
+const ticket1 = stack.register({ onDismiss: () => { dialog1Open.value = false } })
+const ticket2 = stack.register({ onDismiss: () => { dialog2Open.value = false } })
+
+watch(dialog1Open, v => v ? ticket1.select() : ticket1.unselect())
+watch(dialog2Open, v => v ? ticket2.select() : ticket2.unselect())
+</script>
+
+<template>
+  <div>
+    <button @click="dialog1Open = true">Open Dialog 1</button>
+    <button @click="dialog2Open = true">Open Dialog 2</button>
+    
+    <div v-if="dialog1Open" :style="{ zIndex: ticket1.zIndex.value }">
+      <p>Dialog 1 (z-index: {{ ticket1.zIndex.value }})</p>
+      <p v-if="ticket1.globalTop.value">I'm on top!</p>
+      <button @click="ticket1.dismiss()">Close</button>
+    </div>
+    
+    <div v-if="dialog2Open" :style="{ zIndex: ticket2.zIndex.value }">
+      <p>Dialog 2 (z-index: {{ ticket2.zIndex.value }})</p>
+      <p v-if="ticket2.globalTop.value">I'm on top!</p>
+      <button @click="ticket2.dismiss()">Close</button>
+    </div>
+  </div>
+</template>
+```
+
+### Escape Key Handling
+
+```vue
+<script setup lang="ts">
+import { useStack } from '@vuetify/v0'
+import { onMounted, onUnmounted, ref, watch } from 'vue'
+
+const stack = useStack()
+const isOpen = ref(false)
+
+const ticket = stack.register({
+  onDismiss: () => { isOpen.value = false },
+})
+
+watch(isOpen, v => v ? ticket.select() : ticket.unselect())
+
+const handleEscape = (e: KeyboardEvent) => {
+  if (e.key === 'Escape' && ticket.globalTop.value) {
+    ticket.dismiss()
+  }
+}
+
+onMounted(() => {
+  window.addEventListener('keydown', handleEscape)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('keydown', handleEscape)
+})
+</script>
+```
+
+## Auto-Cleanup
+
+Tickets are automatically unregistered when the component unmounts:
+
+```vue
+<script setup lang="ts">
+import { useStack } from '@vuetify/v0'
+
+const stack = useStack()
+
+// Ticket is auto-cleaned up when component unmounts
+const ticket = stack.register({
+  onDismiss: () => { /* ... */ },
+})
+</script>
+```

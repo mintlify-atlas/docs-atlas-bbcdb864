@@ -1,0 +1,186 @@
+---
+title: Atom
+description: Polymorphic foundation component that can render as any HTML element
+---
+
+## Overview
+
+Atom is the lowest-level primitive in Vuetify Zero, providing polymorphic rendering with three modes: Element Mode (default), Renderless Mode, and Null Mode. It serves as the foundation for all other components that need polymorphic rendering capabilities.
+
+## Key Features
+
+- Polymorphic element rendering (div, button, span, etc.)
+- Self-closing tag detection (img, input, br, hr, etc.)
+- Automatic attribute forwarding to rendered element
+- Generic slot props typing for type-safe attribute passing
+- Template ref exposure for DOM element access
+- Renderless mode for maximum flexibility
+
+## Usage
+
+```vue
+<script lang="ts" setup>
+import { Atom } from '@vuetify/v0'
+
+function handleClick() {
+  console.log('clicked')
+}
+</script>
+
+<template>
+  <Atom as="button" @click="handleClick">
+    Click me
+  </Atom>
+</template>
+```
+
+## Props
+
+<ParamField path="as" type="DOMElement | null" default="'div'">
+  The HTML element to render as, or null for renderless mode
+</ParamField>
+
+<ParamField path="renderless" type="boolean" default="false">
+  When true, renders slot content directly without a wrapper element
+</ParamField>
+
+## Slots
+
+<ParamField path="default" type="(props: T) => any">
+  Default slot that receives all forwarded attributes as props
+</ParamField>
+
+## Exposed
+
+<ParamField path="element" type="TemplateRef<HTMLElement | null>">
+  Template ref to the rendered HTML element (null in renderless mode)
+</ParamField>
+
+## Examples
+
+<Tabs>
+  <Tab title="Basic">
+    ```vue
+    <template>
+      <!-- Renders as div by default -->
+      <Atom>Content</Atom>
+    </template>
+    ```
+  </Tab>
+
+  <Tab title="Custom Element">
+    ```vue
+    <template>
+      <!-- Renders as button -->
+      <Atom as="button" @click="handleClick">
+        Click me
+      </Atom>
+
+      <!-- Renders as span -->
+      <Atom as="span">
+        Span content
+      </Atom>
+    </template>
+    ```
+  </Tab>
+
+  <Tab title="Self-Closing Tags">
+    ```vue
+    <template>
+      <!-- Renders img without children -->
+      <Atom as="img" src="test.jpg" alt="Test" />
+
+      <!-- Renders input -->
+      <Atom as="input" type="text" placeholder="Enter text" />
+
+      <!-- Renders hr -->
+      <Atom as="hr" />
+    </template>
+    ```
+  </Tab>
+
+  <Tab title="Renderless Mode">
+    ```vue
+    <template>
+      <!-- Renders slot content directly without wrapper -->
+      <Atom renderless>
+        <div class="custom">Custom</div>
+      </Atom>
+
+      <!-- Equivalent to renderless -->
+      <Atom :as="null">
+        <span>Direct</span>
+      </Atom>
+    </template>
+    ```
+  </Tab>
+
+  <Tab title="Attribute Forwarding">
+    ```vue
+    <template>
+      <Atom
+        as="div"
+        class="custom-class"
+        id="custom-id"
+        data-test="value"
+        aria-label="Close"
+        @click="handleClick"
+      >
+        Content
+      </Atom>
+    </template>
+    ```
+  </Tab>
+
+  <Tab title="Slot Props">
+    ```vue
+    <script setup>
+    import { h } from 'vue'
+    import { Atom } from '@vuetify/v0'
+    </script>
+
+    <template>
+      <Atom
+        class="test-class"
+        id="test-id"
+      >
+        <template #default="props">
+          <span :class="props.class">Content</span>
+        </template>
+      </Atom>
+    </template>
+    ```
+  </Tab>
+</Tabs>
+
+## Accessibility
+
+Atom forwards all ARIA attributes to the rendered element:
+
+```vue
+<template>
+  <Atom
+    as="button"
+    aria-label="Close"
+    aria-pressed="true"
+  >
+    Close
+  </Atom>
+</template>
+```
+
+## SSR
+
+Atom is fully compatible with SSR and will render correctly on the server:
+
+```vue
+<template>
+  <!-- Renders on server -->
+  <Atom as="section" class="wrapper">
+    Content
+  </Atom>
+
+  <!-- Self-closing tags render on server -->
+  <Atom as="img" src="/test.png" alt="Test" />
+</template>
+```

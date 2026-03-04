@@ -1,0 +1,268 @@
+---
+title: useResizeObserver
+description: ResizeObserver composable with lifecycle management
+---
+
+## Overview
+
+ResizeObserver composable for detecting when an element's size changes. Perfect for responsive components and size-based rendering.
+
+## Features
+
+- ResizeObserver API wrapper
+- Pause/resume/stop functionality
+- Automatic cleanup on unmount
+- SSR-safe (checks SUPPORTS_OBSERVER)
+- Hydration-aware
+- Box model options (content-box/border-box)
+
+## Function Signature
+
+```ts
+function useResizeObserver(
+  target: MaybeElementRef,
+  callback: (entries: ResizeObserverEntry[]) => void,
+  options?: ResizeObserverOptions
+): UseResizeObserverReturn
+```
+
+## Parameters
+
+<ParamField path="target" type="MaybeElementRef">
+  The element to observe.
+</ParamField>
+
+<ParamField path="callback" type="(entries: ResizeObserverEntry[]) => void">
+  The callback to execute when the element's size changes.
+</ParamField>
+
+<ParamField path="options" type="ResizeObserverOptions">
+  <ParamField path="immediate" type="boolean" default="false">
+    Call the callback immediately with current size.
+  </ParamField>
+
+  <ParamField path="once" type="boolean" default="false">
+    Stop observing after first resize.
+  </ParamField>
+
+  <ParamField path="box" type="'content-box' | 'border-box'" default="'content-box'">
+    Which box model to observe.
+  </ParamField>
+</ParamField>
+
+## Return Value
+
+<ResponseField name="isActive" type="Readonly<Ref<boolean>>">
+  Whether the observer is currently active.
+</ResponseField>
+
+<ResponseField name="isPaused" type="Readonly<Ref<boolean>>">
+  Whether the observer is currently paused.
+</ResponseField>
+
+<ResponseField name="pause" type="() => void">
+  Pause observation.
+</ResponseField>
+
+<ResponseField name="resume" type="() => void">
+  Resume observation.
+</ResponseField>
+
+<ResponseField name="stop" type="() => void">
+  Stop observation and clean up.
+</ResponseField>
+
+## Examples
+
+### Basic usage
+
+```ts
+import { ref } from 'vue'
+import { useResizeObserver } from '@vuetify/v0'
+
+const el = ref<HTMLElement>()
+const width = ref(0)
+const height = ref(0)
+
+const { pause, resume, isPaused } = useResizeObserver(
+  el,
+  (entries) => {
+    const entry = entries[0]
+    if (entry) {
+      width.value = entry.contentRect.width
+      height.value = entry.contentRect.height
+    }
+  },
+  { immediate: true }
+)
+```
+
+### Responsive component
+
+```vue
+<script setup>
+import { ref, computed } from 'vue'
+import { useResizeObserver } from '@vuetify/v0'
+
+const containerRef = ref<HTMLElement>()
+const width = ref(0)
+
+useResizeObserver(
+  containerRef,
+  (entries) => {
+    width.value = entries[0]?.contentRect.width || 0
+  },
+  { immediate: true }
+)
+
+const columns = computed(() => {
+  if (width.value < 600) return 1
+  if (width.value < 900) return 2
+  return 3
+})
+</script>
+
+<template>
+  <div ref="containerRef" :class="`columns-${columns}`">
+    <!-- Content -->
+  </div>
+</template>
+```
+
+### Border-box sizing
+
+```ts
+useResizeObserver(
+  element,
+  (entries) => {
+    const { width, height } = entries[0]!.contentRect
+    console.log('Border box size:', width, height)
+  },
+  { box: 'border-box' }
+)
+```
+
+### Pause and resume
+
+```ts
+const { pause, resume, isPaused } = useResizeObserver(
+  element,
+  handleResize
+)
+
+// Pause during heavy operations
+pause()
+performExpensiveCalculation()
+resume()
+```
+
+### Once mode
+
+```ts
+// Get initial size only
+useResizeObserver(
+  element,
+  (entries) => {
+    const { width, height } = entries[0]!.contentRect
+    console.log('Initial size:', width, height)
+  },
+  { once: true, immediate: true }
+)
+```
+
+## Convenience Function: useElementSize
+
+```ts
+function useElementSize(
+  target: MaybeElementRef
+): UseElementSizeReturn
+```
+
+Returns reactive refs for element dimensions:
+
+<ResponseField name="width" type="Readonly<Ref<number>>">
+  The width of the element in pixels.
+</ResponseField>
+
+<ResponseField name="height" type="Readonly<Ref<number>>">
+  The height of the element in pixels.
+</ResponseField>
+
+### Example
+
+```ts
+import { ref, watchEffect } from 'vue'
+import { useElementSize } from '@vuetify/v0'
+
+const box = ref<HTMLElement>()
+const { width, height } = useElementSize(box)
+
+watchEffect(() => {
+  console.log('Box size:', width.value, 'x', height.value)
+})
+```
+
+### Responsive text sizing
+
+```vue
+<script setup>
+import { ref, computed } from 'vue'
+import { useElementSize } from '@vuetify/v0'
+
+const containerRef = ref<HTMLElement>()
+const { width } = useElementSize(containerRef)
+
+const fontSize = computed(() => {
+  return Math.max(12, Math.min(24, width.value / 20))
+})
+</script>
+
+<template>
+  <div ref="containerRef" :style="{ fontSize: `${fontSize}px` }">
+    Responsive text
+  </div>
+</template>
+```
+
+## Entry Properties
+
+<ResponseField name="contentRect" type="object">
+  The size and position of the element's content box.
+  
+  <ResponseField name="width" type="number">
+    Width in pixels.
+  </ResponseField>
+  
+  <ResponseField name="height" type="number">
+    Height in pixels.
+  </ResponseField>
+  
+  <ResponseField name="top" type="number">
+    Top position.
+  </ResponseField>
+  
+  <ResponseField name="left" type="number">
+    Left position.
+  </ResponseField>
+</ResponseField>
+
+<ResponseField name="target" type="Element">
+  The element being observed.
+</ResponseField>
+
+## Use Cases
+
+- **Responsive components**: Adjust layout based on container size
+- **Text sizing**: Scale text to fit container
+- **Chart rendering**: Update charts when container resizes
+- **Grid layouts**: Recalculate column count based on available space
+- **Canvas sizing**: Resize canvas to match container
+- **Virtual scrolling**: Adjust viewport calculations
+
+## Notes
+
+- Automatically stops observing when `once: true` and a resize occurs
+- Hydration-aware: defers setup until client-side hydration completes
+- SSR-safe: returns valid API with `isActive: false` when ResizeObserver is not supported
+- `immediate` option provides current size on first mount
+- `useElementSize` convenience function automatically uses `immediate: true`

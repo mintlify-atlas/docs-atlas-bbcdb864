@@ -1,0 +1,477 @@
+---
+title: Pagination
+description: Pagination controls with automatic responsive visible count
+---
+
+## Overview
+
+Pagination provides navigation controls for paginated data with automatic calculation of visible page buttons based on container width. It supports first/prev/next/last navigation and automatically disables buttons when appropriate.
+
+## Sub-Components
+
+- **Pagination.Root**: Container that manages pagination state
+- **Pagination.Item**: Individual page button
+- **Pagination.First**: Jump to first page
+- **Pagination.Prev**: Go to previous page
+- **Pagination.Next**: Go to next page
+- **Pagination.Last**: Jump to last page
+- **Pagination.Ellipsis**: Visual indicator for omitted pages
+- **Pagination.Status**: Screen reader announcements for page changes
+
+## Usage
+
+```vue
+<script lang="ts" setup>
+import { ref } from 'vue'
+import { Pagination } from '@vuetify/v0'
+
+const page = ref(1)
+</script>
+
+<template>
+  <Pagination.Root v-model="page" :size="100">
+    <Pagination.First />
+    <Pagination.Prev />
+
+    <template v-for="item in items" :key="item.value">
+      <Pagination.Item v-if="item.type === 'page'" :value="item.value" />
+      <Pagination.Ellipsis v-else />
+    </template>
+
+    <Pagination.Next />
+    <Pagination.Last />
+  </Pagination.Root>
+</template>
+```
+
+## Pagination.Root
+
+### Props
+
+<ParamField path="as" type="DOMElement | null" default="'nav'">
+  The HTML element to render as
+</ParamField>
+
+<ParamField path="namespace" type="string" default="'v0:pagination'">
+  Namespace for dependency injection
+</ParamField>
+
+<ParamField path="size" type="number" default="1">
+  Total number of items
+</ParamField>
+
+<ParamField path="totalVisible" type="number">
+  Number of visible page buttons. If undefined, auto-calculates based on container width
+</ParamField>
+
+<ParamField path="itemsPerPage" type="number" default="10">
+  Number of items per page
+</ParamField>
+
+<ParamField path="ellipsis" type="string | false" default="'...'">
+  Ellipsis character
+</ParamField>
+
+### Model
+
+<ParamField path="v-model" type="number" default="1">
+  Current page (1-indexed)
+</ParamField>
+
+### Slot Props
+
+<ParamField path="page" type="number">
+  Current page (1-indexed)
+</ParamField>
+
+<ParamField path="size" type="number">
+  Total number of items
+</ParamField>
+
+<ParamField path="pages" type="number">
+  Total number of pages
+</ParamField>
+
+<ParamField path="itemsPerPage" type="number">
+  Items per page
+</ParamField>
+
+<ParamField path="items" type="PaginationTicket[]">
+  Visible page items for rendering
+</ParamField>
+
+<ParamField path="pageStart" type="number">
+  Start index of items on current page (0-indexed)
+</ParamField>
+
+<ParamField path="pageStop" type="number">
+  End index of items on current page (exclusive)
+</ParamField>
+
+<ParamField path="isFirst" type="boolean">
+  Whether on first page
+</ParamField>
+
+<ParamField path="isLast" type="boolean">
+  Whether on last page
+</ParamField>
+
+<ParamField path="first" type="() => void">
+  Go to first page
+</ParamField>
+
+<ParamField path="last" type="() => void">
+  Go to last page
+</ParamField>
+
+<ParamField path="next" type="() => void">
+  Go to next page
+</ParamField>
+
+<ParamField path="prev" type="() => void">
+  Go to previous page
+</ParamField>
+
+<ParamField path="select" type="(page: number) => void">
+  Go to specific page
+</ParamField>
+
+## Pagination.Item
+
+### Props
+
+<ParamField path="as" type="DOMElement | null" default="'button'">
+  The HTML element to render as
+</ParamField>
+
+<ParamField path="value" type="number">
+  Page number this item represents
+</ParamField>
+
+### Slot Props
+
+<ParamField path="value" type="number">
+  Page number
+</ParamField>
+
+<ParamField path="isSelected" type="boolean">
+  Whether this page is currently selected
+</ParamField>
+
+<ParamField path="select" type="() => void">
+  Select this page
+</ParamField>
+
+<ParamField path="attrs" type="object">
+  Attributes including aria-label and aria-current
+</ParamField>
+
+## Pagination.First
+
+### Props
+
+<ParamField path="as" type="DOMElement | null" default="'button'">
+  The HTML element to render as
+</ParamField>
+
+### Slot Props
+
+<ParamField path="isDisabled" type="boolean">
+  Whether this button is disabled (on first page)
+</ParamField>
+
+<ParamField path="first" type="() => void">
+  Go to first page
+</ParamField>
+
+<ParamField path="attrs" type="object">
+  Attributes including data-disabled, aria-label, and type
+</ParamField>
+
+## Pagination.Prev
+
+### Props
+
+<ParamField path="as" type="DOMElement | null" default="'button'">
+  The HTML element to render as
+</ParamField>
+
+### Slot Props
+
+<ParamField path="isDisabled" type="boolean">
+  Whether this button is disabled (on first page)
+</ParamField>
+
+<ParamField path="prev" type="() => void">
+  Go to previous page
+</ParamField>
+
+<ParamField path="attrs" type="object">
+  Attributes including data-disabled, aria-label, and type
+</ParamField>
+
+## Pagination.Next
+
+### Props
+
+<ParamField path="as" type="DOMElement | null" default="'button'">
+  The HTML element to render as
+</ParamField>
+
+### Slot Props
+
+<ParamField path="isDisabled" type="boolean">
+  Whether this button is disabled (on last page)
+</ParamField>
+
+<ParamField path="next" type="() => void">
+  Go to next page
+</ParamField>
+
+<ParamField path="attrs" type="object">
+  Attributes including data-disabled, aria-label, and type
+</ParamField>
+
+## Pagination.Last
+
+### Props
+
+<ParamField path="as" type="DOMElement | null" default="'button'">
+  The HTML element to render as
+</ParamField>
+
+### Slot Props
+
+<ParamField path="isDisabled" type="boolean">
+  Whether this button is disabled (on last page)
+</ParamField>
+
+<ParamField path="last" type="() => void">
+  Go to last page
+</ParamField>
+
+<ParamField path="attrs" type="object">
+  Attributes including data-disabled, aria-label, and type
+</ParamField>
+
+## Pagination.Ellipsis
+
+### Props
+
+<ParamField path="as" type="DOMElement | null" default="'span'">
+  The HTML element to render as
+</ParamField>
+
+<ParamField path="ellipsis" type="string">
+  Override ellipsis character from Root
+</ParamField>
+
+### Slot Props
+
+<ParamField path="ellipsis" type="string">
+  The ellipsis character to display
+</ParamField>
+
+## Pagination.Status
+
+### Props
+
+<ParamField path="as" type="DOMElement | null" default="'div'">
+  The HTML element to render as
+</ParamField>
+
+### Slot Props
+
+<ParamField path="message" type="string">
+  Screen reader announcement message
+</ParamField>
+
+## Examples
+
+<Tabs>
+  <Tab title="Basic">
+    ```vue
+    <script setup>
+    import { ref } from 'vue'
+    import { Pagination } from '@vuetify/v0'
+
+    const page = ref(1)
+    </script>
+
+    <template>
+      <Pagination.Root v-model="page" :size="100">
+        <Pagination.Prev>Prev</Pagination.Prev>
+
+        <template v-for="item in items" :key="item.value">
+          <Pagination.Item v-if="item.type === 'page'" :value="item.value">
+            {{ item.value }}
+          </Pagination.Item>
+          <Pagination.Ellipsis v-else />
+        </template>
+
+        <Pagination.Next>Next</Pagination.Next>
+      </Pagination.Root>
+    </template>
+    ```
+  </Tab>
+
+  <Tab title="With All Controls">
+    ```vue
+    <script setup>
+    import { ref } from 'vue'
+    import { Pagination } from '@vuetify/v0'
+
+    const page = ref(1)
+    </script>
+
+    <template>
+      <Pagination.Root v-model="page" :size="100">
+        <Pagination.First>First</Pagination.First>
+        <Pagination.Prev>Prev</Pagination.Prev>
+
+        <template v-for="item in items" :key="item.value">
+          <Pagination.Item v-if="item.type === 'page'" :value="item.value">
+            {{ item.value }}
+          </Pagination.Item>
+          <Pagination.Ellipsis v-else />
+        </template>
+
+        <Pagination.Next>Next</Pagination.Next>
+        <Pagination.Last>Last</Pagination.Last>
+      </Pagination.Root>
+    </template>
+    ```
+  </Tab>
+
+  <Tab title="With Slot Props">
+    ```vue
+    <script setup>
+    import { ref } from 'vue'
+    import { Pagination } from '@vuetify/v0'
+
+    const page = ref(1)
+    </script>
+
+    <template>
+      <Pagination.Root v-model="page" :size="100">
+        <Pagination.First v-slot="{ isDisabled }">
+          <span :class="{ 'opacity-50': isDisabled }">«</span>
+        </Pagination.First>
+
+        <Pagination.Prev v-slot="{ isDisabled }">
+          <span :class="{ 'opacity-50': isDisabled }">‹</span>
+        </Pagination.Prev>
+
+        <template v-for="item in items" :key="item.value">
+          <Pagination.Item
+            v-if="item.type === 'page'"
+            :value="item.value"
+            v-slot="{ isSelected }"
+          >
+            <span :class="{ 'font-bold': isSelected }">{{ item.value }}</span>
+          </Pagination.Item>
+          <Pagination.Ellipsis v-else />
+        </template>
+
+        <Pagination.Next v-slot="{ isDisabled }">
+          <span :class="{ 'opacity-50': isDisabled }">›</span>
+        </Pagination.Next>
+
+        <Pagination.Last v-slot="{ isDisabled }">
+          <span :class="{ 'opacity-50': isDisabled }">»</span>
+        </Pagination.Last>
+      </Pagination.Root>
+    </template>
+    ```
+  </Tab>
+
+  <Tab title="With Data Attributes">
+    ```vue
+    <script setup>
+    import { ref } from 'vue'
+    import { Pagination } from '@vuetify/v0'
+
+    const page = ref(1)
+    </script>
+
+    <template>
+      <Pagination.Root v-model="page" :size="100">
+        <Pagination.First class="data-[disabled]:opacity-50">
+          First
+        </Pagination.First>
+
+        <Pagination.Prev class="data-[disabled]:opacity-50">
+          Prev
+        </Pagination.Prev>
+
+        <template v-for="item in items" :key="item.value">
+          <Pagination.Item
+            v-if="item.type === 'page'"
+            :value="item.value"
+            class="data-[selected]:font-bold"
+          >
+            {{ item.value }}
+          </Pagination.Item>
+          <Pagination.Ellipsis v-else />
+        </template>
+
+        <Pagination.Next class="data-[disabled]:opacity-50">
+          Next
+        </Pagination.Next>
+
+        <Pagination.Last class="data-[disabled]:opacity-50">
+          Last
+        </Pagination.Last>
+      </Pagination.Root>
+    </template>
+    ```
+  </Tab>
+
+  <Tab title="With Status">
+    ```vue
+    <script setup>
+    import { ref } from 'vue'
+    import { Pagination } from '@vuetify/v0'
+
+    const page = ref(1)
+    </script>
+
+    <template>
+      <Pagination.Root v-model="page" :size="100">
+        <Pagination.Status class="sr-only" />
+
+        <Pagination.First>First</Pagination.First>
+        <Pagination.Prev>Prev</Pagination.Prev>
+
+        <template v-for="item in items" :key="item.value">
+          <Pagination.Item v-if="item.type === 'page'" :value="item.value">
+            {{ item.value }}
+          </Pagination.Item>
+          <Pagination.Ellipsis v-else />
+        </template>
+
+        <Pagination.Next>Next</Pagination.Next>
+        <Pagination.Last>Last</Pagination.Last>
+      </Pagination.Root>
+    </template>
+    ```
+  </Tab>
+</Tabs>
+
+## Accessibility
+
+- Root renders as `<nav>` by default with `aria-label="Pagination"`
+- Items have `aria-label` describing the page number
+- Current page has `aria-current="page"`
+- Navigation buttons have descriptive `aria-label` attributes
+- Disabled buttons have `data-disabled` attribute
+- Status component provides live region for screen reader announcements
+
+```vue
+<template>
+  <Pagination.Root v-model="page" :size="100">
+    <Pagination.Status class="sr-only" />
+    <!-- pagination items -->
+  </Pagination.Root>
+</template>
+```

@@ -1,0 +1,386 @@
+---
+title: Server Adapter
+description: Server-side data table adapter for external data processing
+---
+
+# Server Adapter
+
+The `ServerAdapter` delegates all data processing (filtering, sorting, pagination) to an external API. The adapter manages pagination controls and loading states while you handle the data fetching.
+
+## Import
+
+```typescript
+import { ServerAdapter } from '@vuetify/v0/data-table/adapters/server'
+```
+
+## Features
+
+- Server-side filtering, sorting, and pagination
+- Loading and error state management
+- Automatic page reset on filter/sort changes
+- Reactive total count for pagination
+- Integrates with any fetch library
+
+## Basic Usage
+
+```typescript
+import { createDataTable } from '@vuetify/v0/data-table'
+import { ServerAdapter } from '@vuetify/v0/data-table/adapters/server'
+import { ref, watch } from 'vue'
+
+const items = ref([])
+const total = ref(0)
+const loading = ref(false)
+const error = ref(null)
+
+const table = createDataTable({
+  items,
+  adapter: new ServerAdapter({ total, loading, error }),
+  columns: [
+    { key: 'name', title: 'Name', sortable: true },
+    { key: 'email', title: 'Email', sortable: true }
+  ]
+})
+
+// Watch for changes and fetch data
+watch(
+  [table.search, table.sort.sortBy, table.pagination.page],
+  async () => {
+    loading.value = true
+    try {
+      const response = await fetch('/api/users?' + new URLSearchParams({
+        search: table.search.value,
+        sortBy: JSON.stringify(table.sort.sortBy.value),
+        page: String(table.pagination.page.value),
+        perPage: String(table.pagination.itemsPerPage.value)
+      }))
+      const data = await response.json()
+      items.value = data.items
+      total.value = data.total
+    } catch (e) {
+      error.value = e
+    } finally {
+      loading.value = false
+    }
+  },
+  { immediate: true }
+)
+```
+
+## With Composables
+
+### Using `useFetch`
+
+```typescript
+import { useFetch } from '@vueuse/core'
+import { computed, toRef } from 'vue'
+
+const table = createDataTable({
+  items: [],
+  adapter: new ServerAdapter({ total: 0 }),
+  columns: [
+    { key: 'name', sortable: true },
+    { key: 'email', sortable: true }
+  ]
+})
+
+const url = computed(() => {
+  const params = new URLSearchParams({
+    search: table.search.value,
+    sortBy: JSON.stringify(table.sort.sortBy.value),
+    page: String(table.pagination.page.value),
+    perPage: String(table.pagination.itemsPerPage.value)
+  })
+  return `/api/users?${params}`
+})
+
+const { data, isFetching, error } = useFetch(url, {
+  refetch: true
+}).get().json()
+
+// Update adapter with reactive data
+watch(data, (newData) => {
+  if (newData) {
+    table.items.value = newData.items
+    // Update total dynamically
+    const adapter = table.adapter as ServerAdapter<User>
+    adapter.options.total = newData.total
+  }
+})
+
+const loading = toRef(isFetching)
+```
+
+### Using TanStack Query
+
+```typescript
+import { useQuery } from '@tanstack/vue-query'
+import { computed } from 'vue'
+
+const table = createDataTable({
+  items: [],
+  adapter: new ServerAdapter({ total: 0 })
+})
+
+const queryKey = computed(() => ([
+  'users',
+  table.search.value,
+  table.sort.sortBy.value,
+  table.pagination.page.value,
+  table.pagination.itemsPerPage.value
+]))
+
+const { data, isLoading, error } = useQuery({
+  queryKey,
+  queryFn: async () => {
+    const params = new URLSearchParams({
+      search: table.search.value,
+      sortBy: JSON.stringify(table.sort.sortBy.value),
+      page: String(table.pagination.page.value),
+      perPage: String(table.pagination.itemsPerPage.value)
+    })
+    const response = await fetch(`/api/users?${params}`)
+    return response.json()
+  }
+})
+
+// Sync data with table
+watch(data, (newData) => {
+  if (newData) {
+    table.items.value = newData.items
+    // Update total count
+  }
+})
+```
+
+## Constructor Options
+
+```typescript
+interface ServerAdapterOptions {
+  /** Total number of items on the server (for pagination calculation) */
+  total: MaybeRefOrGetter<number>
+  /** Loading state (e.g., from useFetch) */
+  loading?: MaybeRefOrGetter<boolean>
+  /** Error state from API */
+  error?: MaybeRefOrGetter<Error | null>
+}
+
+const adapter = new ServerAdapter({
+  total: ref(0),
+  loading: ref(false),
+  error: ref(null)
+})
+```
+
+## Pagination
+
+The adapter manages pagination based on the server-provided total:
+
+```typescript
+const total = ref(1250)
+const adapter = new ServerAdapter({ total })
+
+const table = createDataTable({
+  items: currentPageItems,
+  adapter,
+  pagination: {
+    itemsPerPage: 25,
+    page: 1
+  }
+})
+
+// Adapter calculates:
+table.pagination.pageCount.value // 50 pages (1250 / 25)
+table.total.value                // 1250 (from adapter)
+
+// Update total dynamically
+total.value = 1300
+// pageCount automatically recalculates to 52
+```
+
+## Loading States
+
+```typescript
+const loading = ref(false)
+const adapter = new ServerAdapter({ total: 100, loading })
+
+const table = createDataTable({
+  items,
+  adapter
+})
+
+// In template
+<template>
+  <div v-if="table.loading.value">Loading...</div>
+  <DataTable v-else :items="table.items.value" />
+</template>
+```
+
+## Error Handling
+
+```typescript
+const error = ref<Error | null>(null)
+const adapter = new ServerAdapter({ total: 100, error })
+
+const table = createDataTable({
+  items,
+  adapter
+})
+
+watch([table.search, table.pagination.page], async () => {
+  try {
+    const data = await fetchData()
+    items.value = data.items
+    error.value = null
+  } catch (e) {
+    error.value = e as Error
+  }
+})
+
+// In template
+<template>
+  <div v-if="table.error.value" class="error">
+    {{ table.error.value.message }}
+  </div>
+</template>
+```
+
+## API Response Format
+
+The server should return data in this format:
+
+```typescript
+interface ServerResponse<T> {
+  items: T[]          // Current page items
+  total: number       // Total count for pagination
+  page?: number       // Current page (optional)
+  perPage?: number    // Items per page (optional)
+}
+```
+
+Example API endpoint:
+
+```typescript
+// API: GET /api/users?search=john&sortBy=[{"key":"name","direction":"asc"}]&page=2&perPage=25
+{
+  "items": [
+    { "id": 26, "name": "John Doe", "email": "john@example.com" },
+    // ... 24 more items
+  ],
+  "total": 1250,
+  "page": 2,
+  "perPage": 25
+}
+```
+
+## Sorting
+
+```typescript
+const table = createDataTable({
+  items,
+  adapter: new ServerAdapter({ total }),
+  columns: [
+    { key: 'name', sortable: true },
+    { key: 'createdAt', sortable: true }
+  ]
+})
+
+// Watch sort changes
+watch(table.sort.sortBy, (sortBy) => {
+  // sortBy: [{ key: 'name', direction: 'asc' }]
+  // Send to server
+})
+```
+
+## Searching
+
+```typescript
+const table = createDataTable({
+  items,
+  adapter: new ServerAdapter({ total }),
+  search: ref('')
+})
+
+// Watch search changes
+watch(table.search, (query) => {
+  // Debounce and send to server
+})
+```
+
+## TypeScript
+
+```typescript
+import type { ServerAdapterOptions } from '@vuetify/v0/data-table/adapters/server'
+
+interface User {
+  id: number
+  name: string
+  email: string
+}
+
+const total = ref(0)
+const adapter = new ServerAdapter<User>({ total })
+
+const table = createDataTable<User>({
+  items: ref<User[]>([]),
+  adapter
+})
+
+// Fully typed
+table.items.value // readonly User[]
+```
+
+<Warning>
+The `ServerAdapter` does **not** perform any filtering, sorting, or slicing. You must implement these operations server-side and return pre-processed data.
+</Warning>
+
+## Reset on Changes
+
+The adapter automatically resets to page 1 when search or sort changes:
+
+```typescript
+table.pagination.page.value // 5
+table.search.value = 'new query'
+// Automatically resets to page 1
+table.pagination.page.value // 1
+```
+
+## API Reference
+
+### Constructor
+
+```typescript
+class ServerAdapter<T extends Record<string, unknown>>
+  implements DataTableAdapterInterface<T>
+
+constructor(options: ServerAdapterOptions)
+```
+
+### Options
+
+| Option | Type | Required | Description |
+|--------|------|----------|-------------|
+| `total` | `MaybeRefOrGetter<number>` | Yes | Total items on server |
+| `loading` | `MaybeRefOrGetter<boolean>` | No | Loading state |
+| `error` | `MaybeRefOrGetter<Error \| null>` | No | Error state |
+
+### Return Value
+
+```typescript
+interface DataTableAdapterResult<T> {
+  allItems: Readonly<Ref<readonly T[]>>       // Same as items
+  filteredItems: Readonly<Ref<readonly T[]>>  // Same as items
+  sortedItems: Readonly<Ref<readonly T[]>>    // Same as items
+  items: Readonly<Ref<readonly T[]>>          // Server-provided items
+  pagination: PaginationContext               // Pagination controls
+  total: Readonly<Ref<number>>                // Server-provided total
+  loading?: Readonly<Ref<boolean>>            // Loading state
+  error?: Readonly<Ref<Error | null>>         // Error state
+}
+```
+
+## See Also
+
+- [Client Adapter](/adapters/data-table-client) - Client-side processing
+- [Virtual Adapter](/adapters/data-table-virtual) - Virtual scrolling
+- [createDataTable](/composables/create-data-table) - Data table composable

@@ -1,0 +1,238 @@
+---
+title: useMediaQuery
+description: Reactive media query composable with automatic cleanup
+---
+
+## Overview
+
+Reactive media query composable with automatic cleanup. Integrates with window.matchMedia for responsive conditionals.
+
+## Features
+
+- Window matchMedia integration
+- Reactive query string support
+- SSR-safe (returns false on server)
+- Hydration-aware (defers client updates until hydrated)
+- Automatic listener cleanup on scope disposal
+- Supports both static and dynamic queries
+
+## Function Signature
+
+```ts
+function useMediaQuery(
+  query: MaybeRefOrGetter<string>
+): MediaQueryContext
+```
+
+## Parameters
+
+<ParamField path="query" type="MaybeRefOrGetter<string>">
+  CSS media query string (can be reactive).
+</ParamField>
+
+## Return Value
+
+<ResponseField name="matches" type="Readonly<ShallowRef<boolean>>">
+  Whether the media query currently matches.
+</ResponseField>
+
+<ResponseField name="query" type="ComputedRef<string>">
+  The current media query string.
+</ResponseField>
+
+<ResponseField name="mediaQueryList" type="Readonly<ShallowRef<MediaQueryList | null>>">
+  The underlying MediaQueryList (null on server).
+</ResponseField>
+
+<ResponseField name="stop" type="() => void">
+  Stop listening and clean up.
+</ResponseField>
+
+## Examples
+
+### Static query
+
+```ts
+import { useMediaQuery } from '@vuetify/v0'
+
+const { matches } = useMediaQuery('(prefers-color-scheme: dark)')
+
+watchEffect(() => {
+  console.log('Dark mode:', matches.value)
+})
+```
+
+### Dynamic query
+
+```ts
+const minWidth = ref(768)
+const { matches } = useMediaQuery(() => `(min-width: ${minWidth.value}px)`)
+```
+
+### Manual cleanup
+
+```ts
+const { matches, stop } = useMediaQuery('(hover: hover)')
+
+// Remove listener early
+stop()
+```
+
+### Responsive layout
+
+```ts
+const isMobile = useMediaQuery('(max-width: 768px)')
+const isTablet = useMediaQuery('(min-width: 769px) and (max-width: 1024px)')
+const isDesktop = useMediaQuery('(min-width: 1025px)')
+```
+
+### Portrait orientation
+
+```ts
+const isPortrait = useMediaQuery('(orientation: portrait)')
+```
+
+### Hover capability
+
+```ts
+const canHover = useMediaQuery('(hover: hover)')
+```
+
+### Conditional component rendering
+
+```vue
+<script setup>
+import { useMediaQuery } from '@vuetify/v0'
+
+const isMobile = useMediaQuery('(max-width: 768px)')
+</script>
+
+<template>
+  <MobileNav v-if="isMobile.matches.value" />
+  <DesktopNav v-else />
+</template>
+```
+
+## Convenience Functions
+
+### usePrefersDark
+
+```ts
+function usePrefersDark(): MediaQueryContext
+```
+
+Check if the user prefers dark color scheme.
+
+```ts
+import { usePrefersDark } from '@vuetify/v0'
+
+const { matches: prefersDark } = usePrefersDark()
+
+watch(prefersDark, (dark) => {
+  document.body.classList.toggle('dark', dark)
+})
+```
+
+### usePrefersReducedMotion
+
+```ts
+function usePrefersReducedMotion(): MediaQueryContext
+```
+
+Check if the user prefers reduced motion.
+
+```ts
+import { usePrefersReducedMotion } from '@vuetify/v0'
+
+const { matches: prefersReducedMotion } = usePrefersReducedMotion()
+
+const transitionDuration = computed(() => 
+  prefersReducedMotion.value ? 0 : 300
+)
+```
+
+### usePrefersContrast
+
+```ts
+function usePrefersContrast(): MediaQueryContext
+```
+
+Check if the user prefers more contrast.
+
+```ts
+import { usePrefersContrast } from '@vuetify/v0'
+
+const { matches: prefersContrast } = usePrefersContrast()
+
+const contrastClass = computed(() => 
+  prefersContrast.value ? 'high-contrast' : ''
+)
+```
+
+## Common Media Queries
+
+### Screen Size
+
+```ts
+// Mobile
+useMediaQuery('(max-width: 768px)')
+
+// Tablet
+useMediaQuery('(min-width: 769px) and (max-width: 1024px)')
+
+// Desktop
+useMediaQuery('(min-width: 1025px)')
+```
+
+### Orientation
+
+```ts
+// Portrait
+useMediaQuery('(orientation: portrait)')
+
+// Landscape
+useMediaQuery('(orientation: landscape)')
+```
+
+### Display Features
+
+```ts
+// High DPI screens
+useMediaQuery('(min-resolution: 2dppx)')
+
+// Touch capability
+useMediaQuery('(hover: none) and (pointer: coarse)')
+
+// Hover capability
+useMediaQuery('(hover: hover)')
+```
+
+### User Preferences
+
+```ts
+// Dark mode
+useMediaQuery('(prefers-color-scheme: dark)')
+
+// Light mode
+useMediaQuery('(prefers-color-scheme: light)')
+
+// Reduced motion
+useMediaQuery('(prefers-reduced-motion: reduce)')
+
+// High contrast
+useMediaQuery('(prefers-contrast: more)')
+```
+
+## SSR Behavior
+
+- During SSR, `matches` is always `false`
+- `mediaQueryList` is `null` on the server
+- Updates are deferred until client-side hydration completes
+- Query changes during hydration are queued and applied after hydration
+
+## Notes
+
+- Automatically removes event listeners on scope disposal
+- Reactive query changes are automatically handled
+- SSR-safe: returns false during server-side rendering
+- Hydration-aware: prevents SSR mismatch by deferring updates

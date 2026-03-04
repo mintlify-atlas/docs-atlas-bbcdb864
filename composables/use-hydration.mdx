@@ -1,0 +1,234 @@
+---
+title: useHydration
+description: SSR hydration state management composable for hydration-safe rendering
+---
+
+SSR hydration state detection for components that need to behave differently during SSR vs client-side rendering.
+
+## Features
+
+- Hydration state detection (browser vs SSR)
+- Root component detection
+- Readonly hydration state refs
+- Plugin installation support
+- Settled state tracking (after nextTick post-hydration)
+
+## Installation
+
+```ts
+import { createHydrationPlugin } from '@vuetify/v0'
+
+const app = createApp(App)
+app.use(createHydrationPlugin())
+```
+
+## Basic Usage
+
+```vue
+<script setup lang="ts">
+import { useHydration } from '@vuetify/v0'
+
+const hydration = useHydration()
+
+const showContent = computed(() => 
+  hydration.isHydrated.value
+)
+</script>
+
+<template>
+  <div>
+    <p v-if="!showContent">Loading...</p>
+    <p v-else>Content is hydrated!</p>
+  </div>
+</template>
+```
+
+## API Reference
+
+### createHydration()
+
+Creates a hydration instance.
+
+**Returns:** `HydrationContext`
+
+### HydrationContext
+
+<ResponseField name="isHydrated" type="Readonly<ShallowRef<boolean>>">
+  True when root component has mounted (hydration complete)
+  
+  Initially `false` during SSR and before first mount.
+  Set to `true` when the root component mounts.
+</ResponseField>
+
+<ResponseField name="isSettled" type="Readonly<ShallowRef<boolean>>">
+  True after first tick post-hydration
+  
+  Safe for animations and transitions after state restoration.
+  Set to `true` after `nextTick()` following hydration.
+</ResponseField>
+
+<ResponseField name="hydrate" type="() => void">
+  Mark hydration as complete
+  
+  Automatically called by the plugin when root component mounts.
+  Rarely needed to call manually.
+</ResponseField>
+
+<ResponseField name="settle" type="() => void">
+  Mark as settled
+  
+  Automatically called after `nextTick()` post-hydration.
+  Rarely needed to call manually.
+</ResponseField>
+
+## Use Cases
+
+### Conditional Client-Only Rendering
+
+```vue
+<script setup lang="ts">
+import { useHydration } from '@vuetify/v0'
+
+const hydration = useHydration()
+</script>
+
+<template>
+  <div>
+    <!-- Always rendered -->
+    <p>Server and client content</p>
+    
+    <!-- Only rendered after hydration -->
+    <ClientOnly v-if="hydration.isHydrated.value">
+      <InteractiveComponent />
+    </ClientOnly>
+  </div>
+</template>
+```
+
+### Animation After Hydration
+
+```vue
+<script setup lang="ts">
+import { useHydration } from '@vuetify/v0'
+import { watch } from 'vue'
+
+const hydration = useHydration()
+
+watch(() => hydration.isSettled.value, (settled) => {
+  if (settled) {
+    // Safe to start animations now
+    startAnimations()
+  }
+})
+</script>
+```
+
+### Conditional Logic Based on Hydration
+
+```ts
+import { useHydration } from '@vuetify/v0'
+
+const hydration = useHydration()
+
+if (hydration.isHydrated.value) {
+  // Client-side only logic
+  setupClientFeatures()
+} else {
+  // SSR or pre-hydration logic
+  setupSSRFeatures()
+}
+```
+
+## Integration with Other Composables
+
+### With useBreakpoints
+
+```vue
+<script setup lang="ts">
+import { useHydration, useBreakpoints } from '@vuetify/v0'
+import { watch } from 'vue'
+
+const hydration = useHydration()
+const breakpoints = useBreakpoints()
+
+watch(() => hydration.isHydrated.value, (hydrated) => {
+  if (hydrated) {
+    // Breakpoints are now reliable
+    console.log('Current breakpoint:', breakpoints.name.value)
+  }
+})
+</script>
+```
+
+### With Client-Only Components
+
+```vue
+<script setup lang="ts">
+import { useHydration } from '@vuetify/v0'
+import { defineAsyncComponent } from 'vue'
+
+const hydration = useHydration()
+
+const HeavyComponent = defineAsyncComponent(() => 
+  import('./HeavyComponent.vue')
+)
+</script>
+
+<template>
+  <div>
+    <component 
+      v-if="hydration.isSettled.value" 
+      :is="HeavyComponent" 
+    />
+  </div>
+</template>
+```
+
+## SSR Safety
+
+The composable is SSR-safe and will work correctly in both server and client environments:
+
+```ts
+import { useHydration } from '@vuetify/v0'
+
+// During SSR
+const hydration = useHydration()
+console.log(hydration.isHydrated.value) // false
+console.log(hydration.isSettled.value) // false
+
+// After hydration on client
+console.log(hydration.isHydrated.value) // true
+console.log(hydration.isSettled.value) // true (after nextTick)
+```
+
+## Advanced Usage
+
+### Custom Hydration Context
+
+```ts
+import { createHydrationContext } from '@vuetify/v0'
+
+const [useAppHydration, provideAppHydration] = createHydrationContext({
+  namespace: 'app:hydration',
+})
+
+// In root component
+provideAppHydration()
+
+// In child components
+const hydration = useAppHydration()
+```
+
+### Manual Control
+
+```ts
+import { createHydration } from '@vuetify/v0'
+
+const hydration = createHydration()
+
+// Manually mark as hydrated
+hydration.hydrate()
+
+// Manually mark as settled
+hydration.settle()
+```

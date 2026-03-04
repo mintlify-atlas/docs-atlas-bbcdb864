@@ -1,0 +1,727 @@
+---
+title: Headless Components
+description: Understanding headless components in Vuetify Zero - what they are, why they matter, and how to use them to build fully customized, accessible UI.
+---
+
+# Headless Components
+
+Headless components provide the logic, state management, and accessibility features of UI components without imposing any styling or markup structure. You have complete control over how they look.
+
+## What Are Headless Components?
+
+Headless components separate **behavior** from **presentation**:
+
+<Tabs items={["Traditional", "Headless"]}>
+  <Tab value="Traditional">
+    Traditional UI components bundle everything together:
+    
+    ```vue
+    <!-- You get the logic, markup, and styles all at once -->
+    <VButton color="primary" size="large">
+      Click me
+    </VButton>
+    
+    <!-- Output: Pre-styled button with specific classes -->
+    <button class="v-btn v-btn--primary v-btn--large">
+      Click me
+    </button>
+    ```
+    
+    Customization requires overriding styles or using limited prop APIs.
+  </Tab>
+  
+  <Tab value="Headless">
+    Headless components provide only logic via slots:
+    
+    ```vue
+    <!-- You provide the markup and styles -->
+    <Selection.Item value="item-1" v-slot="{ attrs, isSelected, toggle }">
+      <button 
+        v-bind="attrs" 
+        :class="isSelected ? 'my-active' : 'my-inactive'"
+        @click="toggle"
+      >
+        Click me
+      </button>
+    </Selection.Item>
+    
+    <!-- Output: Your markup with behavior attributes -->
+    <button 
+      role="option"
+      aria-selected="false"
+      data-selected="false"
+      class="my-inactive"
+    >
+      Click me
+    </button>
+    ```
+    
+    You have complete control over markup and styling.
+  </Tab>
+</Tabs>
+
+## Benefits
+
+### 1. Complete Design Freedom
+
+No CSS to override, no `!important` battles:
+
+```vue
+<script setup lang="ts">
+  import { Tabs } from '@vuetify/v0/components'
+</script>
+
+<template>
+  <Tabs.Root>
+    <!-- Your design system, your classes -->
+    <Tabs.List class="flex gap-4 border-b border-gray-200">
+      <Tabs.Item 
+        value="home" 
+        v-slot="{ attrs, isSelected }"
+      >
+        <button
+          v-bind="attrs"
+          :class="[
+            'px-4 py-2 font-medium transition-colors',
+            isSelected 
+              ? 'text-blue-600 border-b-2 border-blue-600' 
+              : 'text-gray-600 hover:text-gray-900'
+          ]"
+        >
+          Home
+        </button>
+      </Tabs.Item>
+    </Tabs.List>
+  </Tabs.Root>
+</template>
+```
+
+### 2. Built-in Accessibility
+
+All ARIA attributes, keyboard navigation, and focus management are handled:
+
+```vue
+<Tabs.Item value="home" v-slot="{ attrs }">
+  <button v-bind="attrs">
+    Home
+  </button>
+</Tabs.Item>
+
+<!-- Renders with proper ARIA: -->
+<button
+  role="tab"
+  aria-selected="true"
+  aria-controls="panel-home"
+  tabindex="0"
+>
+  Home
+</button>
+```
+
+<Info>
+  Always spread `v-bind="attrs"` onto your elements. This is where all accessibility attributes live.
+</Info>
+
+### 3. Framework Flexibility
+
+Use any styling approach:
+
+<Tabs items={["Tailwind", "UnoCSS", "CSS Modules", "Styled Components"]}>
+  <Tab value="Tailwind">
+    ```vue
+    <Checkbox.Root v-slot="{ attrs, isSelected }">
+      <div class="flex items-center space-x-2">
+        <div 
+          v-bind="attrs"
+          :class="[
+            'w-5 h-5 border-2 rounded',
+            isSelected ? 'bg-blue-500 border-blue-500' : 'border-gray-300'
+          ]"
+        />
+        <label class="text-sm font-medium">Accept terms</label>
+      </div>
+    </Checkbox.Root>
+    ```
+  </Tab>
+  
+  <Tab value="UnoCSS">
+    ```vue
+    <Checkbox.Root v-slot="{ attrs, isSelected }">
+      <div class="flex items-center gap-2">
+        <div 
+          v-bind="attrs"
+          :class="[
+            'w-5 h-5 border-2 rounded',
+            isSelected ? 'bg-primary border-primary' : 'border-base'
+          ]"
+        />
+        <label class="text-sm font-medium">Accept terms</label>
+      </div>
+    </Checkbox.Root>
+    ```
+  </Tab>
+  
+  <Tab value="CSS Modules">
+    ```vue
+    <script setup lang="ts">
+      import styles from './MyCheckbox.module.css'
+    </script>
+
+    <template>
+      <Checkbox.Root v-slot="{ attrs, isSelected }">
+        <div :class="styles.wrapper">
+          <div 
+            v-bind="attrs"
+            :class="[styles.checkbox, isSelected && styles.checked]"
+          />
+          <label :class="styles.label">Accept terms</label>
+        </div>
+      </Checkbox.Root>
+    </template>
+    ```
+  </Tab>
+  
+  <Tab value="Styled Components">
+    ```vue
+    <script setup lang="ts">
+      import styled from 'vue-styled-components'
+      
+      const CheckboxBox = styled.div`
+        width: 20px;
+        height: 20px;
+        border: 2px solid ${props => props.checked ? 'blue' : '#ccc'};
+        background: ${props => props.checked ? 'blue' : 'white'};
+        border-radius: 4px;
+      `
+    </script>
+
+    <template>
+      <Checkbox.Root v-slot="{ attrs, isSelected }">
+        <CheckboxBox v-bind="attrs" :checked="isSelected" />
+      </Checkbox.Root>
+    </template>
+    ```
+  </Tab>
+</Tabs>
+
+### 4. Smaller Bundle Size
+
+No component styles = smaller bundles:
+
+```typescript
+// Traditional component library
+import { VButton } from 'vuetify' // ~50KB with styles
+
+// Headless component
+import { Selection } from '@vuetify/v0' // ~8KB, no styles
+```
+
+### 5. Composable-First
+
+Components are thin wrappers around composables. Drop to composables for maximum control:
+
+```vue
+<script setup lang="ts">
+  import { createSelection } from '@vuetify/v0/composables'
+  
+  const selection = createSelection({ multiple: true })
+  
+  const items = [
+    { id: 'apple', label: 'Apple' },
+    { id: 'banana', label: 'Banana' }
+  ]
+  
+  items.forEach(item => {
+    selection.register({ id: item.id, value: item })
+  })
+</script>
+
+<template>
+  <!-- Full control over rendering -->
+  <div class="my-custom-list">
+    <div 
+      v-for="item in items"
+      :key="item.id"
+      @click="selection.toggle(item.id)"
+      :class="{ 'selected': selection.selectedIds.has(item.id) }"
+    >
+      {{ item.label }}
+    </div>
+  </div>
+</template>
+```
+
+## How They Work
+
+### The Compound Component Pattern
+
+Headless components use a Root + sub-components structure:
+
+```vue
+<ComponentRoot>        <!-- Creates and provides context -->
+  <ComponentItem />    <!-- Consumes context -->
+  <ComponentItem />    <!-- Consumes context -->
+</ComponentRoot>
+```
+
+Example with Tabs:
+
+```vue
+<script setup lang="ts">
+  import { Tabs } from '@vuetify/v0/components'
+</script>
+
+<template>
+  <Tabs.Root v-model="activeTab">
+    <!-- Context created here -->
+    
+    <Tabs.List>
+      <!-- These consume context -->
+      <Tabs.Item value="home">Home</Tabs.Item>
+      <Tabs.Item value="about">About</Tabs.Item>
+    </Tabs.List>
+    
+    <!-- These also consume context -->
+    <Tabs.Panel value="home">Home content</Tabs.Panel>
+    <Tabs.Panel value="about">About content</Tabs.Panel>
+  </Tabs.Root>
+</template>
+```
+
+### Slot Props
+
+Every component exposes state and methods via scoped slots:
+
+```vue
+<Selection.Item 
+  value="apple" 
+  v-slot="{ 
+    attrs,      // ARIA and data attributes
+    isSelected, // Boolean selection state
+    select,     // Select this item
+    unselect,   // Unselect this item
+    toggle      // Toggle selection
+  }"
+>
+  <button 
+    v-bind="attrs"
+    @click="toggle"
+    :class="{ 'bg-blue-500': isSelected }"
+  >
+    Apple
+  </button>
+</Selection.Item>
+```
+
+### Data Attributes
+
+Components emit data attributes for styling hooks:
+
+```vue
+<Tabs.Item value="home" v-slot="{ attrs }">
+  <button v-bind="attrs">Home</button>
+</Tabs.Item>
+
+<!-- Renders: -->
+<button 
+  role="tab"
+  aria-selected="true"
+  data-selected="true"    <!-- Style with [data-selected] -->
+  data-orientation="horizontal"
+>
+  Home
+</button>
+```
+
+Style with attribute selectors:
+
+```css
+/* Selected state */
+[data-selected="true"] {
+  color: var(--primary);
+  border-bottom: 2px solid currentColor;
+}
+
+/* Disabled state */
+[data-disabled="true"] {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Orientation-aware */
+[data-orientation="vertical"] {
+  flex-direction: column;
+}
+```
+
+## Common Patterns
+
+### Provider Components
+
+Some components are renderless providers (no DOM output):
+
+```vue
+<script setup lang="ts">
+  import { Selection } from '@vuetify/v0/components'
+  
+  const selected = ref([])
+</script>
+
+<template>
+  <!-- Selection.Root is renderless - no DOM output -->
+  <Selection.Root v-model="selected" multiple>
+    <!-- Your custom markup -->
+    <div class="grid grid-cols-3 gap-4">
+      <Selection.Item 
+        v-for="item in items" 
+        :value="item.id"
+        v-slot="{ attrs, isSelected, toggle }"
+      >
+        <div
+          v-bind="attrs"
+          @click="toggle"
+          :class="[
+            'p-4 rounded border cursor-pointer',
+            isSelected ? 'border-blue-500 bg-blue-50' : 'border-gray-200'
+          ]"
+        >
+          {{ item.label }}
+        </div>
+      </Selection.Item>
+    </div>
+  </Selection.Root>
+</template>
+```
+
+### Renderless Mode
+
+Use renderless mode when you need the slot props but want to provide your own root element:
+
+```vue
+<Tabs.Item value="home" renderless v-slot="{ attrs, isSelected }">
+  <MyCustomButton v-bind="attrs" :active="isSelected">
+    Home
+  </MyCustomButton>
+</Tabs.Item>
+```
+
+### Polymorphic Components
+
+The `Atom` component can render as any HTML element:
+
+```vue
+<script setup lang="ts">
+  import { Atom } from '@vuetify/v0/components'
+</script>
+
+<template>
+  <!-- Render as button -->
+  <Atom as="button" @click="handleClick">
+    Click me
+  </Atom>
+  
+  <!-- Render as link -->
+  <Atom as="a" href="/path">
+    Navigate
+  </Atom>
+  
+  <!-- Render as div -->
+  <Atom as="div" class="container">
+    Content
+  </Atom>
+  
+  <!-- Renderless -->
+  <Atom renderless v-slot="{ attrs }">
+    <MyComponent v-bind="attrs" />
+  </Atom>
+</template>
+```
+
+## Integration Examples
+
+### With Tailwind CSS
+
+```vue
+<script setup lang="ts">
+  import { Dialog } from '@vuetify/v0/components'
+  import { ref } from 'vue'
+  
+  const isOpen = ref(false)
+</script>
+
+<template>
+  <Dialog.Root v-model="isOpen">
+    <Dialog.Activator v-slot="{ attrs }">
+      <button 
+        v-bind="attrs"
+        class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+      >
+        Open Dialog
+      </button>
+    </Dialog.Activator>
+    
+    <Dialog.Content v-slot="{ attrs }">
+      <div 
+        v-bind="attrs"
+        class="fixed inset-0 flex items-center justify-center bg-black/50"
+      >
+        <div class="bg-white rounded-lg p-6 max-w-md w-full">
+          <Dialog.Title class="text-xl font-bold mb-4">
+            Confirm Action
+          </Dialog.Title>
+          
+          <Dialog.Description class="text-gray-600 mb-6">
+            Are you sure you want to continue?
+          </Dialog.Description>
+          
+          <div class="flex gap-2 justify-end">
+            <Dialog.Close v-slot="{ attrs }">
+              <button 
+                v-bind="attrs"
+                class="px-4 py-2 border border-gray-300 rounded hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+            </Dialog.Close>
+            
+            <button class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">
+              Confirm
+            </button>
+          </div>
+        </div>
+      </div>
+    </Dialog.Content>
+  </Dialog.Root>
+</template>
+```
+
+### With Animation Libraries
+
+```vue
+<script setup lang="ts">
+  import { ExpansionPanel } from '@vuetify/v0/components'
+  import { ref } from 'vue'
+  
+  const items = ref(['panel-1', 'panel-2'])
+</script>
+
+<template>
+  <ExpansionPanel.Root v-model="items" multiple>
+    <ExpansionPanel.Item value="panel-1">
+      <ExpansionPanel.Header v-slot="{ attrs, isSelected }">
+        <button 
+          v-bind="attrs"
+          class="w-full flex justify-between p-4 hover:bg-gray-50"
+        >
+          <span>Panel 1</span>
+          <ChevronIcon 
+            :class="{ 'rotate-180': isSelected }"
+            class="transition-transform"
+          />
+        </button>
+      </ExpansionPanel.Header>
+      
+      <ExpansionPanel.Content v-slot="{ attrs, isSelected }">
+        <Transition name="slide-fade">
+          <div v-show="isSelected" v-bind="attrs" class="p-4">
+            Panel 1 content
+          </div>
+        </Transition>
+      </ExpansionPanel.Content>
+    </ExpansionPanel.Item>
+  </ExpansionPanel.Root>
+</template>
+
+<style scoped>
+  .slide-fade-enter-active,
+  .slide-fade-leave-active {
+    transition: all 0.3s ease;
+  }
+  
+  .slide-fade-enter-from,
+  .slide-fade-leave-to {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+</style>
+```
+
+### With Icon Libraries
+
+```vue
+<script setup lang="ts">
+  import { Checkbox } from '@vuetify/v0/components'
+  import { CheckIcon } from 'lucide-vue-next'
+</script>
+
+<template>
+  <Checkbox.Root v-slot="{ attrs, isSelected }">
+    <label class="flex items-center gap-2 cursor-pointer">
+      <div 
+        v-bind="attrs"
+        :class="[
+          'w-5 h-5 border-2 rounded flex items-center justify-center',
+          isSelected 
+            ? 'bg-blue-500 border-blue-500' 
+            : 'border-gray-300'
+        ]"
+      >
+        <CheckIcon v-if="isSelected" class="w-4 h-4 text-white" />
+      </div>
+      <span>I accept the terms</span>
+    </label>
+  </Checkbox.Root>
+</template>
+```
+
+## Migration from Styled Components
+
+If you're coming from a traditional component library:
+
+<Accordion title="Before: Vuetify 2/3">
+  ```vue
+  <template>
+    <v-tabs v-model="tab">
+      <v-tab>Home</v-tab>
+      <v-tab>About</v-tab>
+    </v-tabs>
+    
+    <v-tab-item value="home">
+      Content
+    </v-tab-item>
+  </template>
+  
+  <style>
+    /* Override library styles */
+    .v-tab {
+      color: blue !important;
+    }
+  </style>
+  ```
+</Accordion>
+
+<Accordion title="After: Vuetify Zero">
+  ```vue
+  <script setup lang="ts">
+    import { Tabs } from '@vuetify/v0/components'
+    import { ref } from 'vue'
+    
+    const tab = ref('home')
+  </script>
+
+  <template>
+    <Tabs.Root v-model="tab">
+      <Tabs.List class="flex gap-2">
+        <Tabs.Item value="home" v-slot="{ attrs, isSelected }">
+          <button 
+            v-bind="attrs" 
+            :class="isSelected ? 'text-blue-500' : 'text-gray-500'"
+          >
+            Home
+          </button>
+        </Tabs.Item>
+        <Tabs.Item value="about" v-slot="{ attrs, isSelected }">
+          <button 
+            v-bind="attrs"
+            :class="isSelected ? 'text-blue-500' : 'text-gray-500'"
+          >
+            About
+          </button>
+        </Tabs.Item>
+      </Tabs.List>
+      
+      <Tabs.Panel value="home">
+        Content
+      </Tabs.Panel>
+    </Tabs.Root>
+  </template>
+  ```
+  
+  No style overrides needed - you control the styling from the start.
+</Accordion>
+
+## Best Practices
+
+<Accordion title="Always spread attrs">
+  The `attrs` object contains all accessibility attributes and data attributes:
+
+  ```vue
+  <!-- ✅ Good -->
+  <button v-bind="attrs">Click me</button>
+
+  <!-- ❌ Bad - missing accessibility -->
+  <button>Click me</button>
+  ```
+</Accordion>
+
+<Accordion title="Use data attributes for styling">
+  Data attributes are stable and semantic:
+
+  ```css
+  /* ✅ Good - uses data attributes */
+  [data-selected="true"] { color: blue; }
+  [data-disabled="true"] { opacity: 0.5; }
+
+  /* ❌ Bad - fragile class names */
+  .is-selected { color: blue; }
+  .is-disabled { opacity: 0.5; }
+  ```
+</Accordion>
+
+<Accordion title="Keep Root components minimal">
+  Root components should only handle context setup:
+
+  ```vue
+  <!-- ✅ Good -->
+  <Tabs.Root v-model="tab">
+    <div class="my-tabs-container">
+      <!-- Custom markup -->
+    </div>
+  </Tabs.Root>
+
+  <!-- ❌ Bad - don't try to style the Root -->
+  <Tabs.Root v-model="tab" class="my-tabs-container">
+    <!-- Root might be renderless -->
+  </Tabs.Root>
+  ```
+</Accordion>
+
+<Accordion title="Prefer composables for complex logic">
+  When components feel restrictive, drop to composables:
+
+  ```typescript
+  // Component approach
+  <Selection.Root v-model="selected">
+    <!-- Limited by component API -->
+  </Selection.Root>
+
+  // Composable approach (more flexible)
+  const selection = createSelection({
+    multiple: true,
+    mandatory: false,
+    enroll: true
+  })
+
+  // Full control over registration and behavior
+  selection.register({ id: 'custom', value: data, disabled: computed(() => ...) })
+  ```
+</Accordion>
+
+## Summary
+
+Headless components provide:
+
+- **Complete design freedom** - No styles to override
+- **Built-in accessibility** - ARIA attributes and keyboard navigation
+- **Framework flexibility** - Use any styling approach
+- **Smaller bundles** - No component CSS
+- **Composable-first** - Direct access to underlying logic
+
+They work by:
+
+- Using compound component patterns (Root + Items)
+- Exposing state via scoped slots
+- Providing behavior through `attrs` spreading
+- Emitting data attributes for styling hooks
+
+This approach gives you the power of a full UI framework with the flexibility of building from scratch.

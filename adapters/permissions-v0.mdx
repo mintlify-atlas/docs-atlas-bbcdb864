@@ -1,0 +1,464 @@
+---
+title: Permissions V0 Adapter
+description: Built-in RBAC/ABAC permission adapter for Vuetify Zero
+---
+
+# Permissions V0 Adapter (Vuetify0PermissionAdapter)
+
+The `Vuetify0PermissionAdapter` is the default permission adapter for Vuetify Zero, providing role-based (RBAC) and attribute-based (ABAC) access control.
+
+## Import
+
+```typescript
+import { Vuetify0PermissionAdapter } from '@vuetify/v0/permissions/adapters/v0'
+```
+
+## Basic Usage
+
+```typescript
+import { createApp } from 'vue'
+import { createPermissionsPlugin } from '@vuetify/v0/permissions'
+import { Vuetify0PermissionAdapter } from '@vuetify/v0/permissions/adapters/v0'
+
+const app = createApp(App)
+
+app.use(createPermissionsPlugin({
+  adapter: new Vuetify0PermissionAdapter(),
+  permissions: {
+    admin: [
+      [['read', 'write'], 'users'],
+      [['read', 'write'], 'posts']
+    ],
+    editor: [
+      ['read', 'users'],
+      [['read', 'write'], 'posts']
+    ],
+    viewer: [
+      ['read', ['users', 'posts']]
+    ]
+  }
+}))
+```
+
+<Note>
+The `Vuetify0PermissionAdapter` is the **default adapter** when no adapter is specified:
+
+```typescript
+app.use(createPermissionsPlugin()) // Uses Vuetify0PermissionAdapter automatically
+```
+</Note>
+
+## Using in Components
+
+```vue
+<script setup lang="ts">
+import { usePermissions } from '@vuetify/v0/permissions'
+import { ref } from 'vue'
+
+const permissions = usePermissions()
+const currentRole = ref('editor')
+
+const canEditPosts = computed(() => 
+  permissions.can(currentRole.value, 'write', 'posts')
+)
+
+const canDeleteUsers = computed(() =>
+  permissions.can(currentRole.value, 'delete', 'users')
+)
+</script>
+
+<template>
+  <div>
+    <button v-if="canEditPosts" @click="editPost">
+      Edit Post
+    </button>
+    
+    <button v-if="canDeleteUsers" @click="deleteUser">
+      Delete User
+    </button>
+  </div>
+</template>
+```
+
+## Permission Structure
+
+Permissions are defined as role-action-subject tuples:
+
+```typescript
+const permissions = {
+  [role]: [
+    [actions, subjects, condition?]
+  ]
+}
+```
+
+### Basic Permissions
+
+```typescript
+const permissions = {
+  admin: [
+    // Single action, single subject
+    ['read', 'users'],
+    // Multiple actions, single subject
+    [['read', 'write'], 'posts'],
+    // Single action, multiple subjects
+    ['delete', ['users', 'posts']],
+    // Multiple actions, multiple subjects
+    [['read', 'write', 'delete'], ['users', 'posts', 'comments']]
+  ]
+}
+```
+
+## Checking Permissions
+
+### Basic Permission Check
+
+```typescript
+import { usePermissions } from '@vuetify/v0/permissions'
+
+const permissions = usePermissions()
+
+// Check if role can perform action on subject
+const canRead = permissions.can('editor', 'read', 'posts')
+// Returns: true or false
+```
+
+### With Context
+
+```typescript
+import { usePermissions } from '@vuetify/v0/permissions'
+
+const permissions = usePermissions()
+
+// Check with additional context
+const canEdit = permissions.can('editor', 'edit', 'post', {
+  postAuthor: 'user-123',
+  currentUser: 'user-123'
+})
+```
+
+## Conditional Permissions (ABAC)
+
+### Function-Based Conditions
+
+```typescript
+const permissions = {
+  editor: [
+    // Only allow editing own posts
+    [
+      'write',
+      'posts',
+      (context) => context.postAuthor === context.currentUser
+    ],
+    // Allow deleting if admin or owner
+    [
+      'delete',
+      'posts',
+      (context) => {
+        return context.isAdmin || context.postAuthor === context.currentUser
+      }
+    ]
+  ]
+}
+
+// Usage
+const canEdit = permissions.can('editor', 'write', 'posts', {
+  postAuthor: 'user-123',
+  currentUser: 'user-123'
+})
+// Returns: true (owns post)
+
+const canDelete = permissions.can('editor', 'delete', 'posts', {
+  postAuthor: 'user-456',
+  currentUser: 'user-123',
+  isAdmin: false
+})
+// Returns: false (not owner, not admin)
+```
+
+### Time-Based Conditions
+
+```typescript
+const permissions = {
+  trial: [
+    [
+      'access',
+      'premium-features',
+      (context) => {
+        const trialEnd = new Date(context.trialEndDate)
+        return new Date() < trialEnd
+      }
+    ]
+  ]
+}
+
+const canAccess = permissions.can('trial', 'access', 'premium-features', {
+  trialEndDate: '2024-12-31'
+})
+```
+
+### Resource Limit Conditions
+
+```typescript
+const permissions = {
+  basic: [
+    [
+      'create',
+      'projects',
+      (context) => context.projectCount < context.maxProjects
+    ]
+  ],
+  pro: [
+    [
+      'create',
+      'projects',
+      (context) => context.projectCount < 100
+    ]
+  ]
+}
+
+const canCreate = permissions.can('basic', 'create', 'projects', {
+  projectCount: 5,
+  maxProjects: 10
+})
+// Returns: true
+```
+
+## Multiple Roles
+
+```typescript
+import { usePermissions } from '@vuetify/v0/permissions'
+
+const permissions = usePermissions()
+const userRoles = ref(['editor', 'moderator'])
+
+function hasPermission(action: string, subject: string) {
+  return userRoles.value.some(role =>
+    permissions.can(role, action, subject)
+  )
+}
+
+const canModerate = hasPermission('moderate', 'comments')
+```
+
+## TypeScript
+
+```typescript
+import { Vuetify0PermissionAdapter } from '@vuetify/v0/permissions/adapters/v0'
+import type { PermissionContext, PermissionTicket } from '@vuetify/v0/permissions'
+import type { ID } from '@vuetify/v0/types'
+
+const adapter = new Vuetify0PermissionAdapter()
+
+interface AuthContext {
+  userId: string
+  role: string
+  isAdmin: boolean
+}
+
+const context: PermissionContext<PermissionTicket> = createPermissions({
+  permissions: {
+    admin: [['read', 'users']]
+  }
+})
+
+const canRead: boolean = adapter.can(
+  'admin' as ID,
+  'read',
+  'users',
+  { userId: '123' },
+  context
+)
+```
+
+## Permission Format
+
+The adapter uses a dot-notation key format internally:
+
+```typescript
+// Permission definition
+{
+  admin: [
+    ['read', 'users']
+  ]
+}
+
+// Stored as token
+'admin.read.users': true
+
+// With condition
+{
+  editor: [
+    ['write', 'posts', (ctx) => ctx.isOwner]
+  ]
+}
+
+// Stored as
+'editor.write.posts': (ctx) => ctx.isOwner
+```
+
+## Custom Permission Adapter
+
+Create a custom adapter by extending `PermissionAdapter`:
+
+```typescript
+import { PermissionAdapter } from '@vuetify/v0/permissions'
+import type { ID, PermissionContext, PermissionTicket } from '@vuetify/v0/permissions'
+
+class CustomPermissionAdapter extends PermissionAdapter {
+  can<Z extends PermissionTicket = PermissionTicket>(
+    role: ID,
+    action: string,
+    subject: string,
+    context: Record<string, any>,
+    permissions: PermissionContext<Z>
+  ): boolean {
+    // Custom permission logic
+    // Example: Check external API
+    const hasPermission = await checkExternalAPI(role, action, subject)
+    return hasPermission
+  }
+}
+```
+
+## Integration with External Systems
+
+```typescript
+import { PermissionAdapter } from '@vuetify/v0/permissions'
+import type { ID, PermissionContext } from '@vuetify/v0/permissions'
+
+class CaslAdapter extends PermissionAdapter {
+  constructor(private ability: any) {
+    super()
+  }
+  
+  can(role: ID, action: string, subject: string, context: Record<string, any>): boolean {
+    // Integrate with CASL
+    return this.ability.can(action, subject)
+  }
+}
+
+// Usage
+import { Ability } from '@casl/ability'
+
+const ability = new Ability([
+  { action: 'read', subject: 'Post' }
+])
+
+const adapter = new CaslAdapter(ability)
+```
+
+## API Reference
+
+### Constructor
+
+```typescript
+class Vuetify0PermissionAdapter extends PermissionAdapter
+
+constructor()
+```
+
+### Methods
+
+#### `can(role, action, subject, context, permissions)`
+
+Check if a role can perform an action on a subject.
+
+**Parameters:**
+- `role: ID` - Role identifier
+- `action: string` - Action to perform (e.g., 'read', 'write')
+- `subject: string` - Subject/resource (e.g., 'users', 'posts')
+- `context: Record<string, any>` - Additional context for ABAC
+- `permissions: PermissionContext` - Permissions context
+
+**Returns:** `boolean` - `true` if allowed, `false` otherwise
+
+**Example:**
+```typescript
+const allowed = adapter.can(
+  'editor',
+  'write',
+  'posts',
+  { userId: '123', postAuthor: '123' },
+  permissionsContext
+)
+```
+
+## Permission Resolution
+
+1. **Construct key** - `{role}.{action}.{subject}`
+2. **Lookup ticket** - Find permission in registry
+3. **Check value** - If no ticket, return `false`
+4. **Evaluate condition** - If function, call with context; if boolean, return value
+
+```typescript
+// Step-by-step resolution
+const key = `${role}.${action}.${subject}` // 'editor.write.posts'
+const ticket = permissions.get(key)        // { value: (ctx) => ... }
+if (!ticket || !ticket.value) return false
+return isFunction(ticket.value) 
+  ? ticket.value(context) 
+  : ticket.value
+```
+
+## Features
+
+- **RBAC support** - Role-based access control
+- **ABAC support** - Attribute-based with function conditions
+- **Batch permissions** - Define multiple actions/subjects at once
+- **Context-aware** - Pass runtime data for dynamic checks
+- **Type-safe** - Full TypeScript support
+- **Zero dependencies** - Pure JavaScript implementation
+
+## Common Patterns
+
+### Admin Override
+
+```typescript
+const permissions = {
+  admin: [
+    [['read', 'write', 'delete'], ['users', 'posts', 'comments'], true]
+  ],
+  user: [
+    ['read', ['posts', 'comments']],
+    ['write', 'posts', (ctx) => ctx.isOwner]
+  ]
+}
+```
+
+### Hierarchical Roles
+
+```typescript
+const permissions = {
+  superadmin: [
+    [['read', 'write', 'delete'], '*']  // All actions on all subjects
+  ],
+  admin: [
+    [['read', 'write'], ['users', 'posts']]
+  ],
+  moderator: [
+    ['read', ['users', 'posts']],
+    ['moderate', 'comments']
+  ]
+}
+```
+
+### Resource Ownership
+
+```typescript
+const permissions = {
+  user: [
+    [
+      ['read', 'write', 'delete'],
+      'posts',
+      (ctx) => ctx.resource.authorId === ctx.user.id
+    ]
+  ]
+}
+```
+
+## See Also
+
+- [usePermissions](/composables/use-permissions) - Permissions composable
+- [createTokens](/composables/create-tokens) - Token system used internally
+- [CASL](https://casl.js.org/) - Alternative ABAC library

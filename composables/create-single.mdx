@@ -1,0 +1,302 @@
+---
+title: createSingle
+description: Single-selection composable that enforces only one selected item at a time with singular computed properties
+---
+
+## Overview
+
+The **createSingle** composable extends `createSelection` to enforce single-selection behavior. It automatically clears previous selections when a new item is selected and provides singular computed properties instead of plural sets.
+
+Perfect for tabs, radio buttons, theme selectors, and other single-choice UI components.
+
+## Signature
+
+```ts
+function createSingle<
+  Z extends SingleTicketInput = SingleTicketInput,
+  E extends SingleTicket<Z> = SingleTicket<Z>
+>(options?: SingleOptions): SingleContext<Z, E>
+```
+
+<ParamField path="options" type="SingleOptions">
+  Configuration options (inherits from SelectionOptions)
+  
+  <Expandable title="properties">
+    <ParamField path="mandatory" type="MaybeRefOrGetter<boolean | 'force'>" default="false">
+      Mandatory selection mode:
+      - `false`: No enforcement
+      - `true`: Prevents deselecting the selected item
+      - `'force'`: Auto-selects first non-disabled item
+    </ParamField>
+    
+    <ParamField path="disabled" type="MaybeRefOrGetter<boolean>" default="false">
+      Disable the entire selection instance
+    </ParamField>
+    
+    <ParamField path="enroll" type="MaybeRefOrGetter<boolean>" default="false">
+      Auto-select newly registered non-disabled items (replaces previous selection)
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+<ResponseField name="SingleContext" type="object">
+  Single-selection instance with singular properties
+  
+  <Expandable title="properties">
+    <ResponseField name="selectedId" type="ComputedRef<ID | undefined>">
+      The ID of the selected item (undefined if none selected)
+    </ResponseField>
+    
+    <ResponseField name="selectedItem" type="ComputedRef<E | undefined>">
+      The selected ticket object (undefined if none selected)
+    </ResponseField>
+    
+    <ResponseField name="selectedIndex" type="ComputedRef<number>">
+      The index of the selected item (-1 if none selected)
+    </ResponseField>
+    
+    <ResponseField name="selectedValue" type="ComputedRef<E['value'] | undefined>">
+      The value of the selected item (undefined if none selected)
+    </ResponseField>
+    
+    <ResponseField name="select" type="(id: ID) => void">
+      Select an item by ID (clears previous selection)
+    </ResponseField>
+    
+    <ResponseField name="unselect" type="(id: ID) => void">
+      Unselect the currently selected item
+    </ResponseField>
+    
+    <ResponseField name="toggle" type="(id: ID) => void">
+      Toggle selection state (select if not selected, unselect if selected)
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+## Usage
+
+### Basic Single Selection
+
+```ts
+import { createSingle } from '@vuetify/v0'
+
+const tabs = createSingle()
+
+tabs.onboard([
+  { id: 'home', value: 'Home' },
+  { id: 'about', value: 'About' },
+  { id: 'contact', value: 'Contact' },
+])
+
+tabs.select('home')
+console.log(tabs.selectedId.value) // 'home'
+
+tabs.select('about') // Automatically clears 'home'
+console.log(tabs.selectedId.value) // 'about'
+console.log(tabs.selectedIds.size) // 1 (always single)
+```
+
+### Mandatory Selection
+
+```ts
+const tabs = createSingle({ mandatory: true })
+
+tabs.onboard([
+  { id: 'tab-1', value: 'Tab 1' },
+  { id: 'tab-2', value: 'Tab 2' },
+])
+
+tabs.select('tab-1')
+console.log(tabs.selectedId.value) // 'tab-1'
+
+tabs.unselect('tab-1') // Blocked by mandatory
+console.log(tabs.selectedId.value) // 'tab-1' (still selected)
+
+// Switching is allowed
+tabs.select('tab-2')
+console.log(tabs.selectedId.value) // 'tab-2'
+```
+
+### Force Mandatory
+
+```ts
+const tabs = createSingle({ mandatory: 'force' })
+
+tabs.onboard([
+  { id: 'tab-1', value: 'Tab 1', disabled: true },
+  { id: 'tab-2', value: 'Tab 2' },
+  { id: 'tab-3', value: 'Tab 3' },
+])
+
+// Automatically selects tab-2 (skips disabled tab-1)
+console.log(tabs.selectedId.value) // 'tab-2'
+```
+
+### Singular Computed Properties
+
+```ts
+const tabs = createSingle()
+
+tabs.onboard([
+  { id: 'home', value: { name: 'Home', icon: 'home' } },
+  { id: 'settings', value: { name: 'Settings', icon: 'settings' } },
+])
+
+tabs.select('home')
+
+console.log(tabs.selectedId.value) // 'home'
+console.log(tabs.selectedIndex.value) // 0
+console.log(tabs.selectedItem.value?.id) // 'home'
+console.log(tabs.selectedValue.value) // { name: 'Home', icon: 'home' }
+```
+
+### Toggle Behavior
+
+```ts
+const radioGroup = createSingle()
+
+radioGroup.onboard([
+  { id: 'option-a', value: 'A' },
+  { id: 'option-b', value: 'B' },
+])
+
+radioGroup.toggle('option-a')
+console.log(radioGroup.selectedId.value) // 'option-a'
+
+radioGroup.toggle('option-a') // Unselects
+console.log(radioGroup.selectedId.value) // undefined
+
+radioGroup.toggle('option-b') // Selects option-b
+console.log(radioGroup.selectedId.value) // 'option-b'
+```
+
+### Disabled Items
+
+```ts
+const selector = createSingle()
+
+selector.onboard([
+  { id: 'item-1', value: 'Enabled' },
+  { id: 'item-2', value: 'Disabled', disabled: true },
+])
+
+selector.select('item-1') // Works
+console.log(selector.selectedId.value) // 'item-1'
+
+selector.select('item-2') // Blocked - item is disabled
+console.log(selector.selectedId.value) // 'item-1' (unchanged)
+```
+
+### Enroll Option
+
+```ts
+const tabs = createSingle({ enroll: true })
+
+tabs.onboard([
+  { id: 'tab-1', value: 'Tab 1' },
+  { id: 'tab-2', value: 'Tab 2' },
+])
+
+// Last item is auto-selected (single-select replaces)
+console.log(tabs.selectedId.value) // 'tab-2'
+```
+
+## Vue Component Example
+
+```vue
+<script setup lang="ts">
+import { createSingle } from '@vuetify/v0'
+
+const tabs = createSingle({ mandatory: true })
+
+tabs.onboard([
+  { id: 'home', value: 'Home' },
+  { id: 'profile', value: 'Profile' },
+  { id: 'settings', value: 'Settings' },
+])
+</script>
+
+<template>
+  <div class="tabs">
+    <button
+      v-for="tab in tabs.values()"
+      :key="tab.id"
+      :class="{ active: tab.isSelected.value }"
+      @click="tab.select()"
+    >
+      {{ tab.value }}
+    </button>
+  </div>
+  
+  <div class="content">
+    <p>Current tab: {{ tabs.selectedValue }}</p>
+    <p>Tab index: {{ tabs.selectedIndex }}</p>
+  </div>
+</template>
+```
+
+## Type Safety
+
+```ts
+interface TabTicket extends SingleTicketInput {
+  label: string
+  icon?: string
+  badge?: number
+}
+
+const tabs = createSingle<TabTicket>()
+
+tabs.register({ 
+  label: 'Messages', 
+  icon: 'mdi-message',
+  badge: 5
+})
+
+// Type-safe access to selectedItem
+const currentTab = tabs.selectedItem.value
+if (currentTab) {
+  console.log(currentTab.label) // string
+  console.log(currentTab.badge) // number | undefined
+}
+```
+
+## Context Pattern
+
+```ts
+import { createSingleContext } from '@vuetify/v0'
+
+export const [useTabs, provideTabs, tabs] = createSingleContext({
+  mandatory: true
+})
+
+// In parent component
+provideTabs()
+
+// In child component
+const tabs = useTabs()
+tabs.select('tab-1')
+```
+
+## Comparison with createSelection
+
+| Feature | createSelection | createSingle |
+|---------|----------------|-------------|
+| Multiple selection | Yes (with `multiple: true`) | No (always single) |
+| Computed properties | Plural (`selectedItems`, `selectedValues`) | Singular (`selectedItem`, `selectedValue`, `selectedIndex`) |
+| Default `multiple` | `false` | Always `false` |
+| Auto-clear on select | Only when `multiple: false` | Always |
+| Use case | Multi-select, checkboxes | Tabs, radio buttons, theme selector |
+
+## Performance
+
+- Selection changes: O(1) for single item operations
+- `selectedId`: O(1) computed from Set iterator
+- `selectedItem`: O(1) computed from selectedId
+- `selectedIndex`: O(1) from ticket's index property
+- `selectedValue`: O(1) from ticket's value property
+
+## See Also
+
+- [createSelection](/composables/create-selection) - Base selection system
+- [createStep](/composables/create-step) - Single-selection with navigation
+- [createGroup](/composables/create-group) - Multi-selection variant

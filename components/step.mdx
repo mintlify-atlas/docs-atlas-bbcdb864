@@ -1,0 +1,389 @@
+---
+title: Step
+description: Sequential step navigation component for multi-step workflows
+---
+
+## Overview
+
+Step provides a sequential navigation system for multi-step workflows. It extends single selection with navigation methods (first, last, next, prev, step) and supports both automatic and manual activation modes.
+
+## Sub-Components
+
+- **Step.Root**: Renderless container that manages step state
+- **Step.Item**: Individual step item
+
+## Usage
+
+```vue
+<script lang="ts" setup>
+import { ref } from 'vue'
+import { Step } from '@vuetify/v0'
+
+const currentStep = ref('account')
+</script>
+
+<template>
+  <Step.Root v-model="currentStep">
+    <Step.Item value="account">Account</Step.Item>
+    <Step.Item value="profile">Profile</Step.Item>
+    <Step.Item value="review">Review</Step.Item>
+  </Step.Root>
+</template>
+```
+
+## Step.Root
+
+### Props
+
+<ParamField path="namespace" type="string" default="'v0:step'">
+  Namespace for dependency injection (must match StepItem namespace)
+</ParamField>
+
+<ParamField path="disabled" type="boolean" default="false">
+  Disables the entire step instance
+</ParamField>
+
+<ParamField path="enroll" type="boolean" default="false">
+  Auto-select non-disabled items on registration
+</ParamField>
+
+<ParamField path="mandatory" type="boolean | 'force'" default="false">
+  Controls mandatory step behavior:
+  - `false` (default): No mandatory step enforcement
+  - `true`: Prevents deselecting the last selected item
+  - `'force'`: Automatically selects the first non-disabled item on registration
+</ParamField>
+
+### Model
+
+<ParamField path="v-model" type="T | T[]">
+  Current step value(s)
+</ParamField>
+
+### Slot Props
+
+<ParamField path="isDisabled" type="boolean">
+  Whether the step instance is disabled
+</ParamField>
+
+<ParamField path="first" type="() => void">
+  Select the first item
+</ParamField>
+
+<ParamField path="last" type="() => void">
+  Select the last item
+</ParamField>
+
+<ParamField path="next" type="() => void">
+  Select the next item
+</ParamField>
+
+<ParamField path="prev" type="() => void">
+  Select the previous item
+</ParamField>
+
+<ParamField path="step" type="(count: number) => void">
+  Step forward or backward by a specific count
+</ParamField>
+
+<ParamField path="select" type="(id: ID) => void">
+  Select an item by ID
+</ParamField>
+
+<ParamField path="unselect" type="(id: ID) => void">
+  Unselect an item by ID
+</ParamField>
+
+<ParamField path="toggle" type="(id: ID) => void">
+  Toggle an item's step state by ID
+</ParamField>
+
+<ParamField path="attrs" type="object">
+  Attributes including aria-multiselectable: false
+</ParamField>
+
+## Step.Item
+
+### Props
+
+<ParamField path="id" type="string">
+  Unique identifier (auto-generated if not provided)
+</ParamField>
+
+<ParamField path="label" type="string">
+  Optional display label (passed through to slot, not used in registration)
+</ParamField>
+
+<ParamField path="value" type="V">
+  Value associated with this item
+</ParamField>
+
+<ParamField path="disabled" type="MaybeRef<boolean>">
+  Disables this specific item
+</ParamField>
+
+<ParamField path="namespace" type="string" default="'v0:step'">
+  Namespace for dependency injection
+</ParamField>
+
+### Slot Props
+
+<ParamField path="id" type="string">
+  Unique identifier
+</ParamField>
+
+<ParamField path="label" type="string">
+  Optional display label
+</ParamField>
+
+<ParamField path="value" type="V | undefined">
+  Value associated with this item
+</ParamField>
+
+<ParamField path="isSelected" type="boolean">
+  Whether this item is currently selected
+</ParamField>
+
+<ParamField path="isDisabled" type="boolean">
+  Whether this item is disabled
+</ParamField>
+
+<ParamField path="select" type="() => void">
+  Select this item
+</ParamField>
+
+<ParamField path="unselect" type="() => void">
+  Unselect this item
+</ParamField>
+
+<ParamField path="toggle" type="() => void">
+  Toggle this item's step state
+</ParamField>
+
+<ParamField path="attrs" type="object">
+  Attributes including aria-selected, aria-disabled, data-selected, and data-disabled
+</ParamField>
+
+## Examples
+
+<Tabs>
+  <Tab title="Basic">
+    ```vue
+    <script setup>
+    import { ref } from 'vue'
+    import { Step } from '@vuetify/v0'
+
+    const currentStep = ref('account')
+    </script>
+
+    <template>
+      <Step.Root v-model="currentStep">
+        <Step.Item value="account" v-slot="{ isSelected }">
+          <div :class="{ 'font-bold': isSelected }">
+            Account Setup
+          </div>
+        </Step.Item>
+
+        <Step.Item value="profile" v-slot="{ isSelected }">
+          <div :class="{ 'font-bold': isSelected }">
+            Profile Information
+          </div>
+        </Step.Item>
+
+        <Step.Item value="review" v-slot="{ isSelected }">
+          <div :class="{ 'font-bold': isSelected }">
+            Review & Submit
+          </div>
+        </Step.Item>
+      </Step.Root>
+    </template>
+    ```
+  </Tab>
+
+  <Tab title="With Navigation">
+    ```vue
+    <script setup>
+    import { ref } from 'vue'
+    import { Step } from '@vuetify/v0'
+
+    const currentStep = ref('account')
+    </script>
+
+    <template>
+      <Step.Root v-model="currentStep" v-slot="{ next, prev }">
+        <div>
+          <Step.Item value="account">Account</Step.Item>
+          <Step.Item value="profile">Profile</Step.Item>
+          <Step.Item value="review">Review</Step.Item>
+        </div>
+
+        <div>
+          <button @click="prev">Previous</button>
+          <button @click="next">Next</button>
+        </div>
+      </Step.Root>
+    </template>
+    ```
+  </Tab>
+
+  <Tab title="With Disabled Steps">
+    ```vue
+    <script setup>
+    import { ref } from 'vue'
+    import { Step } from '@vuetify/v0'
+
+    const currentStep = ref('account')
+    const profileCompleted = ref(false)
+    </script>
+
+    <template>
+      <Step.Root v-model="currentStep">
+        <Step.Item value="account" v-slot="{ isSelected, isDisabled }">
+          <div :class="{ 'font-bold': isSelected, 'opacity-50': isDisabled }">
+            Account Setup
+          </div>
+        </Step.Item>
+
+        <Step.Item value="profile" v-slot="{ isSelected, isDisabled }">
+          <div :class="{ 'font-bold': isSelected, 'opacity-50': isDisabled }">
+            Profile Information
+          </div>
+        </Step.Item>
+
+        <Step.Item
+          value="review"
+          :disabled="!profileCompleted"
+          v-slot="{ isSelected, isDisabled }"
+        >
+          <div :class="{ 'font-bold': isSelected, 'opacity-50': isDisabled }">
+            Review & Submit
+          </div>
+        </Step.Item>
+      </Step.Root>
+    </template>
+    ```
+  </Tab>
+
+  <Tab title="With Data Attributes">
+    ```vue
+    <script setup>
+    import { ref } from 'vue'
+    import { Step } from '@vuetify/v0'
+
+    const currentStep = ref('account')
+    </script>
+
+    <template>
+      <Step.Root v-model="currentStep">
+        <Step.Item value="account" v-slot="{ attrs }">
+          <div
+            v-bind="attrs"
+            class="data-[selected]:font-bold data-[disabled]:opacity-50"
+          >
+            Account Setup
+          </div>
+        </Step.Item>
+
+        <Step.Item value="profile" v-slot="{ attrs }">
+          <div
+            v-bind="attrs"
+            class="data-[selected]:font-bold data-[disabled]:opacity-50"
+          >
+            Profile Information
+          </div>
+        </Step.Item>
+
+        <Step.Item value="review" v-slot="{ attrs }">
+          <div
+            v-bind="attrs"
+            class="data-[selected]:font-bold data-[disabled]:opacity-50"
+          >
+            Review & Submit
+          </div>
+        </Step.Item>
+      </Step.Root>
+    </template>
+    ```
+  </Tab>
+
+  <Tab title="With Step Method">
+    ```vue
+    <script setup>
+    import { ref } from 'vue'
+    import { Step } from '@vuetify/v0'
+
+    const currentStep = ref('account')
+    </script>
+
+    <template>
+      <Step.Root v-model="currentStep" v-slot="{ step }">
+        <div>
+          <Step.Item value="account">Step 1</Step.Item>
+          <Step.Item value="profile">Step 2</Step.Item>
+          <Step.Item value="billing">Step 3</Step.Item>
+          <Step.Item value="review">Step 4</Step.Item>
+        </div>
+
+        <div>
+          <!-- Go back 2 steps -->
+          <button @click="step(-2)">Back 2</button>
+          <!-- Go forward 2 steps -->
+          <button @click="step(2)">Forward 2</button>
+        </div>
+      </Step.Root>
+    </template>
+    ```
+  </Tab>
+
+  <Tab title="Mandatory Force">
+    ```vue
+    <script setup>
+    import { ref } from 'vue'
+    import { Step } from '@vuetify/v0'
+
+    const currentStep = ref()
+    </script>
+
+    <template>
+      <!-- Automatically selects first step -->
+      <Step.Root v-model="currentStep" mandatory="force">
+        <Step.Item value="account">Account</Step.Item>
+        <Step.Item value="profile">Profile</Step.Item>
+        <Step.Item value="review">Review</Step.Item>
+      </Step.Root>
+    </template>
+    ```
+  </Tab>
+</Tabs>
+
+## Accessibility
+
+- Step.Root provides `aria-multiselectable="false"` to indicate single selection
+- Step.Item provides ARIA attributes for selection and disabled state
+- Items expose `data-selected` and `data-disabled` attributes for styling
+
+```vue
+<template>
+  <Step.Root v-model="currentStep">
+    <Step.Item value="account" v-slot="{ attrs }">
+      <div v-bind="attrs">
+        Account Setup
+      </div>
+    </Step.Item>
+  </Step.Root>
+</template>
+```
+
+## SSR
+
+Step is fully compatible with SSR as it is renderless by default:
+
+```vue
+<template>
+  <Step.Root v-model="currentStep">
+    <Step.Item value="account">Account</Step.Item>
+    <Step.Item value="profile">Profile</Step.Item>
+    <Step.Item value="review">Review</Step.Item>
+  </Step.Root>
+</template>
+```

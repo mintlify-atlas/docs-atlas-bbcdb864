@@ -1,0 +1,415 @@
+---
+title: useFilter
+description: Reactive array filtering composable with multiple filter modes
+---
+
+# useFilter
+
+Reactive array filtering composable with multiple filter modes and strategies.
+
+## Overview
+
+Filters arrays based on query strings with configurable matching strategies. Supports case-insensitive filtering, custom filter functions, and reactive updates.
+
+**Key Features:**
+- Four filter modes: `some`, `every`, `union`, `intersection`
+- Case-insensitive filtering by default
+- Custom filter functions
+- Reactive updates when query or items change
+- Context-based dependency injection support
+- Perfect for search, multi-criteria filtering
+- Works with primitives and objects
+
+## Functions
+
+### createFilter
+
+Create a filter context with pre-configured options.
+
+```ts
+function createFilter<Z extends FilterItem = FilterItem>(
+  options?: FilterOptions,
+): FilterContext<Z>
+```
+
+### createFilterContext
+
+Create a filter context with dependency injection support.
+
+```ts
+function createFilterContext<Z extends FilterItem = FilterItem>(
+  options?: FilterContextOptions,
+): ContextTrinity<FilterContext<Z>>
+```
+
+### useFilter
+
+Returns the current filter context from dependency injection.
+
+```ts
+function useFilter<Z extends FilterItem = FilterItem>(
+  namespace?: string,
+): FilterContext<Z>
+```
+
+## Types
+
+```ts
+type Primitive = string | number | boolean
+type FilterQuery = MaybeRefOrGetter<Primitive | Primitive[]>
+type FilterItem = Primitive | Record<string, any>
+type FilterMode = 'some' | 'every' | 'union' | 'intersection'
+type FilterFunction = (
+  query: Primitive | Primitive[],
+  item: FilterItem,
+) => boolean
+
+interface FilterOptions {
+  customFilter?: FilterFunction
+  keys?: string[]
+  mode?: FilterMode
+}
+
+interface FilterContext<Z extends FilterItem = FilterItem> {
+  mode: FilterMode
+  keys: string[] | undefined
+  customFilter: FilterFunction | undefined
+  query: ShallowRef<Primitive | Primitive[]>
+  apply: <T extends Z>(
+    query: FilterQuery,
+    items: MaybeRef<T[]>,
+  ) => FilterResult<T>
+}
+
+interface FilterResult<Z extends FilterItem = FilterItem> {
+  items: ComputedRef<Z[]>
+}
+```
+
+## Parameters
+
+<ParamField path="options" type="FilterOptions">
+  Configuration options for the filter.
+
+  <ParamField path="customFilter" type="FilterFunction">
+    Custom filter function. Overrides default filter logic.
+  </ParamField>
+
+  <ParamField path="keys" type="string[]">
+    Object properties to filter on. If not provided, filters all values.
+  </ParamField>
+
+  <ParamField path="mode" type="FilterMode" default="some">
+    Filter matching strategy:
+    - `some`: At least one field matches query
+    - `every`: All fields match query
+    - `union`: At least one query matches (OR logic)
+    - `intersection`: All queries match (AND logic)
+  </ParamField>
+
+  <ParamField path="namespace" type="string" default="v0:filter">
+    Namespace for dependency injection (context functions only).
+  </ParamField>
+</ParamField>
+
+## Filter Modes
+
+### some (default)
+
+At least one field contains the query:
+
+```ts
+import { createFilter } from '@vuetify/v0'
+
+const filter = createFilter({ keys: ['name', 'email'], mode: 'some' })
+const { items } = filter.apply('john', users)
+
+// Matches:
+// { name: 'John Doe', email: 'jane@example.com' } ✓ (name matches)
+// { name: 'Jane', email: 'john@example.com' } ✓ (email matches)
+// { name: 'Bob', email: 'bob@example.com' } ✗
+```
+
+### every
+
+All specified fields contain the query:
+
+```ts
+import { createFilter } from '@vuetify/v0'
+
+const filter = createFilter({ keys: ['name', 'bio'], mode: 'every' })
+const { items } = filter.apply('developer', users)
+
+// Matches:
+// { name: 'Developer', bio: 'Senior Developer' } ✓ (both match)
+// { name: 'Alice Developer', bio: 'Designer' } ✗ (bio doesn't match)
+```
+
+### union
+
+At least one query matches (OR logic):
+
+```ts
+import { createFilter } from '@vuetify/v0'
+
+const filter = createFilter({ mode: 'union' })
+const { items } = filter.apply(['apple', 'banana'], products)
+
+// Matches:
+// { name: 'Apple Juice' } ✓ (matches 'apple')
+// { name: 'Banana Bread' } ✓ (matches 'banana')
+// { name: 'Orange Juice' } ✗
+```
+
+### intersection
+
+All queries must be present (AND logic):
+
+```ts
+import { createFilter } from '@vuetify/v0'
+
+const filter = createFilter({ mode: 'intersection' })
+const { items } = filter.apply(['red', 'apple'], products)
+
+// Matches:
+// { name: 'Red Apple', color: 'red' } ✓ (both present)
+// { name: 'Red Orange' } ✗ ('apple' not present)
+// { name: 'Green Apple' } ✗ ('red' not present)
+```
+
+## Basic Usage
+
+### Simple Array Filtering
+
+```vue
+<script setup lang="ts">
+import { ref } from 'vue'
+import { createFilter } from '@vuetify/v0'
+
+const query = ref('')
+const items = ref(['apple', 'banana', 'cherry', 'date'])
+
+const filter = createFilter()
+const { items: filtered } = filter.apply(query, items)
+</script>
+
+<template>
+  <div>
+    <input v-model="query" placeholder="Search...">
+    <ul>
+      <li v-for="item in filtered" :key="item">{{ item }}</li>
+    </ul>
+  </div>
+</template>
+```
+
+### Object Array Filtering
+
+```vue
+<script setup lang="ts">
+import { ref } from 'vue'
+import { createFilter } from '@vuetify/v0'
+
+const query = ref('')
+const users = ref([
+  { id: 1, name: 'Alice', email: 'alice@example.com' },
+  { id: 2, name: 'Bob', email: 'bob@example.com' },
+  { id: 3, name: 'Charlie', email: 'charlie@example.com' },
+])
+
+const filter = createFilter({ keys: ['name', 'email'] })
+const { items: filtered } = filter.apply(query, users)
+</script>
+
+<template>
+  <div>
+    <input v-model="query" placeholder="Search users...">
+    <div v-for="user in filtered" :key="user.id">
+      <h3>{{ user.name }}</h3>
+      <p>{{ user.email }}</p>
+    </div>
+  </div>
+</template>
+```
+
+## Advanced Usage
+
+### Multi-Tag Search
+
+```vue
+<script setup lang="ts">
+import { ref } from 'vue'
+import { createFilter } from '@vuetify/v0'
+
+const tags = ref(['javascript', 'vue'])
+const articles = ref([
+  { title: 'Vue 3 Guide', tags: ['vue', 'javascript', 'frontend'] },
+  { title: 'React Tutorial', tags: ['react', 'javascript'] },
+  { title: 'Node.js API', tags: ['nodejs', 'javascript', 'backend'] },
+])
+
+const filter = createFilter({
+  keys: ['title', 'tags'],
+  mode: 'intersection',
+})
+
+const { items: filtered } = filter.apply(tags, articles)
+// Returns only Vue article (has both 'javascript' and 'vue')
+</script>
+
+<template>
+  <div>
+    <input v-model="tags" placeholder="Tags (comma-separated)">
+    <article v-for="article in filtered" :key="article.title">
+      <h2>{{ article.title }}</h2>
+      <p>Tags: {{ article.tags.join(', ') }}</p>
+    </article>
+  </div>
+</template>
+```
+
+### Custom Filter Function
+
+```ts
+import { createFilter } from '@vuetify/v0'
+
+const filter = createFilter({
+  customFilter: (query, item) => {
+    const q = String(query).toLowerCase()
+    
+    // Exact match only
+    if (typeof item === 'string') {
+      return item.toLowerCase() === q
+    }
+    
+    // Custom object matching
+    return item.name?.toLowerCase().startsWith(q)
+  },
+})
+
+const { items } = filter.apply('john', users)
+// Only matches names starting with 'john'
+```
+
+### Reactive Query
+
+```ts
+import { ref, computed } from 'vue'
+import { createFilter } from '@vuetify/v0'
+
+const searchText = ref('')
+const searchType = ref<'name' | 'email'>('name')
+
+const filter = createFilter()
+
+// Query updates reactively
+const query = computed(() => searchText.value)
+
+const { items: filtered } = filter.apply(query, users)
+```
+
+### Dependency Injection
+
+```ts
+// composables/useUserFilter.ts
+import { createFilterContext } from '@vuetify/v0'
+
+export const [
+  useUserFilter,
+  provideUserFilter,
+  userFilter,
+] = createFilterContext({
+  namespace: 'app:user-filter',
+  keys: ['name', 'email', 'role'],
+  mode: 'union',
+})
+```
+
+```vue
+<!-- Parent.vue -->
+<script setup lang="ts">
+import { provideUserFilter } from '@/composables/useUserFilter'
+
+provideUserFilter()
+</script>
+
+<template>
+  <UserSearch />
+</template>
+```
+
+```vue
+<!-- UserSearch.vue -->
+<script setup lang="ts">
+import { ref } from 'vue'
+import { useUserFilter } from '@/composables/useUserFilter'
+
+const query = ref('')
+const users = ref([...])
+
+const filter = useUserFilter()
+const { items: filtered } = filter.apply(query, users)
+</script>
+
+<template>
+  <input v-model="query" placeholder="Search users...">
+  <div v-for="user in filtered" :key="user.id">
+    {{ user.name }}
+  </div>
+</template>
+```
+
+## Type Safety
+
+```ts
+import { createFilter } from '@vuetify/v0'
+import type { FilterItem } from '@vuetify/v0'
+
+interface Product extends FilterItem {
+  id: string
+  name: string
+  category: string
+  price: number
+}
+
+const filter = createFilter<Product>({
+  keys: ['name', 'category'],
+})
+
+const products = ref<Product[]>([...])
+const { items: filtered } = filter.apply(query, products)
+// filtered.value is typed as Product[]
+```
+
+## Performance
+
+```ts
+import { createFilter } from '@vuetify/v0'
+
+// For union/intersection modes, values are joined once
+const filter = createFilter({ mode: 'union' })
+
+// Efficient for large arrays
+const { items } = filter.apply(
+  ['term1', 'term2', 'term3'],
+  largeArray, // 10,000+ items
+)
+```
+
+## Notes
+
+- Default mode is `some` (at least one field matches)
+- Filtering is case-insensitive by default
+- Empty or whitespace-only queries return all items
+- Numeric values are converted to strings for matching
+- `null` and `undefined` queries return all items
+- When no keys specified, filters all object values
+- Custom filter functions override all default behavior
+- Union/intersection modes use optimized string joining
+
+## Related
+
+- [usePagination](/composables/use-pagination) - Pagination utilities
+- [createDataTable](/composables/create-data-table) - Uses filtering internally
+- [toArray](/composables/to-array) - Array normalization
+- [createContext](/composables/create-context) - Dependency injection

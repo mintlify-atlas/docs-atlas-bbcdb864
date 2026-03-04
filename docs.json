@@ -1,122 +1,262 @@
 {
   "$schema": "https://mintlify.com/docs.json",
-  "theme": "mint",
-  "name": "Mint Starter Kit",
+  "name": "Vuetify Zero",
+  "theme": "palm",
   "colors": {
-    "primary": "#16A34A",
-    "light": "#07C983",
-    "dark": "#15803D"
+    "primary": "#040404",
+    "light": "#1495f5",
+    "dark": "#1a65c3"
   },
   "favicon": "/favicon.svg",
+  "logo": {
+    "light": "https://media.brand.dev/cb538109-1145-458f-8f34-1e62cb351e67.svg",
+    "dark": "https://media.brand.dev/cb538109-1145-458f-8f34-1e62cb351e67.svg"
+  },
+  "navbar": {
+    "primary": {
+      "type": "github",
+      "href": "https://github.com/vuetifyjs/0"
+    }
+  },
+  "footer": {
+    "socials": {
+      "github": "https://github.com/vuetifyjs/0"
+    }
+  },
   "navigation": {
     "tabs": [
       {
-        "tab": "Guides",
+        "tab": "Documentation",
         "groups": [
           {
-            "group": "Getting started",
+            "group": "Get Started",
             "pages": [
-              "index",
-              "quickstart",
-              "development"
+              "introduction",
+              "installation",
+              "quickstart"
             ]
           },
           {
-            "group": "Customization",
+            "group": "Core Concepts",
             "pages": [
-              "essentials/settings",
-              "essentials/navigation"
+              "concepts/architecture",
+              "concepts/headless-components",
+              "concepts/composables",
+              "concepts/trinity-pattern",
+              "concepts/design-principles"
             ]
           },
           {
-            "group": "Writing content",
+            "group": "Guides",
             "pages": [
-              "essentials/markdown",
-              "essentials/code",
-              "essentials/images",
-              "essentials/reusable-snippets"
-            ]
-          },
-          {
-            "group": "AI tools",
-            "pages": [
-              "ai-tools/cursor",
-              "ai-tools/claude-code",
-              "ai-tools/windsurf"
+              "guides/building-components",
+              "guides/styling",
+              "guides/typescript",
+              "guides/ssr"
             ]
           }
         ]
       },
       {
-        "tab": "API reference",
+        "tab": "Components",
         "groups": [
           {
-            "group": "API documentation",
+            "group": "Base",
             "pages": [
-              "api-reference/introduction"
+              "components/atom",
+              "components/avatar"
             ]
           },
           {
-            "group": "Endpoint examples",
+            "group": "Navigation",
             "pages": [
-              "api-reference/endpoint/get",
-              "api-reference/endpoint/create",
-              "api-reference/endpoint/delete",
-              "api-reference/endpoint/webhook"
+              "components/breadcrumbs",
+              "components/pagination",
+              "components/step",
+              "components/tabs"
+            ]
+          },
+          {
+            "group": "Forms",
+            "pages": [
+              "components/checkbox",
+              "components/radio",
+              "components/switch"
+            ]
+          },
+          {
+            "group": "Selection",
+            "pages": [
+              "components/group",
+              "components/selection",
+              "components/single"
+            ]
+          },
+          {
+            "group": "Overlays",
+            "pages": [
+              "components/dialog",
+              "components/popover",
+              "components/scrim"
+            ]
+          },
+          {
+            "group": "Layout",
+            "pages": [
+              "components/expansion-panel"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Composables",
+        "groups": [
+          {
+            "group": "Foundation",
+            "pages": [
+              "composables/create-context",
+              "composables/create-plugin",
+              "composables/create-trinity"
+            ]
+          },
+          {
+            "group": "Registry",
+            "pages": [
+              "composables/create-registry",
+              "composables/use-proxy-registry"
+            ]
+          },
+          {
+            "group": "Selection",
+            "pages": [
+              "composables/create-selection",
+              "composables/create-single",
+              "composables/create-group",
+              "composables/create-step",
+              "composables/create-breadcrumbs",
+              "composables/create-nested"
+            ]
+          },
+          {
+            "group": "Data Structures",
+            "pages": [
+              "composables/create-queue",
+              "composables/create-timeline",
+              "composables/create-tokens",
+              "composables/create-data-table"
+            ]
+          },
+          {
+            "group": "Forms",
+            "pages": [
+              "composables/create-form"
+            ]
+          },
+          {
+            "group": "Reactivity",
+            "pages": [
+              "composables/use-proxy-model",
+              "composables/to-reactive",
+              "composables/to-array"
+            ]
+          },
+          {
+            "group": "Utilities",
+            "pages": [
+              "composables/use-filter",
+              "composables/use-pagination",
+              "composables/use-virtual",
+              "composables/use-overflow"
+            ]
+          },
+          {
+            "group": "System",
+            "pages": [
+              "composables/use-click-outside",
+              "composables/use-event-listener",
+              "composables/use-hotkey",
+              "composables/use-intersection-observer",
+              "composables/use-lazy",
+              "composables/use-media-query",
+              "composables/use-mutation-observer",
+              "composables/use-resize-observer",
+              "composables/use-toggle-scope"
+            ]
+          },
+          {
+            "group": "Plugins",
+            "pages": [
+              "composables/use-breakpoints",
+              "composables/use-date",
+              "composables/use-features",
+              "composables/use-hydration",
+              "composables/use-locale",
+              "composables/use-logger",
+              "composables/use-permissions",
+              "composables/use-stack",
+              "composables/use-storage",
+              "composables/use-theme"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Adapters",
+        "groups": [
+          {
+            "group": "Overview",
+            "pages": [
+              "adapters/introduction"
+            ]
+          },
+          {
+            "group": "Data Table",
+            "pages": [
+              "adapters/data-table-client",
+              "adapters/data-table-server",
+              "adapters/data-table-virtual"
+            ]
+          },
+          {
+            "group": "Features",
+            "pages": [
+              "adapters/features-flagsmith",
+              "adapters/features-launchdarkly",
+              "adapters/features-posthog"
+            ]
+          },
+          {
+            "group": "Logger",
+            "pages": [
+              "adapters/logger-consola",
+              "adapters/logger-pino",
+              "adapters/logger-v0"
+            ]
+          },
+          {
+            "group": "Other Adapters",
+            "pages": [
+              "adapters/locale-v0",
+              "adapters/permissions-v0",
+              "adapters/storage-memory",
+              "adapters/theme-v0"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "Reference",
+            "pages": [
+              "api/types",
+              "api/utilities",
+              "api/constants"
             ]
           }
         ]
       }
-    ],
-    "global": {
-      "anchors": [
-        {
-          "anchor": "Documentation",
-          "href": "https://mintlify.com/docs",
-          "icon": "book-open-cover"
-        },
-        {
-          "anchor": "Blog",
-          "href": "https://mintlify.com/blog",
-          "icon": "newspaper"
-        }
-      ]
-    }
-  },
-  "logo": {
-    "light": "/logo/light.svg",
-    "dark": "/logo/dark.svg"
-  },
-  "navbar": {
-    "links": [
-      {
-        "label": "Support",
-        "href": "mailto:hi@mintlify.com"
-      }
-    ],
-    "primary": {
-      "type": "button",
-      "label": "Dashboard",
-      "href": "https://dashboard.mintlify.com"
-    }
-  },
-  "contextual": {
-    "options": [
-     "copy",
-     "view",
-     "chatgpt",
-     "claude",
-     "perplexity",
-     "mcp",
-     "cursor",
-     "vscode"
-   ]
-  },
-  "footer": {
-    "socials": {
-      "x": "https://x.com/mintlify",
-      "github": "https://github.com/mintlify",
-      "linkedin": "https://linkedin.com/company/mintlify"
-    }
+    ]
   }
 }

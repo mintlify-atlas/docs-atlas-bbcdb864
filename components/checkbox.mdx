@@ -1,0 +1,523 @@
+---
+title: Checkbox
+description: Accessible checkbox component with support for standalone and group modes, indeterminate states, and form integration
+---
+
+# Checkbox
+
+A headless checkbox component that provides accessible, flexible checkbox functionality. Supports standalone boolean state or multi-selection within groups, with full keyboard navigation and form integration.
+
+## Features
+
+- **Dual-mode operation**: Standalone with v-model or group multi-selection
+- **Tri-state support**: Checked, unchecked, and indeterminate states
+- **Full accessibility**: ARIA attributes, keyboard navigation, screen reader support
+- **Form integration**: Automatic hidden input generation for native form submission
+- **Select all**: Built-in component for bulk selection in groups
+- **Flexible rendering**: Works with any element via `as` prop or renderless mode
+
+## Basic Usage
+
+### Standalone Checkbox
+
+<CodeGroup>
+```vue Standalone
+<script setup lang="ts">
+import { Checkbox } from '@vuetify/v0'
+import { ref } from 'vue'
+
+const agreed = ref(false)
+</script>
+
+<template>
+  <label>
+    <Checkbox.Root v-model="agreed">
+      <Checkbox.Indicator>✓</Checkbox.Indicator>
+    </Checkbox.Root>
+    I agree to the terms
+  </label>
+</template>
+```
+
+```vue With Form
+<script setup lang="ts">
+import { Checkbox } from '@vuetify/v0'
+import { ref } from 'vue'
+
+const agreed = ref(false)
+</script>
+
+<template>
+  <form @submit.prevent="handleSubmit">
+    <label>
+      <Checkbox.Root v-model="agreed" name="terms" value="accepted">
+        <Checkbox.Indicator>✓</Checkbox.Indicator>
+      </Checkbox.Root>
+      I agree to the terms
+    </label>
+    <button type="submit">Submit</button>
+  </form>
+</template>
+```
+</CodeGroup>
+
+### Checkbox Group
+
+<CodeGroup>
+```vue Basic Group
+<script setup lang="ts">
+import { Checkbox } from '@vuetify/v0'
+import { ref } from 'vue'
+
+const selected = ref<string[]>([])
+</script>
+
+<template>
+  <Checkbox.Group v-model="selected">
+    <label>
+      <Checkbox.Root value="typescript">
+        <Checkbox.Indicator>✓</Checkbox.Indicator>
+      </Checkbox.Root>
+      TypeScript
+    </label>
+    <label>
+      <Checkbox.Root value="vue">
+        <Checkbox.Indicator>✓</Checkbox.Indicator>
+      </Checkbox.Root>
+      Vue
+    </label>
+    <label>
+      <Checkbox.Root value="vite">
+        <Checkbox.Indicator>✓</Checkbox.Indicator>
+      </Checkbox.Root>
+      Vite
+    </label>
+  </Checkbox.Group>
+</template>
+```
+
+```vue With Select All
+<script setup lang="ts">
+import { Checkbox } from '@vuetify/v0'
+import { ref } from 'vue'
+
+const selected = ref<string[]>([])
+</script>
+
+<template>
+  <Checkbox.Group v-model="selected">
+    <label>
+      <Checkbox.SelectAll>
+        <Checkbox.Indicator v-slot="{ isMixed }">
+          <span v-if="isMixed">−</span>
+          <span v-else>✓</span>
+        </Checkbox.Indicator>
+      </Checkbox.SelectAll>
+      Select all
+    </label>
+
+    <label>
+      <Checkbox.Root value="option1">
+        <Checkbox.Indicator>✓</Checkbox.Indicator>
+      </Checkbox.Root>
+      Option 1
+    </label>
+    <label>
+      <Checkbox.Root value="option2">
+        <Checkbox.Indicator>✓</Checkbox.Indicator>
+      </Checkbox.Root>
+      Option 2
+    </label>
+  </Checkbox.Group>
+</template>
+```
+</CodeGroup>
+
+## Components
+
+### Checkbox.Root
+
+The main checkbox component. Supports standalone mode with v-model or group mode within `Checkbox.Group`.
+
+<ParamField path="modelValue" type="boolean" default="false">
+  The checked state (standalone mode only)
+</ParamField>
+
+<ParamField path="value" type="unknown">
+  Value associated with this checkbox (used in group mode and form submission)
+</ParamField>
+
+<ParamField path="name" type="string">
+  Form field name. When provided, automatically renders a hidden input for form submission
+</ParamField>
+
+<ParamField path="disabled" type="boolean | Ref<boolean>" default="false">
+  Disables the checkbox, preventing interaction
+</ParamField>
+
+<ParamField path="indeterminate" type="boolean | Ref<boolean>" default="false">
+  Sets the indeterminate/mixed state (standalone mode)
+</ParamField>
+
+<ParamField path="label" type="string">
+  Optional display label (passed to slot props)
+</ParamField>
+
+<ParamField path="id" type="string">
+  Unique identifier (auto-generated if not provided)
+</ParamField>
+
+<ParamField path="form" type="string">
+  Associate with a form element by ID
+</ParamField>
+
+<ParamField path="as" type="string" default="'button'">
+  HTML element to render as
+</ParamField>
+
+<ParamField path="renderless" type="boolean" default="false">
+  Render only slot content without wrapper element
+</ParamField>
+
+<ParamField path="namespace" type="string" default="'v0:checkbox:root'">
+  Context namespace for child components
+</ParamField>
+
+<ParamField path="groupNamespace" type="string" default="'v0:checkbox:group'">
+  Namespace for connecting to parent group
+</ParamField>
+
+#### Slot Props
+
+<ParamField path="isChecked" type="boolean">
+  Whether the checkbox is checked
+</ParamField>
+
+<ParamField path="isMixed" type="boolean">
+  Whether the checkbox is in indeterminate state
+</ParamField>
+
+<ParamField path="isDisabled" type="boolean">
+  Whether the checkbox is disabled
+</ParamField>
+
+<ParamField path="select" type="() => void">
+  Function to check the checkbox
+</ParamField>
+
+<ParamField path="unselect" type="() => void">
+  Function to uncheck the checkbox
+</ParamField>
+
+<ParamField path="toggle" type="() => void">
+  Function to toggle checkbox state
+</ParamField>
+
+<ParamField path="attrs" type="object">
+  Pre-computed ARIA and data attributes to bind to the element
+</ParamField>
+
+### Checkbox.Group
+
+Container for managing multiple checkboxes with multi-selection support.
+
+<ParamField path="modelValue" type="T[]" default="[]">
+  Array of selected values
+</ParamField>
+
+<ParamField path="disabled" type="boolean" default="false">
+  Disables all checkboxes in the group
+</ParamField>
+
+<ParamField path="enroll" type="boolean" default="false">
+  Auto-select all non-disabled items on mount
+</ParamField>
+
+<ParamField path="mandatory" type="boolean | 'force'" default="false">
+  - `false`: No enforcement
+  - `true`: Prevents deselecting the last item
+  - `'force'`: Auto-selects first non-disabled item
+</ParamField>
+
+<ParamField path="label" type="string">
+  Accessible name for the group
+</ParamField>
+
+<ParamField path="as" type="string" default="'div'">
+  HTML element to render as
+</ParamField>
+
+<ParamField path="renderless" type="boolean" default="false">
+  Render only slot content without wrapper
+</ParamField>
+
+<ParamField path="namespace" type="string" default="'v0:checkbox:group'">
+  Context namespace for child checkboxes
+</ParamField>
+
+#### Slot Props
+
+<ParamField path="isDisabled" type="boolean">
+  Whether the group is disabled
+</ParamField>
+
+<ParamField path="isNoneSelected" type="boolean">
+  Whether no items are selected
+</ParamField>
+
+<ParamField path="isAllSelected" type="boolean">
+  Whether all selectable items are selected
+</ParamField>
+
+<ParamField path="isMixed" type="boolean">
+  Whether some but not all items are selected
+</ParamField>
+
+<ParamField path="selectAll" type="() => void">
+  Select all non-disabled items
+</ParamField>
+
+<ParamField path="unselectAll" type="() => void">
+  Unselect all items
+</ParamField>
+
+<ParamField path="toggleAll" type="() => void">
+  Toggle between all selected and none selected
+</ParamField>
+
+### Checkbox.Indicator
+
+Visual indicator that displays when the checkbox is checked or indeterminate.
+
+<ParamField path="as" type="string" default="'span'">
+  HTML element to render as
+</ParamField>
+
+<ParamField path="renderless" type="boolean" default="false">
+  Render only slot content without wrapper
+</ParamField>
+
+<ParamField path="namespace" type="string" default="'v0:checkbox:root'">
+  Context namespace to inject from parent
+</ParamField>
+
+#### Slot Props
+
+<ParamField path="isChecked" type="boolean">
+  Whether the checkbox is checked
+</ParamField>
+
+<ParamField path="isMixed" type="boolean">
+  Whether the checkbox is indeterminate
+</ParamField>
+
+<ParamField path="attrs" type="object">
+  Contains `data-state` and visibility style
+</ParamField>
+
+<Note>
+The indicator is automatically hidden via `visibility: hidden` when the checkbox is unchecked and not indeterminate.
+</Note>
+
+### Checkbox.SelectAll
+
+Special checkbox for selecting/deselecting all items in a group. Must be used within `Checkbox.Group`.
+
+<ParamField path="label" type="string">
+  Accessible label for the select all checkbox
+</ParamField>
+
+<ParamField path="disabled" type="boolean | Ref<boolean>" default="false">
+  Disables the select all checkbox
+</ParamField>
+
+<ParamField path="as" type="string" default="'button'">
+  HTML element to render as
+</ParamField>
+
+<ParamField path="renderless" type="boolean" default="false">
+  Render only slot content without wrapper
+</ParamField>
+
+<ParamField path="namespace" type="string" default="'v0:checkbox:root'">
+  Context namespace for child indicator
+</ParamField>
+
+<ParamField path="groupNamespace" type="string" default="'v0:checkbox:group'">
+  Namespace for connecting to parent group
+</ParamField>
+
+#### Slot Props
+
+<ParamField path="isAllSelected" type="boolean">
+  Whether all items are selected
+</ParamField>
+
+<ParamField path="isMixed" type="boolean">
+  Whether some but not all items are selected
+</ParamField>
+
+<ParamField path="isDisabled" type="boolean">
+  Whether the select all is disabled
+</ParamField>
+
+<ParamField path="selectAll" type="() => void">
+  Select all items
+</ParamField>
+
+<ParamField path="toggleAll" type="() => void">
+  Toggle all items
+</ParamField>
+
+<Note>
+The SelectAll component does NOT register itself as a group item. It only controls the group's aggregate state.
+</Note>
+
+### Checkbox.HiddenInput
+
+Hidden input for native form submission. Automatically rendered when `name` prop is provided to `Checkbox.Root`.
+
+<ParamField path="name" type="string">
+  Form field name (required)
+</ParamField>
+
+<ParamField path="value" type="unknown">
+  Value to submit when checked (overrides context value)
+</ParamField>
+
+<ParamField path="form" type="string">
+  Associate with form by ID (overrides context form)
+</ParamField>
+
+<ParamField path="namespace" type="string" default="'v0:checkbox:root'">
+  Context namespace to inject from parent
+</ParamField>
+
+## Advanced Examples
+
+### Indeterminate State
+
+```vue
+<script setup lang="ts">
+import { Checkbox } from '@vuetify/v0'
+import { ref, computed } from 'vue'
+
+const items = ref(['item1', 'item2', 'item3'])
+const selected = ref<string[]>(['item1'])
+
+const parentState = computed(() => {
+  if (selected.value.length === 0) return false
+  if (selected.value.length === items.value.length) return true
+  return 'indeterminate'
+})
+</script>
+
+<template>
+  <label>
+    <Checkbox.Root 
+      :model-value="parentState === true" 
+      :indeterminate="parentState === 'indeterminate'"
+      @click="selected = parentState ? [] : [...items]"
+    >
+      <Checkbox.Indicator>✓</Checkbox.Indicator>
+    </Checkbox.Root>
+    Select all
+  </label>
+
+  <Checkbox.Group v-model="selected">
+    <label v-for="item in items" :key="item">
+      <Checkbox.Root :value="item">
+        <Checkbox.Indicator>✓</Checkbox.Indicator>
+      </Checkbox.Root>
+      {{ item }}
+    </label>
+  </Checkbox.Group>
+</template>
+```
+
+### Renderless Mode
+
+```vue
+<script setup lang="ts">
+import { Checkbox } from '@vuetify/v0'
+import { ref } from 'vue'
+
+const agreed = ref(false)
+</script>
+
+<template>
+  <Checkbox.Root v-model="agreed" renderless v-slot="{ attrs, isChecked }">
+    <div 
+      v-bind="attrs"
+      class="custom-checkbox"
+      :class="{ checked: isChecked }"
+    >
+      <Checkbox.Indicator renderless v-slot="{ isChecked }">
+        <svg v-if="isChecked" class="checkmark">
+          <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
+        </svg>
+      </Checkbox.Indicator>
+    </div>
+  </Checkbox.Root>
+</template>
+```
+
+### Form Integration
+
+```vue
+<script setup lang="ts">
+import { Checkbox } from '@vuetify/v0'
+import { ref } from 'vue'
+
+const preferences = ref<string[]>([])
+
+function handleSubmit(event: Event) {
+  const formData = new FormData(event.target as HTMLFormElement)
+  const selected = formData.getAll('preferences')
+  console.log('Selected:', selected)
+}
+</script>
+
+<template>
+  <form @submit.prevent="handleSubmit">
+    <Checkbox.Group v-model="preferences">
+      <label>
+        <Checkbox.Root name="preferences" value="email">
+          <Checkbox.Indicator>✓</Checkbox.Indicator>
+        </Checkbox.Root>
+        Email notifications
+      </label>
+      <label>
+        <Checkbox.Root name="preferences" value="sms">
+          <Checkbox.Indicator>✓</Checkbox.Indicator>
+        </Checkbox.Root>
+        SMS notifications
+      </label>
+    </Checkbox.Group>
+    <button type="submit">Save</button>
+  </form>
+</template>
+```
+
+## Accessibility
+
+- Uses `role="checkbox"` and `aria-checked` for proper screen reader support
+- Supports keyboard navigation (Space to toggle)
+- Manages `tabindex` for proper focus management
+- Provides `aria-disabled` when disabled
+- Group uses `role="group"` with optional `aria-label`
+- Roving tabindex not used (each checkbox is independently tabbable)
+
+## Type Safety
+
+All components are fully typed with TypeScript generics:
+
+```typescript
+import type { 
+  CheckboxRootProps,
+  CheckboxGroupProps,
+  CheckboxIndicatorProps,
+  CheckboxSelectAllProps,
+  CheckboxState // 'checked' | 'unchecked' | 'indeterminate'
+} from '@vuetify/v0'
+```

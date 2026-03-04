@@ -1,0 +1,255 @@
+---
+title: Avatar
+description: Component for displaying user avatars with automatic fallback support
+---
+
+## Overview
+
+Avatar provides a robust image display system with automatic fallback logic. It uses an internal selection system with `mandatory: 'force'` to ensure one item is always visible. Images register with priority values and the highest-priority loaded image is displayed.
+
+## Sub-Components
+
+- **Avatar.Root**: Container that manages image loading state and fallback logic
+- **Avatar.Image**: Image component with automatic show/hide based on load state
+- **Avatar.Fallback**: Fallback content shown when no images are loaded
+
+## Usage
+
+```vue
+<script lang="ts" setup>
+import { Avatar } from '@vuetify/v0'
+</script>
+
+<template>
+  <Avatar.Root>
+    <Avatar.Image src="/avatar.jpg" />
+    <Avatar.Fallback>JD</Avatar.Fallback>
+  </Avatar.Root>
+</template>
+```
+
+## Avatar.Root
+
+### Props
+
+<ParamField path="as" type="DOMElement | null" default="'div'">
+  The HTML element to render as
+</ParamField>
+
+<ParamField path="renderless" type="boolean" default="false">
+  Render without a wrapper element
+</ParamField>
+
+<ParamField path="namespace" type="string" default="'v0:avatar'">
+  Namespace for dependency injection
+</ParamField>
+
+### Slots
+
+<ParamField path="default">
+  Content slot for Avatar.Image and Avatar.Fallback components
+</ParamField>
+
+## Avatar.Image
+
+### Props
+
+<ParamField path="as" type="DOMElement | null" default="'img'">
+  The HTML element to render as
+</ParamField>
+
+<ParamField path="src" type="string">
+  Image source URL
+</ParamField>
+
+<ParamField path="priority" type="number" default="0">
+  Priority for display order (higher = more preferred)
+</ParamField>
+
+<ParamField path="namespace" type="string" default="'v0:avatar'">
+  Namespace for retrieving avatar context
+</ParamField>
+
+### Events
+
+<ParamField path="load" type="(e: Event) => void">
+  Emitted when image successfully loads
+</ParamField>
+
+<ParamField path="error" type="(e: Event) => void">
+  Emitted when image fails to load
+</ParamField>
+
+### Slot Props
+
+<ParamField path="isSelected" type="boolean">
+  Whether this image is currently visible
+</ParamField>
+
+<ParamField path="attrs" type="object">
+  Attributes to bind to the image element including role, src, onLoad, and onError
+</ParamField>
+
+## Avatar.Fallback
+
+### Props
+
+<ParamField path="as" type="DOMElement | null" default="'span'">
+  The HTML element to render as
+</ParamField>
+
+<ParamField path="namespace" type="string" default="'v0:avatar'">
+  Namespace for retrieving avatar context
+</ParamField>
+
+### Slot Props
+
+<ParamField path="isSelected" type="boolean">
+  Whether this fallback is currently visible
+</ParamField>
+
+## Examples
+
+<Tabs>
+  <Tab title="Basic">
+    ```vue
+    <script setup>
+    import { Avatar } from '@vuetify/v0'
+    </script>
+
+    <template>
+      <Avatar.Root>
+        <Avatar.Image src="/avatar.jpg" />
+        <Avatar.Fallback>JD</Avatar.Fallback>
+      </Avatar.Root>
+    </template>
+    ```
+  </Tab>
+
+  <Tab title="Custom Element">
+    ```vue
+    <template>
+      <Avatar.Root as="figure">
+        <Avatar.Image src="/avatar.jpg" />
+        <Avatar.Fallback as="figcaption">JD</Avatar.Fallback>
+      </Avatar.Root>
+    </template>
+    ```
+  </Tab>
+
+  <Tab title="Multiple Images with Priority">
+    ```vue
+    <template>
+      <Avatar.Root>
+        <!-- High-res image with higher priority -->
+        <Avatar.Image
+          src="/avatar-hd.jpg"
+          :priority="10"
+        />
+
+        <!-- Standard image with lower priority -->
+        <Avatar.Image
+          src="/avatar.jpg"
+          :priority="5"
+        />
+
+        <Avatar.Fallback>JD</Avatar.Fallback>
+      </Avatar.Root>
+    </template>
+    ```
+  </Tab>
+
+  <Tab title="With Events">
+    ```vue
+    <script setup>
+    import { Avatar } from '@vuetify/v0'
+
+    function handleLoad(e: Event) {
+      console.log('Image loaded', e)
+    }
+
+    function handleError(e: Event) {
+      console.log('Image failed to load', e)
+    }
+    </script>
+
+    <template>
+      <Avatar.Root>
+        <Avatar.Image
+          src="/avatar.jpg"
+          @load="handleLoad"
+          @error="handleError"
+        />
+        <Avatar.Fallback>JD</Avatar.Fallback>
+      </Avatar.Root>
+    </template>
+    ```
+  </Tab>
+
+  <Tab title="Renderless Mode">
+    ```vue
+    <script setup>
+    import { Avatar } from '@vuetify/v0'
+    </script>
+
+    <template>
+      <Avatar.Root>
+        <Avatar.Image src="/avatar.jpg" renderless>
+          <template #default="{ attrs }">
+            <img v-bind="attrs" class="custom-img" />
+          </template>
+        </Avatar.Image>
+
+        <Avatar.Fallback renderless>
+          <template #default="{ isSelected }">
+            <div v-if="isSelected" class="custom-fallback">
+              JD
+            </div>
+          </template>
+        </Avatar.Fallback>
+      </Avatar.Root>
+    </template>
+    ```
+  </Tab>
+
+  <Tab title="Custom Namespace">
+    ```vue
+    <template>
+      <!-- Isolated avatar contexts -->
+      <Avatar.Root namespace="avatar-1">
+        <Avatar.Fallback namespace="avatar-1">A1</Avatar.Fallback>
+      </Avatar.Root>
+
+      <Avatar.Root namespace="avatar-2">
+        <Avatar.Fallback namespace="avatar-2">A2</Avatar.Fallback>
+      </Avatar.Root>
+    </template>
+    ```
+  </Tab>
+</Tabs>
+
+## Accessibility
+
+Avatar.Image automatically sets `role="img"` for accessibility:
+
+```vue
+<template>
+  <Avatar.Root>
+    <Avatar.Image src="/avatar.jpg" alt="User avatar" />
+    <Avatar.Fallback>JD</Avatar.Fallback>
+  </Avatar.Root>
+</template>
+```
+
+## SSR
+
+Avatar is fully compatible with SSR. On the server, the fallback will be rendered by default since images cannot load:
+
+```vue
+<template>
+  <Avatar.Root>
+    <Avatar.Image src="/avatar.jpg" />
+    <Avatar.Fallback>JD</Avatar.Fallback>
+  </Avatar.Root>
+</template>
+```

@@ -1,0 +1,369 @@
+---
+title: Memory Adapter
+description: In-memory storage adapter for Vuetify Zero
+---
+
+# Memory Adapter
+
+The `MemoryAdapter` provides temporary in-memory storage that implements the `StorageAdapter` interface. Useful for testing, SSR fallback, or when persistent storage is not available.
+
+## Import
+
+```typescript
+import { MemoryAdapter } from '@vuetify/v0/storage/adapters/memory'
+```
+
+## Basic Usage
+
+```typescript
+import { createApp } from 'vue'
+import { createStoragePlugin } from '@vuetify/v0/storage'
+import { MemoryAdapter } from '@vuetify/v0/storage/adapters/memory'
+
+const app = createApp(App)
+
+app.use(createStoragePlugin({
+  adapter: new MemoryAdapter()
+}))
+```
+
+## Using in Components
+
+```vue
+<script setup lang="ts">
+import { useStorage } from '@vuetify/v0/storage'
+
+const storage = useStorage()
+
+// Store data
+storage.set('username', 'Alice')
+storage.set('settings', { theme: 'dark', lang: 'en' })
+
+// Retrieve data
+const username = storage.get('username')
+const settings = storage.get('settings')
+
+console.log(username.value) // 'Alice'
+console.log(settings.value) // { theme: 'dark', lang: 'en' }
+</script>
+```
+
+## Features
+
+- **In-memory storage** - Data stored in a JavaScript Map
+- **Non-persistent** - Data lost on page refresh
+- **SSR-safe** - Works in Node.js and browser
+- **Storage API compatible** - Implements same interface as localStorage
+- **Synchronous** - No async operations
+- **Reactive** - Integrates with Vue's reactivity system
+
+## Storage Operations
+
+### Set Item
+
+```typescript
+import { useStorage } from '@vuetify/v0/storage'
+
+const storage = useStorage()
+
+storage.set('key', 'value')
+storage.set('user', { id: 123, name: 'Alice' })
+storage.set('count', 42)
+```
+
+### Get Item
+
+```typescript
+import { useStorage } from '@vuetify/v0/storage'
+
+const storage = useStorage()
+
+const value = storage.get('key')
+const user = storage.get('user', { id: 0, name: 'Guest' })
+
+console.log(value.value)     // 'value'
+console.log(user.value.name) // 'Alice'
+```
+
+### Remove Item
+
+```typescript
+import { useStorage } from '@vuetify/v0/storage'
+
+const storage = useStorage()
+
+storage.remove('key')
+```
+
+### Clear All
+
+```typescript
+import { useStorage } from '@vuetify/v0/storage'
+
+const storage = useStorage()
+
+storage.clear() // Removes all stored items
+```
+
+### Check Existence
+
+```typescript
+import { useStorage } from '@vuetify/v0/storage'
+
+const storage = useStorage()
+
+if (storage.has('username')) {
+  console.log('Username exists')
+}
+```
+
+## SSR Usage
+
+The `MemoryAdapter` is automatically used as a fallback during SSR:
+
+```typescript
+import { IN_BROWSER } from '@vuetify/v0/constants/globals'
+import { MemoryAdapter } from '@vuetify/v0/storage/adapters/memory'
+
+const adapter = IN_BROWSER 
+  ? window.localStorage 
+  : new MemoryAdapter()
+
+app.use(createStoragePlugin({ adapter }))
+```
+
+This is the **default behavior** of `createStorage`:
+
+```typescript
+import { createStorage } from '@vuetify/v0/storage'
+
+const storage = createStorage()
+// Automatically uses localStorage in browser, MemoryAdapter in Node.js
+```
+
+## Testing
+
+Perfect for unit tests:
+
+```typescript
+import { describe, it, expect } from 'vitest'
+import { createStorage } from '@vuetify/v0/storage'
+import { MemoryAdapter } from '@vuetify/v0/storage/adapters/memory'
+
+describe('Storage', () => {
+  it('stores and retrieves values', () => {
+    const storage = createStorage({
+      adapter: new MemoryAdapter()
+    })
+    
+    storage.set('test', 'value')
+    const result = storage.get('test')
+    
+    expect(result.value).toBe('value')
+  })
+  
+  it('clears all values', () => {
+    const storage = createStorage({
+      adapter: new MemoryAdapter()
+    })
+    
+    storage.set('key1', 'value1')
+    storage.set('key2', 'value2')
+    storage.clear()
+    
+    expect(storage.has('key1')).toBe(false)
+    expect(storage.has('key2')).toBe(false)
+  })
+})
+```
+
+## Temporary Storage
+
+Use for session-specific data that shouldn't persist:
+
+```typescript
+import { createStorage } from '@vuetify/v0/storage'
+import { MemoryAdapter } from '@vuetify/v0/storage/adapters/memory'
+
+const sessionStorage = createStorage({
+  adapter: new MemoryAdapter(),
+  prefix: 'session:'
+})
+
+// Store temporary data
+sessionStorage.set('cart', { items: [], total: 0 })
+sessionStorage.set('formData', { name: '', email: '' })
+
+// Data is lost on page refresh
+```
+
+## TypeScript
+
+```typescript
+import { MemoryAdapter } from '@vuetify/v0/storage/adapters/memory'
+import type { StorageAdapter } from '@vuetify/v0/storage'
+
+const adapter: StorageAdapter = new MemoryAdapter()
+
+// Fully implements StorageAdapter interface
+adapter.setItem('key', 'value')
+const value = adapter.getItem('key')  // string | null
+adapter.removeItem('key')
+const length = adapter.length         // number
+const firstKey = adapter.key(0)       // string
+```
+
+## Storage Adapter Interface
+
+The `MemoryAdapter` implements the `StorageAdapter` interface:
+
+```typescript
+interface StorageAdapter {
+  readonly length: number
+  getItem(key: string): string | null
+  setItem(key: string, value: string): void
+  removeItem(key: string): void
+  key(index: number): string
+}
+```
+
+## Internal Implementation
+
+The adapter uses a JavaScript `Map` internally:
+
+```typescript
+class MemoryAdapter implements StorageAdapter {
+  private store = new Map<string, string>()
+  
+  get length() {
+    return this.store.size
+  }
+  
+  getItem(key: string) {
+    return this.store.get(key) ?? null
+  }
+  
+  setItem(key: string, value: string) {
+    this.store.set(key, value)
+  }
+  
+  removeItem(key: string) {
+    this.store.delete(key)
+  }
+  
+  key(index: number) {
+    return Array.from(this.store.keys())[index] ?? ''
+  }
+}
+```
+
+## Limitations
+
+<Warning>
+The `MemoryAdapter` has these limitations:
+
+- **Non-persistent** - Data is lost on page refresh or navigation
+- **No cross-tab sync** - Data is isolated to the current execution context
+- **Memory-bound** - Limited by available JavaScript heap memory
+- **No quota limits** - Unlike localStorage (5-10MB), only limited by memory
+
+Use `localStorage` or `sessionStorage` for persistent storage.
+</Warning>
+
+## Comparison with Other Adapters
+
+| Feature | MemoryAdapter | localStorage | sessionStorage |
+|---------|---------------|--------------|----------------|
+| Persistence | No | Yes | Session only |
+| Capacity | Memory limit | ~5-10MB | ~5-10MB |
+| Cross-tab | No | Yes | No |
+| SSR support | Yes | No | No |
+| Speed | Fastest | Fast | Fast |
+| Use case | Testing, SSR | Persistent data | Tab-specific |
+
+## Custom Storage Adapter
+
+Create custom adapters by implementing the `StorageAdapter` interface:
+
+```typescript
+import type { StorageAdapter } from '@vuetify/v0/storage'
+
+class IndexedDBAdapter implements StorageAdapter {
+  private db: IDBDatabase
+  private cache = new Map<string, string>()
+  
+  constructor(dbName: string) {
+    // Initialize IndexedDB
+  }
+  
+  get length() {
+    return this.cache.size
+  }
+  
+  getItem(key: string): string | null {
+    return this.cache.get(key) ?? null
+  }
+  
+  async setItem(key: string, value: string): Promise<void> {
+    this.cache.set(key, value)
+    // Persist to IndexedDB
+  }
+  
+  async removeItem(key: string): Promise<void> {
+    this.cache.delete(key)
+    // Remove from IndexedDB
+  }
+  
+  key(index: number): string {
+    return Array.from(this.cache.keys())[index] ?? ''
+  }
+}
+```
+
+## API Reference
+
+### Constructor
+
+```typescript
+class MemoryAdapter implements StorageAdapter
+
+constructor()
+```
+
+### Properties
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `length` | `number` | Number of stored items |
+
+### Methods
+
+| Method | Description |
+|--------|-------------|
+| `getItem(key)` | Get item by key (returns `null` if not found) |
+| `setItem(key, value)` | Store item |
+| `removeItem(key)` | Remove item by key |
+| `key(index)` | Get key at index |
+
+## When to Use
+
+<CardGroup cols={3}>
+  <Card title="MemoryAdapter" icon="memory">
+    **Testing / SSR**
+    Non-persistent, fast, memory-based
+  </Card>
+  <Card title="localStorage" icon="save">
+    **Persistent**
+    Cross-session, cross-tab
+  </Card>
+  <Card title="sessionStorage" icon="clock">
+    **Session**
+    Tab-specific, cleared on close
+  </Card>
+</CardGroup>
+
+## See Also
+
+- [useStorage](/composables/use-storage) - Storage composable
+- [Storage API](https://developer.mozilla.org/en-US/docs/Web/API/Storage) - MDN documentation
+- [localStorage](https://developer.mozilla.org/en-US/docs/Web/API/Window/localStorage) - Persistent storage API

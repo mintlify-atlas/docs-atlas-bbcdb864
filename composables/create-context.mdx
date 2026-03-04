@@ -1,0 +1,274 @@
+---
+title: 'createContext'
+description: 'Type-safe Vue dependency injection with automatic error handling'
+---
+
+## Overview
+
+Factory for creating type-safe Vue dependency injection contexts. Eliminates silent failures by throwing errors when context is not found, improving developer experience over raw `provide`/`inject`.
+
+Supports both **static key mode** (key fixed at creation) and **dynamic key mode** (key provided at runtime).
+
+## Signature
+
+```typescript
+// Static key mode
+function createContext<Z>(
+  key: InjectionKey<Z> | string,
+  defaultValue?: Z
+): readonly [
+  () => Z,
+  (context: Z, app?: App) => Z
+]
+
+// Dynamic key mode
+function createContext<Z>(
+  options?: CreateContextOptions
+): readonly [
+  (key: string, defaultValue?: Z) => Z,
+  (key: string, context: Z, app?: App) => Z
+]
+```
+
+## Parameters
+
+<ParamField path="key" type="InjectionKey<Z> | string" optional>
+  Static injection key. When provided, the key is fixed at creation time.
+</ParamField>
+
+<ParamField path="options" type="CreateContextOptions" optional>
+  Configuration object for dynamic key mode.
+  
+  <ParamField path="options.suffix" type="string" optional>
+    Optional suffix to append to the runtime key (e.g., `'v0:panel' + ':item'` → `'v0:panel:item'`)
+  </ParamField>
+</ParamField>
+
+<ParamField path="defaultValue" type="Z" optional>
+  Default value to return when context is not found. Only valid in static key mode.
+</ParamField>
+
+## Return Value
+
+<ResponseField name="[useContext, provideContext]" type="readonly tuple">
+  A readonly tuple containing two functions:
+  
+  <ResponseField name="useContext" type="() => Z | (key: string, defaultValue?: Z) => Z">
+    Retrieves the context. In static mode, takes no arguments. In dynamic mode, requires a `key` string.
+    
+    **Throws** an error if context is not found and no default value is provided.
+  </ResponseField>
+  
+  <ResponseField name="provideContext" type="(context: Z, app?: App) => Z | (key: string, context: Z, app?: App) => Z">
+    Provides the context to descendant components. In static mode, takes `context` and optional `app`. In dynamic mode, also requires a `key` string.
+    
+    When `app` is provided, context is made available at application level. Otherwise, provided at component level.
+    
+    **Returns** the provided context value.
+  </ResponseField>
+</ResponseField>
+
+## Usage
+
+<CodeGroup>
+
+```typescript Static Key Mode
+import { createContext } from '#v0/composables'
+
+interface ThemeContext {
+  primary: string
+  secondary: string
+}
+
+// Create context with fixed key
+const [useTheme, provideTheme] = createContext<ThemeContext>('v0:theme')
+
+// In parent component
+const theme: ThemeContext = {
+  primary: '#1976d2',
+  secondary: '#424242'
+}
+provideTheme(theme)
+
+// In child component
+const theme = useTheme() // Injects from 'v0:theme'
+console.log(theme.primary) // '#1976d2'
+```
+
+```typescript Dynamic Key Mode
+import { createContext } from '#v0/composables'
+
+interface PanelContext {
+  isOpen: boolean
+  toggle: () => void
+}
+
+// Create context with runtime key
+const [usePanel, providePanel] = createContext<PanelContext>()
+
+// In parent component
+const context: PanelContext = {
+  isOpen: false,
+  toggle: () => { /* ... */ }
+}
+providePanel('v0:sidebar-panel', context)
+
+// In child component
+const panel = usePanel('v0:sidebar-panel')
+panel.toggle()
+```
+
+```typescript Dynamic Key with Suffix
+import { createContext } from '#v0/composables'
+
+interface ItemContext {
+  id: string
+  data: unknown
+}
+
+// Create context with suffix that gets appended to runtime key
+const [useItem, provideItem] = createContext<ItemContext>({ suffix: 'item' })
+
+// Provide with 'v0:list' → actually provides to 'v0:list:item'
+provideItem('v0:list', { id: '1', data: {} })
+
+// Inject with 'v0:list' → actually injects from 'v0:list:item'
+const item = useItem('v0:list')
+```
+
+```typescript App-Level Provision
+import { createContext } from '#v0/composables'
+import { createApp } from 'vue'
+
+interface AppConfig {
+  apiUrl: string
+}
+
+const [useConfig, provideConfig] = createContext<AppConfig>('v0:config')
+
+const app = createApp({})
+const config: AppConfig = { apiUrl: 'https://api.example.com' }
+
+// Provide at app level - available to all components
+provideConfig(config, app)
+```
+
+```typescript With Default Value
+import { createContext } from '#v0/composables'
+
+interface FeatureFlags {
+  enableBeta: boolean
+}
+
+const defaultFlags: FeatureFlags = { enableBeta: false }
+
+// Create with default fallback
+const [useFlags, provideFlags] = createContext<FeatureFlags>('v0:flags', defaultFlags)
+
+// If parent doesn't provide, returns defaultFlags instead of throwing
+const flags = useFlags() // { enableBeta: false }
+```
+
+</CodeGroup>
+
+## Standalone Functions
+
+You can also use the low-level functions directly:
+
+<CodeGroup>
+
+```typescript useContext
+import { useContext } from '#v0/composables'
+
+// Inject with string key
+const context = useContext<MyContext>('my-context')
+
+// Inject with symbol key
+const key: InjectionKey<MyContext> = Symbol('my-context')
+const context = useContext<MyContext>(key)
+
+// With default value
+const context = useContext<MyContext>('my-context', defaultContext)
+```
+
+```typescript provideContext
+import { provideContext } from '#v0/composables'
+
+// Component-level provision
+provideContext<MyContext>('my-context', context)
+
+// App-level provision
+const app = createApp()
+provideContext<MyContext>('my-context', context, app)
+```
+
+</CodeGroup>
+
+## Error Handling
+
+Unlike Vue's native `inject`, `useContext` throws descriptive errors when context is missing:
+
+```typescript
+const [useTheme] = createContext<ThemeContext>('v0:theme')
+
+// If parent didn't provide context:
+const theme = useTheme()
+// ❌ Error: Context "v0:theme" not found. Ensure it's provided by an ancestor.
+```
+
+This prevents silent failures and makes debugging easier.
+
+## Type Safety
+
+```typescript
+interface UserContext {
+  id: number
+  name: string
+}
+
+const [useUser, provideUser] = createContext<UserContext>('v0:user')
+
+// ✅ Type-safe provision
+provideUser({ id: 1, name: 'Alice' })
+
+// ❌ TypeScript error: missing required properties
+provideUser({ id: 1 })
+
+// ✅ Type-safe consumption
+const user = useUser()
+console.log(user.name.toUpperCase()) // TypeScript knows 'name' exists
+```
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Use Symbol keys for public APIs" icon="key">
+    Export InjectionKey symbols to prevent key collisions:
+    
+    ```typescript
+    export const ThemeKey: InjectionKey<ThemeContext> = Symbol('v0:theme')
+    export const [useTheme, provideTheme] = createContext<ThemeContext>(ThemeKey)
+    ```
+  </Accordion>
+  
+  <Accordion title="Choose the right mode" icon="arrow-right-arrow-left">
+    - **Static key mode**: Use for single, well-known contexts (theme, router, i18n)
+    - **Dynamic key mode**: Use when multiple instances need different keys (nested panels, list items)
+    - **Suffix mode**: Use when you need scoped variants of the same context type
+  </Accordion>
+  
+  <Accordion title="Provide defaults sparingly" icon="circle-exclamation">
+    Only provide default values when it's safe for components to work without explicit provision. For required contexts, let the error throw to catch configuration mistakes early.
+  </Accordion>
+</AccordionGroup>
+
+## Related
+
+<CardGroup cols={2}>
+  <Card title="createTrinity" icon="cubes" href="/composables/create-trinity">
+    Combine context with default instances
+  </Card>
+  <Card title="createPlugin" icon="plug" href="/composables/create-plugin">
+    Create Vue plugins with context provision
+  </Card>
+</CardGroup>

@@ -1,0 +1,308 @@
+---
+title: toArray
+description: Normalize single values and arrays into arrays
+---
+
+# toArray
+
+Utility function to normalize single values and arrays into arrays.
+
+## Overview
+
+Converts single values into single-element arrays, passes arrays through unchanged, and handles null/undefined by returning empty arrays. Perfect for functions that accept both single values and arrays as input.
+
+**Key Features:**
+- Single value → `[value]`
+- Array → unchanged (identity)
+- `null` or `undefined` → `[]`
+- Type-safe with TypeScript
+- Zero overhead for arrays
+- Handles all JavaScript types
+
+## Signature
+
+```ts
+function toArray<Z>(value: Z | Z[]): Z[]
+```
+
+## Parameters
+
+<ParamField path="value" type="Z | Z[]" required>
+  The value to convert. Can be a single value, an array, `null`, or `undefined`.
+</ParamField>
+
+## Return Value
+
+<ResponseField name="array" type="Z[]">
+  - If `value` is `null` or `undefined`: returns `[]`
+  - If `value` is already an array: returns the same array (identity)
+  - Otherwise: returns `[value]`
+</ResponseField>
+
+## Basic Usage
+
+### Primitive Values
+
+```ts
+import { toArray } from '@vuetify/v0'
+
+// Strings
+toArray('hello') // ['hello']
+
+// Numbers
+toArray(42) // [42]
+toArray(0) // [0]
+
+// Booleans
+toArray(true) // [true]
+toArray(false) // [false]
+
+// Null and undefined
+toArray(null) // []
+toArray(undefined) // []
+```
+
+### Arrays
+
+```ts
+import { toArray } from '@vuetify/v0'
+
+const arr = [1, 2, 3]
+const result = toArray(arr)
+
+console.log(result === arr) // true (same reference)
+console.log(result) // [1, 2, 3]
+
+// Empty arrays
+toArray([]) // []
+```
+
+### Objects
+
+```ts
+import { toArray } from '@vuetify/v0'
+
+const user = { name: 'Alice', age: 25 }
+toArray(user) // [{ name: 'Alice', age: 25 }]
+
+const users = [user, { name: 'Bob', age: 30 }]
+toArray(users) // Same array (identity)
+```
+
+## Advanced Usage
+
+### Function Parameters
+
+Accept both single values and arrays:
+
+```ts
+import { toArray } from '@vuetify/v0'
+import type { ID } from '@vuetify/v0'
+
+function deleteItems(ids: ID | ID[]) {
+  const idArray = toArray(ids)
+  
+  for (const id of idArray) {
+    console.log(`Deleting item ${id}`)
+  }
+}
+
+deleteItems(123) // Deletes one item
+deleteItems([456, 789]) // Deletes multiple items
+```
+
+### With Type Guards
+
+```ts
+import { toArray } from '@vuetify/v0'
+
+function processValues(input: string | string[] | null) {
+  const values = toArray(input)
+  
+  if (values.length === 0) {
+    console.log('No values provided')
+    return
+  }
+  
+  for (const value of values) {
+    console.log(value.toUpperCase())
+  }
+}
+
+processValues('hello') // 'HELLO'
+processValues(['hello', 'world']) // 'HELLO', 'WORLD'
+processValues(null) // 'No values provided'
+```
+
+### With Collections
+
+```ts
+import { toArray } from '@vuetify/v0'
+
+// Maps
+const map = new Map([['key', 'value']])
+toArray(map) // [Map { 'key' => 'value' }]
+
+// Sets
+const set = new Set([1, 2, 3])
+toArray(set) // [Set { 1, 2, 3 }]
+
+// Dates
+const date = new Date()
+toArray(date) // [Date]
+
+// Functions
+const fn = () => 'test'
+toArray(fn) // [Function]
+```
+
+### Registry Operations
+
+```ts
+import { toArray } from '@vuetify/v0'
+import { createRegistry } from '@vuetify/v0'
+
+const registry = createRegistry()
+
+function registerItems(items: Item | Item[]) {
+  for (const item of toArray(items)) {
+    registry.register(item)
+  }
+}
+
+// Register single item
+registerItems({ id: '1', value: 'Item 1' })
+
+// Register multiple items
+registerItems([
+  { id: '2', value: 'Item 2' },
+  { id: '3', value: 'Item 3' },
+])
+```
+
+## Type Safety
+
+```ts
+import { toArray } from '@vuetify/v0'
+
+interface User {
+  id: string
+  name: string
+}
+
+function processUsers(users: User | User[]) {
+  const userArray: User[] = toArray(users)
+  
+  for (const user of userArray) {
+    console.log(user.name) // Type-safe access
+  }
+}
+
+processUsers({ id: '1', name: 'Alice' })
+processUsers([{ id: '2', name: 'Bob' }])
+```
+
+### Union Types
+
+```ts
+import { toArray } from '@vuetify/v0'
+
+type Input = string | number | (string | number)[]
+
+function normalize(value: Input) {
+  const array = toArray(value)
+  // Type: (string | number)[]
+  
+  return array.map(v => String(v))
+}
+
+normalize('hello') // ['hello']
+normalize(42) // ['42']
+normalize(['hello', 42]) // ['hello', '42']
+```
+
+## Use Cases
+
+### Event Handlers
+
+```ts
+import { toArray } from '@vuetify/v0'
+
+function addEventListener(
+  element: Element,
+  events: string | string[],
+  handler: EventListener,
+) {
+  for (const event of toArray(events)) {
+    element.addEventListener(event, handler)
+  }
+}
+
+const button = document.querySelector('button')!
+addEventListener(button, 'click', handleClick)
+addEventListener(button, ['mouseenter', 'focus'], handleHover)
+```
+
+### Class Names
+
+```ts
+import { toArray } from '@vuetify/v0'
+
+function classNames(classes: string | string[]) {
+  return toArray(classes).filter(Boolean).join(' ')
+}
+
+classNames('btn') // 'btn'
+classNames(['btn', 'btn-primary']) // 'btn btn-primary'
+classNames(['btn', '', 'active']) // 'btn active'
+```
+
+### Selection Utilities
+
+```ts
+import { toArray } from '@vuetify/v0'
+import type { ID } from '@vuetify/v0'
+
+function selectItems(
+  registry: SelectionContext,
+  ids: ID | ID[],
+) {
+  for (const id of toArray(ids)) {
+    registry.select(id)
+  }
+}
+
+selectItems(registry, 'item-1')
+selectItems(registry, ['item-2', 'item-3'])
+```
+
+## Performance
+
+```ts
+import { toArray } from '@vuetify/v0'
+
+// Arrays are returned as-is (no copying)
+const arr = [1, 2, 3]
+const result = toArray(arr)
+console.log(arr === result) // true
+
+// Only creates new array for non-array values
+const single = 42
+const wrapped = toArray(single)
+console.log(wrapped) // [42] (new array)
+```
+
+## Notes
+
+- Returns the original array reference when input is already an array (no copying)
+- Special handling for `null` and `undefined` (returns empty array)
+- Handles all JavaScript types: primitives, objects, functions, symbols, etc.
+- Does not flatten nested arrays: `toArray([[1, 2]]) → [[1, 2]]`
+- Used internally by many Vuetify Zero composables
+- Zero runtime overhead for arrays
+
+## Related
+
+- [toReactive](/composables/to-reactive) - Convert to reactive proxy
+- [useProxyModel](/composables/use-proxy-model) - Uses toArray internally
+- [createSelection](/composables/create-selection) - Selection registry

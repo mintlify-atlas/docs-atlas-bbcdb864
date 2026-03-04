@@ -1,0 +1,249 @@
+---
+title: useProxyModel
+description: Bidirectional sync between selection registry and v-model
+---
+
+# useProxyModel
+
+Proxy composable for bidirectional synchronization between a selection registry and Vue's v-model.
+
+## Overview
+
+Bridges the gap between selection composables and Vue's v-model system, enabling seamless two-way data binding for form controls backed by selection registries.
+
+**Key Features:**
+- Bidirectional synchronization between registry and v-model
+- Array and single-value modes
+- Automatic cleanup on scope disposal
+- Transform functions for value conversion
+- Lazy registration support (syncs when items register)
+- Perfect for form controls with selection backing
+
+## Signature
+
+```ts
+function useProxyModel<Z extends SelectionTicket = SelectionTicket>(
+  registry: SelectionContext<Z>,
+  model: Ref<unknown>,
+  options?: ProxyModelOptions,
+): () => void
+```
+
+## Parameters
+
+<ParamField path="registry" type="SelectionContext<Z>" required>
+  The selection registry to bind to. Created via `createSelection()`.
+</ParamField>
+
+<ParamField path="model" type="Ref<unknown>" required>
+  The ref to sync. Used as v-model binding.
+</ParamField>
+
+<ParamField path="options" type="ProxyModelOptions">
+  Configuration options for the proxy model.
+
+  <ParamField path="multiple" type="MaybeRefOrGetter<boolean>" default="false">
+    Enable array mode for multi-selection. When `true`, model syncs as array.
+  </ParamField>
+
+  <ParamField path="transformIn" type="(val: unknown) => unknown">
+    Transform function applied to model value before looking up in registry.
+  </ParamField>
+
+  <ParamField path="transformOut" type="(val: unknown) => unknown">
+    Transform function applied to registry values before updating model.
+  </ParamField>
+</ParamField>
+
+## Return Value
+
+<ResponseField name="stop" type="() => void">
+  Function to stop synchronization and clean up watchers.
+</ResponseField>
+
+## Basic Usage
+
+### Single Selection
+
+```vue
+<script setup lang="ts">
+import { ref } from 'vue'
+import { createSelection, useProxyModel } from '@vuetify/v0'
+
+const model = ref()
+const registry = createSelection({ events: true })
+
+registry.onboard([
+  { id: 'item-1', value: 'Item 1' },
+  { id: 'item-2', value: 'Item 2' },
+  { id: 'item-3', value: 'Item 3' },
+])
+
+const stop = useProxyModel(registry, model)
+
+// Now model and registry stay in sync
+model.value = 'Item 2' // Selects item-2 in registry
+registry.select('item-3') // Updates model to 'Item 3'
+</script>
+
+<template>
+  <div>
+    <p>Selected: {{ model }}</p>
+    <button @click="model = 'Item 1'">Select Item 1</button>
+    <button @click="model = 'Item 2'">Select Item 2</button>
+  </div>
+</template>
+```
+
+### Multiple Selection
+
+```vue
+<script setup lang="ts">
+import { ref } from 'vue'
+import { createSelection, useProxyModel } from '@vuetify/v0'
+
+const model = ref<string[]>([])
+const registry = createSelection({ events: true })
+
+registry.onboard([
+  { id: 'red', value: 'Red' },
+  { id: 'green', value: 'Green' },
+  { id: 'blue', value: 'Blue' },
+])
+
+useProxyModel(registry, model, { multiple: true })
+
+model.value = ['Red', 'Blue'] // Selects red and blue in registry
+</script>
+
+<template>
+  <div>
+    <p>Selected colors: {{ model.join(', ') }}</p>
+    <label v-for="color in ['Red', 'Green', 'Blue']" :key="color">
+      <input
+        type="checkbox"
+        :value="color"
+        :checked="model.includes(color)"
+        @change="(e) => {
+          if (e.target.checked) model = [...model, color]
+          else model = model.filter(c => c !== color)
+        }"
+      >
+      {{ color }}
+    </label>
+  </div>
+</template>
+```
+
+## Advanced Usage
+
+### Transform Functions
+
+Use transforms to normalize values between model and registry:
+
+```ts
+import { ref } from 'vue'
+import { createSelection, useProxyModel } from '@vuetify/v0'
+
+const model = ref()
+const registry = createSelection({ events: true })
+
+registry.onboard([
+  { id: 'item-1', value: 'VALUE-1' },
+  { id: 'item-2', value: 'VALUE-2' },
+])
+
+// Model uses lowercase, registry uses uppercase
+useProxyModel(registry, model, {
+  transformIn: (val) => String(val).toUpperCase(),
+  transformOut: (val) => String(val).toLowerCase(),
+})
+
+model.value = 'value-1' // Matches VALUE-1 in registry
+console.log(model.value) // 'value-1' (lowercase)
+```
+
+### Lazy Registration
+
+Proxy handles items that register after model is set:
+
+```ts
+import { ref } from 'vue'
+import { createSelection, useProxyModel } from '@vuetify/v0'
+
+const model = ref('Item 2')
+const registry = createSelection({ events: true })
+
+// Set up sync before items exist
+useProxyModel(registry, model)
+
+// Items register later - 'Item 2' will be automatically selected
+setTimeout(() => {
+  registry.onboard([
+    { id: 'item-1', value: 'Item 1' },
+    { id: 'item-2', value: 'Item 2' }, // Auto-selected
+    { id: 'item-3', value: 'Item 3' },
+  ])
+}, 1000)
+```
+
+### Manual Cleanup
+
+```ts
+import { ref, onUnmounted } from 'vue'
+import { createSelection, useProxyModel } from '@vuetify/v0'
+
+const model = ref()
+const registry = createSelection({ events: true })
+const stop = useProxyModel(registry, model)
+
+// Stop synchronization manually
+stop()
+
+// Or automatically on component unmount
+onUnmounted(stop)
+```
+
+## Type Safety
+
+```ts
+import type { SelectionTicket } from '@vuetify/v0'
+
+interface User {
+  id: string
+  name: string
+  email: string
+}
+
+interface UserTicket extends SelectionTicket {
+  id: string
+  value: User
+}
+
+const model = ref<User>()
+const registry = createSelection<UserTicket>({ events: true })
+
+registry.onboard([
+  { id: '1', value: { id: '1', name: 'Alice', email: 'alice@example.com' } },
+  { id: '2', value: { id: '2', name: 'Bob', email: 'bob@example.com' } },
+])
+
+useProxyModel<UserTicket>(registry, model)
+
+model.value = { id: '1', name: 'Alice', email: 'alice@example.com' }
+```
+
+## Notes
+
+- Requires `events: true` on the selection registry
+- Automatic cleanup via `onScopeDispose` (no manual cleanup needed in most cases)
+- Uses `flush: 'sync'` watchers to prevent infinite loops
+- Pending values are tracked until matching items register
+- In single mode, setting model to new value unselects previous selection
+- In multiple mode, model array changes trigger symmetric difference updates
+
+## Related
+
+- [createSelection](/composables/create-selection) - Create selection registry
+- [toArray](/composables/to-array) - Array normalization utility
+- [Vue v-model](https://vuejs.org/guide/components/v-model.html) - Two-way binding

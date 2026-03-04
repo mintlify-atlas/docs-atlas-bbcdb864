@@ -1,0 +1,650 @@
+---
+title: Trinity Pattern
+description: Understanding the trinity pattern - Vuetify Zero's signature [use, provide, default] pattern for flexible context management.
+---
+
+# Trinity Pattern
+
+The trinity pattern is Vuetify Zero's signature approach to context management. It provides three ways to access the same functionality: injection, provision, and direct access.
+
+## What is the Trinity Pattern?
+
+The trinity pattern returns a readonly 3-tuple:
+
+```typescript
+const [useTheme, provideTheme, theme] = createThemeContext()
+//     ^          ^              ^
+//     |          |              |
+//     |          |              +-- 3. Direct access (no DI)
+//     |          +----------------- 2. Provide to descendants
+//     +---------------------------- 1. Inject from ancestor
+```
+
+Each element serves a different purpose:
+
+1. **`useTheme`** - Consume context from an ancestor component
+2. **`provideTheme`** - Provide context to descendant components
+3. **`theme`** - Direct access to the default instance (no dependency injection)
+
+## Why Three Elements?
+
+The trinity pattern solves three common problems:
+
+### Problem 1: Injection-Only Patterns Lack Defaults
+
+Traditional dependency injection:
+
+```typescript
+// ❌ Problem: No default, fails outside component tree
+const theme = inject('theme')
+// undefined if not provided
+```
+
+Trinity solution:
+
+```typescript
+// ✅ Solution: Third element provides default
+const [useTheme, provideTheme, theme] = createThemeContext()
+
+theme.cycle()  // Works anywhere, even outside components
+```
+
+### Problem 2: Testing Requires Component Setup
+
+Testing with injection:
+
+```typescript
+// ❌ Problem: Must mount component with provider
+import { mount } from '@vue/test-utils'
+
+const wrapper = mount(Component, {
+  global: {
+    provide: {
+      theme: mockTheme
+    }
+  }
+})
+```
+
+Trinity solution:
+
+```typescript
+// ✅ Solution: Use third element directly
+const [, , theme] = createThemeContext()
+
+theme.cycle()
+expect(theme.current.value).toBe('dark')
+```
+
+### Problem 3: Sharing Across Trees
+
+Traditional approach requires plugins:
+
+```typescript
+// ❌ Problem: Need plugin for cross-tree sharing
+app.use(ThemePlugin)
+```
+
+Trinity solution:
+
+```typescript
+// ✅ Solution: Third element is shared by default
+const [, , theme] = createThemeContext()
+
+// Access in any component without injection
+theme.current.value // 'light'
+```
+
+## The Three Elements
+
+### 1. Use Function (Inject)
+
+The first element injects context from an ancestor:
+
+```vue
+<script setup lang="ts">
+  const [useTheme] = createThemeContext()
+  
+  // Throws if not provided by ancestor
+  const theme = useTheme()
+</script>
+
+<template>
+  <div>Current theme: {{ theme.current.value }}</div>
+</template>
+```
+
+<Info>
+  Unlike Vue's `inject()`, the use function **throws an error** if context isn't found. This eliminates silent failures.
+</Info>
+
+### 2. Provide Function (Provide)
+
+The second element provides context to descendants:
+
+```vue
+<script setup lang="ts">
+  const [, provideTheme] = createThemeContext({
+    default: 'dark',
+    themes: { /* ... */ }
+  })
+  
+  // Provide to all descendants
+  provideTheme()
+  
+  // Or provide custom context
+  const customTheme = { /* ... */ }
+  provideTheme(customTheme)
+</script>
+
+<template>
+  <div>
+    <!-- All children can useTheme() -->
+    <slot />
+  </div>
+</template>
+```
+
+The provide function accepts optional arguments:
+
+```typescript
+provideTheme()              // Use default context
+provideTheme(custom)        // Provide custom context
+provideTheme(custom, app)   // Provide at app level
+```
+
+### 3. Default Context (Direct Access)
+
+The third element is the default instance:
+
+```typescript
+const [, , theme] = createThemeContext({
+  default: 'light',
+  themes: {
+    light: { /* ... */ },
+    dark: { /* ... */ }
+  }
+})
+
+// Use anywhere, even outside components
+theme.current.value    // 'light'
+theme.cycle()          // Switch to 'dark'
+theme.set('light')     // Set explicitly
+
+// In Pinia stores
+export const useAppStore = defineStore('app', () => {
+  function toggleTheme() {
+    theme.cycle()
+  }
+  return { toggleTheme }
+})
+
+// In route guards
+router.beforeEach((to, from) => {
+  if (to.meta.theme) {
+    theme.set(to.meta.theme)
+  }
+})
+
+// In utility functions
+function getThemeColor(name: string) {
+  return theme.colors[name]
+}
+```
+
+## Real-World Example
+
+Here's a complete example using all three elements:
+
+```typescript
+// composables/theme.ts
+import { createThemeContext } from '@vuetify/v0/composables'
+import { ref, computed } from 'vue'
+
+export const [useTheme, provideTheme, theme] = createThemeContext({
+  default: 'light',
+  themes: {
+    light: {
+      colors: {
+        primary: '#1976d2',
+        background: '#ffffff'
+      }
+    },
+    dark: {
+      colors: {
+        primary: '#2196f3',
+        background: '#121212'
+      }
+    }
+  }
+})
+```
+
+```vue
+<!-- App.vue (provider) -->
+<script setup lang="ts">
+  import { provideTheme } from './composables/theme'
+  
+  // Provide to entire app
+  provideTheme()
+</script>
+
+<template>
+  <div :class="`theme-${theme.current.value}`">
+    <router-view />
+  </div>
+</template>
+```
+
+```vue
+<!-- ThemeToggle.vue (consumer) -->
+<script setup lang="ts">
+  import { useTheme } from './composables/theme'
+  
+  // Inject from ancestor
+  const theme = useTheme()
+</script>
+
+<template>
+  <button @click="theme.cycle()">
+    Switch to {{ theme.current.value === 'light' ? 'dark' : 'light' }}
+  </button>
+</template>
+```
+
+```typescript
+// utils/api.ts (direct access)
+import { theme } from './composables/theme'
+
+export async function fetchData() {
+  // Use theme without injection
+  const isDark = theme.current.value === 'dark'
+  
+  return fetch(`/api/data?theme=${isDark ? 'dark' : 'light'}`)
+}
+```
+
+## Implementation Details
+
+The trinity is created with `createTrinity`:
+
+```typescript
+import { createContext, createTrinity } from '@vuetify/v0/composables'
+import type { App } from 'vue'
+
+interface ThemeContext {
+  current: Ref<string>
+  cycle: () => void
+}
+
+// 1. Create context pair
+const [useThemeContext, _provideThemeContext] = createContext<ThemeContext>('v0:theme')
+
+// 2. Create default instance
+const defaultTheme: ThemeContext = {
+  current: ref('light'),
+  cycle: () => {
+    defaultTheme.current.value = 
+      defaultTheme.current.value === 'light' ? 'dark' : 'light'
+  }
+}
+
+// 3. Wrap provide to handle defaults
+function provideTheme(context: ThemeContext = defaultTheme, app?: App) {
+  return _provideThemeContext(context, app)
+}
+
+// 4. Create trinity
+const trinity = createTrinity(useThemeContext, provideTheme, defaultTheme)
+// Returns: readonly [useThemeContext, provideTheme, defaultTheme]
+```
+
+The tuple is marked `as const` for proper type inference:
+
+```typescript
+export type ContextTrinity<Z = unknown> = readonly [
+  () => Z,                           // useContext
+  (context?: Z, app?: App) => Z,     // provideContext
+  Z,                                  // defaultContext
+]
+```
+
+## Usage Patterns
+
+### Pattern 1: Component-Level Provision
+
+Provide at component level for scoped state:
+
+```vue
+<script setup lang="ts">
+  import { createSelectionContext } from '@vuetify/v0/composables'
+  
+  const [useSelection, provideSelection] = createSelectionContext({
+    multiple: true
+  })
+  
+  provideSelection()
+</script>
+
+<template>
+  <div>
+    <!-- Children can useSelection() -->
+    <slot />
+  </div>
+</template>
+```
+
+### Pattern 2: App-Level Provision
+
+Provide at app level for global state:
+
+```typescript
+// main.ts
+import { createApp } from 'vue'
+import { createThemeContext } from '@vuetify/v0/composables'
+import App from './App.vue'
+
+const app = createApp(App)
+
+const [, provideTheme] = createThemeContext()
+provideTheme(undefined, app)  // Provide to entire app
+
+app.mount('#app')
+```
+
+### Pattern 3: Plugin Installation
+
+Use `createPlugin` for plugin-style installation:
+
+```typescript
+import { createPlugin } from '@vuetify/v0/composables'
+
+const [, provideTheme, theme] = createThemeContext()
+
+const ThemePlugin = createPlugin({
+  namespace: 'v0:theme',
+  provide: (app) => {
+    provideTheme(theme, app)
+  }
+})
+
+// Install
+app.use(ThemePlugin)
+```
+
+### Pattern 4: Testing
+
+Test with the third element:
+
+```typescript
+import { describe, it, expect } from 'vitest'
+import { createThemeContext } from './composables/theme'
+
+describe('theme', () => {
+  it('cycles between themes', () => {
+    const [, , theme] = createThemeContext()
+    
+    expect(theme.current.value).toBe('light')
+    
+    theme.cycle()
+    expect(theme.current.value).toBe('dark')
+    
+    theme.cycle()
+    expect(theme.current.value).toBe('light')
+  })
+})
+```
+
+### Pattern 5: Destructuring
+
+Destructure only what you need:
+
+```typescript
+// Need all three
+const [useTheme, provideTheme, theme] = createThemeContext()
+
+// Only need use function
+const [useTheme] = createThemeContext()
+
+// Only need provide function
+const [, provideTheme] = createThemeContext()
+
+// Only need direct access
+const [, , theme] = createThemeContext()
+
+// Named exports for clarity
+export {
+  useTheme,
+  provideTheme,
+  theme as defaultTheme
+}
+```
+
+## Comparison with Other Patterns
+
+### vs. Module Singleton
+
+<Tabs items={["Module Singleton", "Trinity"]}>
+  <Tab value="Module Singleton">
+    ```typescript
+    // ❌ Problems:
+    // - No tree-scoped state
+    // - Hard to test with different instances
+    // - No dependency injection benefits
+    
+    // store.ts
+    export const store = createStore()
+    
+    // ComponentA.vue
+    import { store } from './store'
+    store.count++
+    
+    // ComponentB.vue  
+    import { store } from './store'
+    store.count++  // Same instance always
+    ```
+  </Tab>
+  
+  <Tab value="Trinity">
+    ```typescript
+    // ✅ Benefits:
+    // - Tree-scoped state via provide/inject
+    // - Easy to test with custom instances
+    // - Fallback to default instance
+    
+    // store.ts
+    export const [useStore, provideStore, store] = createStoreContext()
+    
+    // ComponentA.vue
+    provideStore() // Provide scoped instance
+    
+    // ComponentB.vue
+    const store = useStore() // Inject scoped instance
+    store.count++
+    
+    // utils.ts
+    import { store } from './store'
+    store.count++ // Direct access when needed
+    ```
+  </Tab>
+</Tabs>
+
+### vs. Traditional DI
+
+<Tabs items={["Traditional DI", "Trinity"]}>
+  <Tab value="Traditional DI">
+    ```typescript
+    // ❌ Problems:
+    // - No default value
+    // - Silent failures with undefined
+    // - Can't use outside components
+    
+    import { inject } from 'vue'
+    
+    const theme = inject('theme')
+    // undefined if not provided
+    
+    if (theme) {
+      theme.cycle()
+    }
+    ```
+  </Tab>
+  
+  <Tab value="Trinity">
+    ```typescript
+    // ✅ Benefits:
+    // - Built-in default value
+    // - Explicit errors instead of undefined
+    // - Can use outside components
+    
+    const [useTheme, , theme] = createThemeContext()
+    
+    // Inside component
+    const injectedTheme = useTheme() // Throws if not provided
+    injectedTheme.cycle()
+    
+    // Outside component
+    theme.cycle() // Always works
+    ```
+  </Tab>
+</Tabs>
+
+## Advanced: Custom Trinity
+
+Create your own trinity-based composables:
+
+```typescript
+import { 
+  createContext, 
+  createTrinity,
+  type ContextTrinity 
+} from '@vuetify/v0/composables'
+import { ref, computed } from 'vue'
+import type { App } from 'vue'
+
+interface CounterContext {
+  count: Ref<number>
+  double: ComputedRef<number>
+  increment: () => void
+  reset: () => void
+}
+
+export function createCounterContext(
+  initialCount = 0
+): ContextTrinity<CounterContext> {
+  // 1. Create context
+  const [useCounterContext, _provideCounterContext] = 
+    createContext<CounterContext>('v0:counter')
+  
+  // 2. Create default instance
+  const count = ref(initialCount)
+  const double = computed(() => count.value * 2)
+  
+  function increment() {
+    count.value++
+  }
+  
+  function reset() {
+    count.value = initialCount
+  }
+  
+  const defaultCounter: CounterContext = {
+    count,
+    double,
+    increment,
+    reset
+  }
+  
+  // 3. Wrap provide
+  function provideCounter(
+    context: CounterContext = defaultCounter,
+    app?: App
+  ) {
+    return _provideCounterContext(context, app)
+  }
+  
+  // 4. Return trinity
+  return createTrinity(
+    useCounterContext,
+    provideCounter,
+    defaultCounter
+  )
+}
+
+// Export
+export const [useCounter, provideCounter, counter] = createCounterContext()
+```
+
+## Best Practices
+
+<Accordion title="Always destructure with clear names">
+  ```typescript
+  // ✅ Good - clear purpose
+  const [useTheme, provideTheme, theme] = createThemeContext()
+  
+  // ❌ Bad - unclear names
+  const [a, b, c] = createThemeContext()
+  ```
+</Accordion>
+
+<Accordion title="Export all three elements">
+  ```typescript
+  // ✅ Good - consumers choose what they need
+  export const [useTheme, provideTheme, theme] = createThemeContext()
+  
+  // ❌ Bad - limits flexibility
+  const [useTheme] = createThemeContext()
+  export { useTheme }
+  ```
+</Accordion>
+
+<Accordion title="Use third element for non-component code">
+  ```typescript
+  // ✅ Good - third element works anywhere
+  import { theme } from './composables/theme'
+  
+  export function apiCall() {
+    const mode = theme.current.value
+    return fetch(`/api?theme=${mode}`)
+  }
+  
+  // ❌ Bad - can't inject outside components
+  import { useTheme } from './composables/theme'
+  
+  export function apiCall() {
+    const theme = useTheme() // Error: not in component
+    return fetch(`/api?theme=${theme.current.value}`)
+  }
+  ```
+</Accordion>
+
+<Accordion title="Provide at the right level">
+  ```vue
+  <!-- ✅ Good - provide at appropriate level -->
+  <App>
+    <ThemeProvider>     <!-- App-wide theme -->
+      <TabsProvider>    <!-- Component-specific tabs -->
+        <TabItem />
+      </TabsProvider>
+    </ThemeProvider>
+  </App>
+  
+  <!-- ❌ Bad - everything at root -->
+  <App provide="theme,tabs,selection,form,...">
+    <!-- Hard to reason about scope -->
+  </App>
+  ```
+</Accordion>
+
+## Summary
+
+The trinity pattern provides:
+
+- **Three access modes** - Injection, provision, direct access
+- **Built-in defaults** - Third element always available
+- **Flexible testing** - No component mounting required
+- **Type safety** - Readonly tuple with full typing
+- **Tree scoping** - Each subtree can have its own instance
+- **Fallback access** - Direct access when injection isn't available
+
+Every complex composable in v0 exports a trinity. This pattern is the foundation of v0's flexible architecture.

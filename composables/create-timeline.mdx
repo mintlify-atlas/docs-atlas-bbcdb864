@@ -1,0 +1,290 @@
+---
+title: createTimeline
+description: Bounded undo/redo system with overflow management for history tracking.
+---
+
+## Overview
+
+A bounded undo/redo system with overflow management. Perfect for command pattern implementation and history tracking with a fixed-size buffer. When the timeline reaches capacity, oldest items move to an overflow queue that can be restored on undo.
+
+## Basic Usage
+
+```ts
+import { createTimeline } from '@vuetify/v0'
+
+const timeline = createTimeline({ size: 10 })
+
+// Register actions
+timeline.register({ id: 'action-1', value: 'First action' })
+timeline.register({ id: 'action-2', value: 'Second action' })
+timeline.register({ id: 'action-3', value: 'Third action' })
+
+console.log(timeline.size) // 3
+
+// Undo last action
+const undone = timeline.undo()
+console.log(undone?.id) // 'action-3'
+console.log(timeline.size) // 2
+
+// Redo
+const redone = timeline.redo()
+console.log(redone?.id) // 'action-3'
+console.log(timeline.size) // 3
+```
+
+## Function Signature
+
+```ts
+function createTimeline<
+  Z extends TimelineTicket = TimelineTicket,
+  E extends TimelineContext<Z> = TimelineContext<Z>
+>(options?: TimelineOptions): E
+```
+
+### Parameters
+
+<ParamField path="options" type="TimelineOptions">
+  Configuration options for the timeline
+  
+  <ParamField path="size" type="number" default="10">
+    Maximum number of items in the timeline buffer. When exceeded, oldest items move to overflow.
+  </ParamField>
+</ParamField>
+
+### Returns
+
+<ResponseField name="TimelineContext" type="object">
+  Timeline context with undo/redo capabilities
+  
+  <ResponseField name="register" type="function">
+    Register a new item, removing oldest if at capacity
+    
+    ```ts
+    const item = timeline.register({
+      id: 'action-1',
+      value: { type: 'insert', data: '...' }
+    })
+    ```
+  </ResponseField>
+  
+  <ResponseField name="undo" type="function">
+    Remove the last registered item and store it for redo. Restores from overflow if available.
+    
+    ```ts
+    const undone = timeline.undo()
+    if (undone) {
+      console.log('Undid:', undone.value)
+    }
+    ```
+  </ResponseField>
+  
+  <ResponseField name="redo" type="function">
+    Restore the last undone item
+    
+    ```ts
+    const redone = timeline.redo()
+    if (redone) {
+      console.log('Redid:', redone.value)
+    }
+    ```
+  </ResponseField>
+  
+  <ResponseField name="size" type="number">
+    Current number of items in the timeline
+  </ResponseField>
+  
+  <ResponseField name="values" type="function">
+    Get all items in the timeline
+    
+    ```ts
+    const items = timeline.values()
+    ```
+  </ResponseField>
+  
+  <ResponseField name="clear" type="function">
+    Remove all items from timeline and overflow
+  </ResponseField>
+</ResponseField>
+
+## Overflow Management
+
+When the timeline exceeds its size limit, the oldest item moves to an overflow queue:
+
+```ts
+const timeline = createTimeline({ size: 3 })
+
+timeline.register({ id: '1', value: 'First' })
+timeline.register({ id: '2', value: 'Second' })
+timeline.register({ id: '3', value: 'Third' })
+
+// Timeline: [1, 2, 3]
+
+timeline.register({ id: '4', value: 'Fourth' })
+
+// Timeline: [2, 3, 4]
+// Overflow: [1]
+
+// Undo restores from overflow
+timeline.undo()
+
+// Timeline: [1, 2, 3]
+// Overflow: []
+```
+
+## Undo/Redo Behavior
+
+### Basic Undo/Redo
+
+```ts
+const timeline = createTimeline({ size: 5 })
+
+timeline.register({ id: 'a', value: 'Action A' })
+timeline.register({ id: 'b', value: 'Action B' })
+timeline.register({ id: 'c', value: 'Action C' })
+
+console.log(timeline.values().map(t => t.id)) // ['a', 'b', 'c']
+
+timeline.undo()
+console.log(timeline.values().map(t => t.id)) // ['a', 'b']
+
+timeline.redo()
+console.log(timeline.values().map(t => t.id)) // ['a', 'b', 'c']
+```
+
+### Redo Stack Clearing
+
+Registering a new action clears the redo stack:
+
+```ts
+const timeline = createTimeline({ size: 5 })
+
+timeline.register({ id: 'a', value: 'A' })
+timeline.register({ id: 'b', value: 'B' })
+
+timeline.undo()
+console.log(timeline.values().map(t => t.id)) // ['a']
+
+// Register new action - clears redo stack
+timeline.register({ id: 'c', value: 'C' })
+console.log(timeline.values().map(t => t.id)) // ['a', 'c']
+
+// Can't redo 'b' anymore
+const redone = timeline.redo()
+console.log(redone) // undefined
+```
+
+### Multiple Undos with Overflow
+
+```ts
+const timeline = createTimeline({ size: 3 })
+
+// Register 6 items
+for (let i = 0; i < 6; i++) {
+  timeline.register({ id: `item${i}`, value: i })
+}
+
+// Timeline: [3, 4, 5], Overflow: [0, 1, 2]
+
+timeline.undo()
+// Timeline: [2, 3, 4], Overflow: [0, 1]
+
+timeline.undo()
+// Timeline: [1, 2, 3], Overflow: [0]
+
+timeline.undo()
+// Timeline: [0, 1, 2], Overflow: []
+```
+
+## Command Pattern Example
+
+```ts
+interface Command {
+  execute: () => void
+  undo: () => void
+}
+
+interface CommandTicket extends TimelineTicket {
+  value: Command
+}
+
+const timeline = createTimeline<CommandTicket>({ size: 20 })
+
+function executeCommand(command: Command) {
+  command.execute()
+  timeline.register({ 
+    id: crypto.randomUUID(),
+    value: command 
+  })
+}
+
+function undoLastCommand() {
+  const item = timeline.undo()
+  if (item) {
+    item.value.undo()
+  }
+}
+
+function redoLastCommand() {
+  const item = timeline.redo()
+  if (item) {
+    item.value.execute()
+  }
+}
+
+// Usage
+const insertCommand = {
+  execute: () => document.body.insertAdjacentHTML('beforeend', '<p>Hello</p>'),
+  undo: () => document.body.lastElementChild?.remove(),
+}
+
+executeCommand(insertCommand)
+undoLastCommand()
+redoLastCommand()
+```
+
+## Context Pattern
+
+Use dependency injection for global timeline access:
+
+```ts
+import { createTimelineContext } from '@vuetify/v0'
+
+export const [useHistory, provideHistory, history] = createTimelineContext({
+  size: 50,
+})
+
+// Parent component
+provideHistory()
+
+// Child component
+const history = useHistory()
+history.register({ id: 'edit-1', value: editData })
+history.undo()
+```
+
+## TypeScript
+
+### Custom Ticket Types
+
+```ts
+interface EditorAction extends TimelineTicket {
+  type: 'insert' | 'delete' | 'format'
+  position: number
+  content: string
+}
+
+const timeline = createTimeline<EditorAction>({ size: 100 })
+
+timeline.register({
+  id: 'edit-1',
+  type: 'insert',
+  position: 42,
+  content: 'Hello',
+  value: 'Hello',
+})
+```
+
+## Related
+
+- [createRegistry](/composables/create-registry) - Base registry primitive
+- [createQueue](/composables/create-queue) - Time-based queue with timeouts

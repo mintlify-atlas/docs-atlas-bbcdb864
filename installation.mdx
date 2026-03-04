@@ -1,0 +1,293 @@
+---
+title: Installation - Vuetify Zero
+description: Install Vuetify Zero in your Vue 3 project using npm, pnpm, yarn, or bun with step-by-step instructions
+---
+
+# Installation
+
+Get started with Vuetify Zero by installing it in your Vue 3 project.
+
+## Requirements
+
+Before installing, ensure your environment meets these requirements:
+
+<AccordionGroup>
+  <Accordion title="Node.js >= 22">
+    Vuetify Zero requires Node.js version 22 or higher. Check your version:
+    
+    ```bash
+    node --version
+    ```
+    
+    If you need to upgrade, download the latest LTS version from [nodejs.org](https://nodejs.org/).
+  </Accordion>
+
+  <Accordion title="Vue >= 3.5.0">
+    Vuetify Zero is built for Vue 3.5+ and takes advantage of the latest Vue features like `defineModel` and improved TypeScript support.
+    
+    ```json package.json
+    {
+      "dependencies": {
+        "vue": "^3.5.0"
+      }
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="Package Manager (Optional)">
+    While not required, using **pnpm >= 10.6** is recommended for monorepo projects:
+    
+    ```bash
+    npm install -g pnpm@latest
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Install the Package
+
+Choose your preferred package manager to install Vuetify Zero:
+
+<CodeGroup>
+```bash npm
+npm install @vuetify/v0@latest
+```
+
+```bash pnpm
+pnpm add @vuetify/v0
+```
+
+```bash yarn
+yarn add @vuetify/v0
+```
+
+```bash bun
+bun add @vuetify/v0
+```
+</CodeGroup>
+
+<Note>
+  The `@latest` tag ensures you get the most recent version. Since the package is pre-1.0, APIs may change between minor versions.
+</Note>
+
+## Verify Installation
+
+Verify that Vuetify Zero is installed correctly by checking your `package.json`:
+
+```json package.json
+{
+  "dependencies": {
+    "@vuetify/v0": "^0.1.5",
+    "vue": "^3.5.0"
+  }
+}
+```
+
+You can also verify by importing a component in a Vue file:
+
+```vue App.vue
+<script setup>
+import { Atom } from '@vuetify/v0'
+console.log('Vuetify Zero loaded:', Atom)
+</script>
+
+<template>
+  <Atom as="div">
+    Vuetify Zero is installed!
+  </Atom>
+</template>
+```
+
+## Import Options
+
+Vuetify Zero provides multiple import strategies to optimize your bundle size:
+
+### Full Import
+
+Import everything from the main entry point:
+
+```typescript
+import { Dialog, Checkbox, createSelection } from '@vuetify/v0'
+```
+
+### Subpath Imports (Recommended)
+
+Use tree-shakeable subpath exports for optimal bundle size:
+
+<CodeGroup>
+```typescript Components Only
+import { Dialog, Checkbox, Tabs } from '@vuetify/v0/components'
+```
+
+```typescript Composables Only
+import { createSelection, createGroup, useTheme } from '@vuetify/v0/composables'
+```
+
+```typescript Utilities Only
+import { isObject, mergeDeep, debounce } from '@vuetify/v0/utilities'
+```
+
+```typescript Types Only
+import type { ID, MaybeArray, DeepPartial } from '@vuetify/v0/types'
+```
+
+```typescript Constants Only
+import { IN_BROWSER, SUPPORTS_TOUCH } from '@vuetify/v0/constants'
+```
+
+```typescript Date Utilities
+import { useDateAdapter } from '@vuetify/v0/date'
+```
+</CodeGroup>
+
+<Tip>
+  Use subpath imports when you only need specific parts of the library. This can significantly reduce your bundle size.
+</Tip>
+
+## TypeScript Configuration
+
+For the best TypeScript experience, ensure your `tsconfig.json` includes:
+
+```json tsconfig.json
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "jsx": "preserve",
+    "skipLibCheck": true,
+    "types": ["vite/client"]
+  }
+}
+```
+
+<Note>
+  Vuetify Zero is fully typed and exports all necessary TypeScript definitions. No separate `@types` package is needed.
+</Note>
+
+## Vite Configuration
+
+If you're using Vite, no special configuration is required. Vuetify Zero works out of the box:
+
+```typescript vite.config.ts
+import { defineConfig } from 'vite'
+import vue from '@vitejs/plugin-vue'
+
+export default defineConfig({
+  plugins: [vue()],
+})
+```
+
+## Nuxt Configuration
+
+For Nuxt 3 projects, Vuetify Zero works with auto-imports:
+
+```typescript nuxt.config.ts
+export default defineNuxtConfig({
+  modules: [],
+  vite: {
+    optimizeDeps: {
+      include: ['@vuetify/v0']
+    }
+  }
+})
+```
+
+Then use components in your pages:
+
+```vue pages/index.vue
+<script setup>
+import { Dialog } from '@vuetify/v0'
+</script>
+
+<template>
+  <Dialog.Root>
+    <!-- Your dialog content -->
+  </Dialog.Root>
+</template>
+```
+
+## Global Plugin Setup (Optional)
+
+While Vuetify Zero components work standalone, you can configure global plugins for theme, locale, and other features:
+
+```typescript main.ts
+import { createApp } from 'vue'
+import { createThemePlugin, createLocalePlugin } from '@vuetify/v0'
+import App from './App.vue'
+
+const app = createApp(App)
+
+// Optional: Add theme plugin
+const theme = createThemePlugin({
+  defaultTheme: 'light',
+  themes: {
+    light: { /* theme config */ },
+    dark: { /* theme config */ }
+  }
+})
+
+// Optional: Add locale plugin
+const locale = createLocalePlugin({
+  locale: 'en',
+  messages: {
+    en: { /* translations */ }
+  }
+})
+
+app.use(theme)
+app.use(locale)
+
+app.mount('#app')
+```
+
+<Warning>
+  Plugins are optional. Most Vuetify Zero components work perfectly without any global configuration.
+</Warning>
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Module not found: @vuetify/v0">
+    This usually means the package isn't installed. Try:
+    
+    ```bash
+    rm -rf node_modules package-lock.json
+    npm install
+    ```
+  </Accordion>
+
+  <Accordion title="Type errors with Vue 3.5 features">
+    Ensure you're using Vue 3.5 or higher:
+    
+    ```bash
+    npm install vue@latest
+    ```
+  </Accordion>
+
+  <Accordion title="Build errors in production">
+    Make sure your build tool supports ESM. For Vite, update to the latest version:
+    
+    ```bash
+    npm install vite@latest
+    ```
+  </Accordion>
+
+  <Accordion title="SSR/Nuxt hydration mismatches">
+    Use the `useHydration` composable for SSR-safe operations:
+    
+    ```typescript
+    import { useHydration } from '@vuetify/v0'
+    
+    const { isHydrating, isHydrated } = useHydration()
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+Now that Vuetify Zero is installed, you're ready to build your first component:
+
+<Card title="Quickstart Guide" icon="rocket" href="/quickstart">
+  Follow the quickstart guide to build your first component with Vuetify Zero
+</Card>

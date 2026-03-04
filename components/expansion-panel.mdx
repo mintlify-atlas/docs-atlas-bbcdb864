@@ -1,0 +1,465 @@
+---
+title: ExpansionPanel
+description: Accordion-style expansion panels with single or multiple selection modes.
+---
+
+## Overview
+
+ExpansionPanel provides collapsible content sections with support for single (accordion) or multiple expansion modes. Built on `createSelection` for robust state management with v-model binding, mandatory selection, and auto-enrollment.
+
+## Installation
+
+```bash
+import { ExpansionPanel } from '@vuetify/v0'
+```
+
+## Basic Usage
+
+```vue
+<script setup lang="ts">
+import { ExpansionPanel } from '@vuetify/v0'
+</script>
+
+<template>
+  <ExpansionPanel.Root>
+    <ExpansionPanel.Item value="item-1">
+      <ExpansionPanel.Header>
+        <ExpansionPanel.Activator>
+          Panel 1
+        </ExpansionPanel.Activator>
+      </ExpansionPanel.Header>
+
+      <ExpansionPanel.Content>
+        Content for panel 1.
+      </ExpansionPanel.Content>
+    </ExpansionPanel.Item>
+
+    <ExpansionPanel.Item value="item-2">
+      <ExpansionPanel.Header>
+        <ExpansionPanel.Activator>
+          Panel 2
+        </ExpansionPanel.Activator>
+      </ExpansionPanel.Header>
+
+      <ExpansionPanel.Content>
+        Content for panel 2.
+      </ExpansionPanel.Content>
+    </ExpansionPanel.Item>
+  </ExpansionPanel.Root>
+</template>
+```
+
+## Single Selection (Accordion)
+
+Default behavior - only one panel expanded at a time:
+
+```vue
+<script setup lang="ts">
+import { ref } from 'vue'
+import { ExpansionPanel } from '@vuetify/v0'
+
+const selected = ref<string>()
+</script>
+
+<template>
+  <ExpansionPanel.Root v-model="selected">
+    <ExpansionPanel.Item value="about">
+      <ExpansionPanel.Activator>
+        About
+      </ExpansionPanel.Activator>
+      <ExpansionPanel.Content>
+        About content
+      </ExpansionPanel.Content>
+    </ExpansionPanel.Item>
+
+    <ExpansionPanel.Item value="features">
+      <ExpansionPanel.Activator>
+        Features
+      </ExpansionPanel.Activator>
+      <ExpansionPanel.Content>
+        Features content
+      </ExpansionPanel.Content>
+    </ExpansionPanel.Item>
+  </ExpansionPanel.Root>
+</template>
+```
+
+## Multiple Selection
+
+Allow multiple panels to be expanded simultaneously:
+
+```vue
+<script setup lang="ts">
+import { ref } from 'vue'
+import { ExpansionPanel } from '@vuetify/v0'
+
+const selected = ref<string[]>([])
+</script>
+
+<template>
+  <ExpansionPanel.Root v-model="selected" multiple>
+    <ExpansionPanel.Item value="item-1">
+      <ExpansionPanel.Activator>
+        Panel 1
+      </ExpansionPanel.Activator>
+      <ExpansionPanel.Content>
+        Content 1
+      </ExpansionPanel.Content>
+    </ExpansionPanel.Item>
+
+    <ExpansionPanel.Item value="item-2">
+      <ExpansionPanel.Activator>
+        Panel 2
+      </ExpansionPanel.Activator>
+      <ExpansionPanel.Content>
+        Content 2
+      </ExpansionPanel.Content>
+    </ExpansionPanel.Item>
+  </ExpansionPanel.Root>
+</template>
+```
+
+<Warning>
+  When `multiple` is true, v-model type changes from `T` to `T[]`.
+</Warning>
+
+## Mandatory Selection
+
+Prevent collapsing the last expanded panel:
+
+```vue
+<ExpansionPanel.Root v-model="selected" mandatory>
+  <ExpansionPanel.Item value="item-1">
+    <ExpansionPanel.Activator>Panel 1</ExpansionPanel.Activator>
+    <ExpansionPanel.Content>Content 1</ExpansionPanel.Content>
+  </ExpansionPanel.Item>
+
+  <ExpansionPanel.Item value="item-2">
+    <ExpansionPanel.Activator>Panel 2</ExpansionPanel.Activator>
+    <ExpansionPanel.Content>Content 2</ExpansionPanel.Content>
+  </ExpansionPanel.Item>
+</ExpansionPanel.Root>
+```
+
+### Force Initial Selection
+
+Automatically expand the first non-disabled panel:
+
+```vue
+<ExpansionPanel.Root mandatory="force">
+  <!-- First panel auto-expanded on mount -->
+  <ExpansionPanel.Item value="item-1">
+    <ExpansionPanel.Activator>Panel 1</ExpansionPanel.Activator>
+    <ExpansionPanel.Content>Content 1</ExpansionPanel.Content>
+  </ExpansionPanel.Item>
+</ExpansionPanel.Root>
+```
+
+## Auto-Enrollment
+
+Automatically expand non-disabled panels when registered:
+
+```vue
+<ExpansionPanel.Root enroll>
+  <!-- These panels will be auto-expanded -->
+  <ExpansionPanel.Item value="item-1">
+    <ExpansionPanel.Activator>Panel 1</ExpansionPanel.Activator>
+    <ExpansionPanel.Content>Content 1</ExpansionPanel.Content>
+  </ExpansionPanel.Item>
+</ExpansionPanel.Root>
+```
+
+## Disabled Panels
+
+Disable specific panels or the entire component:
+
+```vue
+<!-- Disable single panel -->
+<ExpansionPanel.Item value="item-1" :disabled="true">
+  <ExpansionPanel.Activator>Disabled Panel</ExpansionPanel.Activator>
+  <ExpansionPanel.Content>Content</ExpansionPanel.Content>
+</ExpansionPanel.Item>
+
+<!-- Disable all panels -->
+<ExpansionPanel.Root :disabled="true">
+  <ExpansionPanel.Item value="item-1">
+    <ExpansionPanel.Activator>All Disabled</ExpansionPanel.Activator>
+    <ExpansionPanel.Content>Content</ExpansionPanel.Content>
+  </ExpansionPanel.Item>
+</ExpansionPanel.Root>
+```
+
+## Without Header Wrapper
+
+The Header component is optional:
+
+```vue
+<ExpansionPanel.Item value="item-1">
+  <ExpansionPanel.Activator>
+    Simple Panel
+  </ExpansionPanel.Activator>
+
+  <ExpansionPanel.Content>
+    Content here.
+  </ExpansionPanel.Content>
+</ExpansionPanel.Item>
+```
+
+<Tip>
+  Use ExpansionPanel.Header for proper document outline and screen reader navigation.
+</Tip>
+
+## Programmatic Control
+
+Control expansion via slot props:
+
+```vue
+<ExpansionPanel.Root v-slot="{ select, unselect, toggle }">
+  <button @click="select('item-1')">Expand Panel 1</button>
+  <button @click="unselect('item-1')">Collapse Panel 1</button>
+  <button @click="toggle('item-2')">Toggle Panel 2</button>
+
+  <ExpansionPanel.Item value="item-1">
+    <ExpansionPanel.Activator>Panel 1</ExpansionPanel.Activator>
+    <ExpansionPanel.Content>Content 1</ExpansionPanel.Content>
+  </ExpansionPanel.Item>
+
+  <ExpansionPanel.Item value="item-2">
+    <ExpansionPanel.Activator>Panel 2</ExpansionPanel.Activator>
+    <ExpansionPanel.Content>Content 2</ExpansionPanel.Content>
+  </ExpansionPanel.Item>
+</ExpansionPanel.Root>
+```
+
+## Component API
+
+### ExpansionPanel.Root
+
+Root component managing expansion panel state.
+
+<ParamField path="as" type="string | Component">
+  Element or component to render as.
+</ParamField>
+
+<ParamField path="renderless" type="boolean">
+  Render without a wrapper element.
+</ParamField>
+
+<ParamField path="namespace" type="string" default="'v0:expansion-panel'">
+  Namespace for dependency injection.
+</ParamField>
+
+<ParamField path="disabled" type="boolean" default="false">
+  Disables the entire expansion panel instance and all items.
+</ParamField>
+
+<ParamField path="enroll" type="boolean" default="false">
+  Auto-expand non-disabled items when registered.
+</ParamField>
+
+<ParamField path="mandatory" type="boolean | 'force'" default="false">
+  Mandatory expansion behavior:
+  - `false`: All panels can be collapsed
+  - `true`: Prevents collapsing the last expanded panel
+  - `'force'`: Automatically expands the first non-disabled panel
+</ParamField>
+
+<ParamField path="multiple" type="boolean" default="false">
+  Enable multi-expansion mode. Changes v-model type from `T` to `T[]`.
+</ParamField>
+
+<ParamField path="modelValue" type="T | T[]">
+  Selected panel value(s). Type depends on `multiple` prop.
+</ParamField>
+
+#### Slot Props
+
+```typescript
+interface ExpansionPanelRootSlotProps {
+  isDisabled: Readonly<Ref<boolean>>
+  select: (id: ID) => void
+  unselect: (id: ID) => void
+  toggle: (id: ID) => void
+}
+```
+
+### ExpansionPanel.Item
+
+Individual expansion panel item.
+
+<ParamField path="as" type="string | Component">
+  Element or component to render as.
+</ParamField>
+
+<ParamField path="renderless" type="boolean">
+  Render without a wrapper element.
+</ParamField>
+
+<ParamField path="id" type="string">
+  Unique identifier for the panel item (auto-generated if not provided).
+</ParamField>
+
+<ParamField path="value" type="V">
+  Value associated with this panel item for v-model binding.
+</ParamField>
+
+<ParamField path="disabled" type="MaybeRef<boolean>">
+  Disables this specific panel item.
+</ParamField>
+
+<ParamField path="namespace" type="string" default="'v0:expansion-panel'">
+  Namespace to retrieve the parent ExpansionPanelRoot context.
+</ParamField>
+
+#### Slot Props
+
+```typescript
+interface ExpansionPanelItemSlotProps {
+  isSelected: boolean
+  isDisabled: boolean
+  attrs: {
+    'data-selected': true | undefined
+  }
+}
+```
+
+### ExpansionPanel.Header
+
+Semantic heading wrapper for the activator.
+
+<ParamField path="as" type="string | Component" default="'h3'">
+  Element or component to render as.
+</ParamField>
+
+<ParamField path="renderless" type="boolean">
+  Render without a wrapper element.
+</ParamField>
+
+<ParamField path="namespace" type="string" default="'v0:expansion-panel'">
+  Namespace for retrieving the parent ExpansionPanelItem context.
+</ParamField>
+
+#### Slot Props
+
+```typescript
+interface ExpansionPanelHeaderSlotProps {
+  isSelected: boolean
+  attrs: {
+    'data-selected': true | undefined
+  }
+}
+```
+
+### ExpansionPanel.Activator
+
+Button that controls panel expansion/collapse.
+
+<ParamField path="as" type="string | Component" default="'button'">
+  Element or component to render as.
+</ParamField>
+
+<ParamField path="renderless" type="boolean">
+  Render without a wrapper element.
+</ParamField>
+
+<ParamField path="namespace" type="string" default="'v0:expansion-panel'">
+  Namespace for retrieving the parent context.
+</ParamField>
+
+#### Slot Props
+
+```typescript
+interface ExpansionPanelActivatorSlotProps {
+  isDisabled: boolean
+  isSelected: boolean
+  toggle: () => void
+  attrs: {
+    'id': string
+    'role': 'button' | undefined
+    'tabindex': number
+    'aria-expanded': boolean
+    'aria-controls': string
+    'aria-disabled': boolean
+    'data-disabled': true | undefined
+    'data-selected': true | undefined
+    'disabled': boolean | undefined
+    'type': 'button' | undefined
+    'onClick': () => void
+    'onKeydown': (e: KeyboardEvent) => void
+  }
+}
+```
+
+### ExpansionPanel.Content
+
+Content container that displays when panel is expanded.
+
+<ParamField path="as" type="string | Component" default="'div'">
+  Element or component to render as.
+</ParamField>
+
+<ParamField path="renderless" type="boolean">
+  Render without a wrapper element.
+</ParamField>
+
+<ParamField path="namespace" type="string" default="'v0:expansion-panel'">
+  Namespace for retrieving the parent context.
+</ParamField>
+
+#### Slot Props
+
+```typescript
+interface ExpansionPanelContentSlotProps {
+  isSelected: boolean
+  attrs: {
+    'data-selected': boolean
+    'id': string
+    'role': 'region'
+    'aria-labelledby': string
+    'hidden': boolean
+  }
+}
+```
+
+## Accessibility
+
+- Follows WAI-ARIA accordion pattern
+- Proper heading structure for screen reader navigation
+- Complete ARIA attributes:
+  - `aria-expanded` on activator
+  - `aria-controls` links activator to content
+  - `aria-labelledby` links content to activator
+  - `role="region"` on content
+- Keyboard support:
+  - Enter and Space keys toggle expansion
+  - Tab navigation between panels
+- Disabled state management:
+  - `aria-disabled` attribute
+  - `tabindex="-1"` for disabled panels
+  - Visual `data-disabled` attribute
+
+## Context API
+
+```typescript
+import { useExpansionPanelRoot, useExpansionPanelItem } from '@vuetify/v0'
+
+// Root context
+const root = useExpansionPanelRoot('v0:expansion-panel')
+interface SelectionContext {
+  select: (id: ID) => void
+  unselect: (id: ID) => void
+  toggle: (id: ID) => void
+  register: (options: RegisterOptions) => SelectionTicket
+  unregister: (id: ID) => void
+  // ... more properties
+}
+
+// Item context
+const item = useExpansionPanelItem('v0:expansion-panel')
+interface ExpansionPanelItemContext {
+  ticket: SelectionTicket
+  headerId: Readonly<Ref<string>>
+  contentId: Readonly<Ref<string>>
+  isDisabled: Readonly<Ref<boolean>>
+}
+```

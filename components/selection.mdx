@@ -1,0 +1,457 @@
+---
+title: Selection
+description: Flexible selection component supporting both single and multi-select modes for building custom selection interfaces
+---
+
+# Selection
+
+A headless selection component that adapts between single and multi-selection modes via the `multiple` prop. Provides the foundation for building custom selection interfaces without imposing any specific UI structure.
+
+## Features
+
+- **Dual-mode**: Single-selection or multi-selection via `multiple` prop
+- **Renderless**: No default UI, complete styling freedom
+- **Flexible constraints**: Optional enrollment, mandatory selection
+- **Type-safe**: Full TypeScript support with generic value types
+- **Lightweight**: Core selection logic without UI assumptions
+
+## Basic Usage
+
+<CodeGroup>
+```vue Single Selection
+<script setup lang="ts">
+import { Selection } from '@vuetify/v0'
+import { ref } from 'vue'
+
+const selected = ref<string>()
+</script>
+
+<template>
+  <Selection.Root v-model="selected" :multiple="false">
+    <Selection.Item value="option1" v-slot="{ attrs, isSelected }">
+      <button v-bind="attrs" :class="{ selected: isSelected }">
+        Option 1
+      </button>
+    </Selection.Item>
+    <Selection.Item value="option2" v-slot="{ attrs, isSelected }">
+      <button v-bind="attrs" :class="{ selected: isSelected }">
+        Option 2
+      </button>
+    </Selection.Item>
+    <Selection.Item value="option3" v-slot="{ attrs, isSelected }">
+      <button v-bind="attrs" :class="{ selected: isSelected }">
+        Option 3
+      </button>
+    </Selection.Item>
+  </Selection.Root>
+</template>
+```
+
+```vue Multi Selection
+<script setup lang="ts">
+import { Selection } from '@vuetify/v0'
+import { ref } from 'vue'
+
+const selected = ref<string[]>([])
+</script>
+
+<template>
+  <Selection.Root v-model="selected" :multiple="true">
+    <Selection.Item value="option1" v-slot="{ attrs, isSelected }">
+      <button v-bind="attrs" :class="{ selected: isSelected }">
+        Option 1
+      </button>
+    </Selection.Item>
+    <Selection.Item value="option2" v-slot="{ attrs, isSelected }">
+      <button v-bind="attrs" :class="{ selected: isSelected }">
+        Option 2
+      </button>
+    </Selection.Item>
+    <Selection.Item value="option3" v-slot="{ attrs, isSelected }">
+      <button v-bind="attrs" :class="{ selected: isSelected }">
+        Option 3
+      </button>
+    </Selection.Item>
+  </Selection.Root>
+</template>
+```
+</CodeGroup>
+
+## Components
+
+### Selection.Root
+
+Root component that manages selection state and adapts between single and multi-select modes.
+
+<ParamField path="modelValue" type="T | T[]">
+  Selected value (single) or array of selected values (multi)
+</ParamField>
+
+<ParamField path="multiple" type="boolean" default="false">
+  Enable multi-selection mode. Changes v-model type from `T` to `T[]`
+</ParamField>
+
+<ParamField path="disabled" type="boolean" default="false">
+  Disables all items in the selection
+</ParamField>
+
+<ParamField path="enroll" type="boolean" default="false">
+  Auto-select all non-disabled items on mount
+</ParamField>
+
+<ParamField path="mandatory" type="boolean | 'force'" default="false">
+  - `false`: Items can be freely selected/deselected
+  - `true`: Prevents deselecting the last selected item
+  - `'force'`: Auto-selects first non-disabled item on mount
+</ParamField>
+
+<ParamField path="namespace" type="string" default="'v0:selection'">
+  Context namespace for dependency injection
+</ParamField>
+
+#### Slot Props
+
+<ParamField path="isDisabled" type="boolean">
+  Whether the selection is disabled
+</ParamField>
+
+<ParamField path="multiple" type="boolean">
+  Current selection mode
+</ParamField>
+
+<ParamField path="select" type="(id: ID) => void">
+  Select an item by ID
+</ParamField>
+
+<ParamField path="unselect" type="(id: ID) => void">
+  Unselect an item by ID
+</ParamField>
+
+<ParamField path="toggle" type="(id: ID) => void">
+  Toggle an item's selection state by ID
+</ParamField>
+
+<ParamField path="attrs" type="object">
+  Contains `aria-multiselectable` (true for multi, false for single)
+</ParamField>
+
+### Selection.Item
+
+Represents a selectable item. Automatically registers with parent and unregisters on unmount.
+
+<ParamField path="value" type="unknown" required>
+  Value associated with this item
+</ParamField>
+
+<ParamField path="id" type="string">
+  Unique identifier (auto-generated if not provided)
+</ParamField>
+
+<ParamField path="label" type="string">
+  Optional display label (passed to slot props)
+</ParamField>
+
+<ParamField path="disabled" type="boolean | Ref<boolean>" default="false">
+  Disables this specific item
+</ParamField>
+
+<ParamField path="namespace" type="string" default="'v0:selection'">
+  Context namespace (must match Selection.Root namespace)
+</ParamField>
+
+#### Slot Props
+
+<ParamField path="isSelected" type="boolean">
+  Whether this item is selected
+</ParamField>
+
+<ParamField path="isDisabled" type="boolean">
+  Whether this item is disabled
+</ParamField>
+
+<ParamField path="select" type="() => void">
+  Select this item
+</ParamField>
+
+<ParamField path="unselect" type="() => void">
+  Unselect this item
+</ParamField>
+
+<ParamField path="toggle" type="() => void">
+  Toggle this item's selection state
+</ParamField>
+
+<ParamField path="attrs" type="object">
+  Pre-computed attributes:
+  - `aria-selected`: boolean
+  - `aria-disabled`: boolean
+  - `data-selected`, `data-disabled`
+</ParamField>
+
+## Advanced Examples
+
+### Dynamic Mode Switching
+
+```vue
+<script setup lang="ts">
+import { Selection } from '@vuetify/v0'
+import { ref, watch } from 'vue'
+
+const multiMode = ref(false)
+const selected = ref<string | string[]>()
+
+// Reset selection when switching modes
+watch(multiMode, () => {
+  selected.value = multiMode.value ? [] : undefined
+})
+</script>
+
+<template>
+  <div>
+    <label>
+      <input type="checkbox" v-model="multiMode" />
+      Enable multi-select
+    </label>
+
+    <Selection.Root v-model="selected" :multiple="multiMode">
+      <Selection.Item value="a" v-slot="{ attrs, isSelected }">
+        <button v-bind="attrs" :class="{ active: isSelected }">
+          Option A
+        </button>
+      </Selection.Item>
+      <Selection.Item value="b" v-slot="{ attrs, isSelected }">
+        <button v-bind="attrs" :class="{ active: isSelected }">
+          Option B
+        </button>
+      </Selection.Item>
+      <Selection.Item value="c" v-slot="{ attrs, isSelected }">
+        <button v-bind="attrs" :class="{ active: isSelected }">
+          Option C
+        </button>
+      </Selection.Item>
+    </Selection.Root>
+
+    <p>Selected: {{ selected }}</p>
+  </div>
+</template>
+```
+
+### Card Selector
+
+```vue
+<script setup lang="ts">
+import { Selection } from '@vuetify/v0'
+import { ref } from 'vue'
+
+interface Plan {
+  id: string
+  name: string
+  price: number
+  features: string[]
+}
+
+const plans: Plan[] = [
+  { id: 'free', name: 'Free', price: 0, features: ['1 user', '1GB storage'] },
+  { id: 'pro', name: 'Pro', price: 9, features: ['5 users', '10GB storage'] },
+  { id: 'team', name: 'Team', price: 29, features: ['Unlimited users', '100GB storage'] },
+]
+
+const selectedPlan = ref<string>('free')
+</script>
+
+<template>
+  <Selection.Root v-model="selectedPlan" :multiple="false" mandatory>
+    <div class="plan-grid">
+      <Selection.Item 
+        v-for="plan in plans"
+        :key="plan.id"
+        :value="plan.id"
+        v-slot="{ attrs, isSelected, select }"
+      >
+        <div 
+          v-bind="attrs"
+          @click="select"
+          class="plan-card"
+          :class="{ selected: isSelected }"
+        >
+          <h3>{{ plan.name }}</h3>
+          <p class="price">${{ plan.price }}/month</p>
+          <ul>
+            <li v-for="feature in plan.features" :key="feature">
+              {{ feature }}
+            </li>
+          </ul>
+          <button v-if="isSelected" class="selected-badge">
+            ✓ Selected
+          </button>
+        </div>
+      </Selection.Item>
+    </div>
+  </Selection.Root>
+</template>
+
+<style>
+.plan-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+}
+
+.plan-card {
+  padding: 1.5rem;
+  border: 2px solid #ddd;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.plan-card.selected {
+  border-color: #4CAF50;
+  background: #f0f9f1;
+}
+</style>
+```
+
+### List with Select All
+
+```vue
+<script setup lang="ts">
+import { Selection } from '@vuetify/v0'
+import { ref, computed } from 'vue'
+
+const items = ['Item 1', 'Item 2', 'Item 3', 'Item 4']
+const selected = ref<string[]>([])
+
+const allSelected = computed(() => selected.value.length === items.length)
+
+function toggleAll() {
+  selected.value = allSelected.value ? [] : [...items]
+}
+</script>
+
+<template>
+  <div class="list-container">
+    <div class="list-header">
+      <label>
+        <input 
+          type="checkbox" 
+          :checked="allSelected"
+          :indeterminate="selected.length > 0 && !allSelected"
+          @change="toggleAll"
+        />
+        Select All
+      </label>
+    </div>
+
+    <Selection.Root v-model="selected" :multiple="true">
+      <Selection.Item 
+        v-for="item in items"
+        :key="item"
+        :value="item"
+        v-slot="{ attrs, isSelected, toggle }"
+      >
+        <label class="list-item">
+          <input type="checkbox" v-bind="attrs" :checked="isSelected" @change="toggle" />
+          {{ item }}
+        </label>
+      </Selection.Item>
+    </Selection.Root>
+  </div>
+</template>
+```
+
+### Disabled Items
+
+```vue
+<script setup lang="ts">
+import { Selection } from '@vuetify/v0'
+import { ref } from 'vue'
+
+const features = [
+  { id: 'basic', name: 'Basic features', available: true },
+  { id: 'advanced', name: 'Advanced analytics', available: false },
+  { id: 'api', name: 'API access', available: true },
+  { id: 'support', name: 'Priority support', available: false },
+]
+
+const enabled = ref<string[]>(['basic', 'api'])
+</script>
+
+<template>
+  <Selection.Root v-model="enabled" :multiple="true">
+    <Selection.Item 
+      v-for="feature in features"
+      :key="feature.id"
+      :value="feature.id"
+      :disabled="!feature.available"
+      v-slot="{ attrs, isSelected, isDisabled }"
+    >
+      <label :class="{ disabled: isDisabled }">
+        <input type="checkbox" v-bind="attrs" :checked="isSelected" />
+        {{ feature.name }}
+        <span v-if="!feature.available" class="badge">Coming soon</span>
+      </label>
+    </Selection.Item>
+  </Selection.Root>
+</template>
+```
+
+## Use Cases
+
+### When to Use Selection
+
+- **Mode flexibility**: Need to switch between single and multi-select
+- **Custom interfaces**: Building unique selection UIs (cards, lists, grids)
+- **Reusable components**: Creating selection components that adapt to different modes
+- **Minimal overhead**: Need core selection logic without UI assumptions
+
+### When to Use Alternatives
+
+| Component | Use When |
+|-----------|----------|
+| **Group** | Only need multi-selection (no single-select mode) |
+| **Single** | Only need single-selection (no multi-select mode) |
+| **Checkbox** | Need standard checkbox form controls |
+| **Radio** | Need standard radio button controls |
+
+## Accessibility
+
+- Provides `aria-selected` for selected state
+- Provides `aria-disabled` for disabled items
+- Root includes `aria-multiselectable` based on mode
+- No default keyboard navigation (implement in your UI)
+
+<Note>
+The Selection component is renderless and provides ARIA attributes via slot props. You're responsible for binding these attributes and implementing appropriate keyboard navigation for your specific UI.
+</Note>
+
+## Type Safety
+
+Full TypeScript support with automatic type inference:
+
+```typescript
+import type { 
+  SelectionRootProps,
+  SelectionItemProps,
+  SelectionRootSlotProps,
+  SelectionItemSlotProps
+} from '@vuetify/v0'
+
+// Single mode: T
+const single = ref<string>()
+
+// Multi mode: T[]
+const multi = ref<string[]>([])
+```
+
+## Comparison Table
+
+| Component | Single | Multi | Form Integration | UI Structure |
+|-----------|--------|-------|------------------|-------------|
+| **Selection** | ✓ | ✓ | Manual | Renderless |
+| **Group** | ✗ | ✓ | Manual | Renderless |
+| **Single** | ✓ | ✗ | Manual | Renderless |
+| **Checkbox** | ✓ | ✓ | Automatic | Structured |
+| **Radio** | ✓ | ✗ | Automatic | Structured |
+
+Use **Selection** when you need a flexible, low-level selection primitive that can adapt between modes.

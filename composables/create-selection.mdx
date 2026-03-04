@@ -1,0 +1,349 @@
+---
+title: createSelection
+description: Base composable for managing selected items with Set-based tracking, mandatory selection, and auto-enrollment
+---
+
+## Overview
+
+The **createSelection** composable extends `createRegistry` with selection tracking via a reactive `Set` of selected IDs. It supports disabled items, mandatory selection enforcement, and automatic enrollment of newly registered items.
+
+Serves as the base for `createSingle`, `createGroup`, and `createStep` composables.
+
+## Signature
+
+```ts
+function createSelection<
+  Z extends SelectionTicketInput = SelectionTicketInput,
+  E extends SelectionTicket<Z> = SelectionTicket<Z>
+>(options?: SelectionOptions): SelectionContext<Z, E>
+```
+
+<ParamField path="options" type="SelectionOptions">
+  Configuration options
+  
+  <Expandable title="properties">
+    <ParamField path="disabled" type="MaybeRefOrGetter<boolean>" default="false">
+      Disable the entire selection instance. When true, all selection operations are blocked.
+    </ParamField>
+    
+    <ParamField path="enroll" type="MaybeRefOrGetter<boolean>" default="false">
+      Auto-select newly registered non-disabled items.
+    </ParamField>
+    
+    <ParamField path="mandatory" type="MaybeRefOrGetter<boolean | 'force'>" default="false">
+      Mandatory selection mode:
+      - `false`: No enforcement
+      - `true`: Prevents deselecting last selected item
+      - `'force'`: Auto-selects first non-disabled item on registration
+    </ParamField>
+    
+    <ParamField path="multiple" type="MaybeRefOrGetter<boolean>" default="false">
+      Allow multiple items to be selected simultaneously.
+    </ParamField>
+    
+    <ParamField path="events" type="boolean" default="false">
+      Enable event emission (inherited from registry).
+    </ParamField>
+    
+    <ParamField path="reactive" type="boolean" default="false">
+      Enable Vue reactivity (inherited from registry).
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+<ResponseField name="SelectionContext" type="object">
+  Selection instance with tracking methods
+  
+  <Expandable title="properties">
+    <ResponseField name="selectedIds" type="Reactive<Set<ID>>">
+      Set of selected ticket IDs (reactive)
+    </ResponseField>
+    
+    <ResponseField name="selectedItems" type="ComputedRef<Set<E>>">
+      Computed set of selected ticket instances
+    </ResponseField>
+    
+    <ResponseField name="selectedValues" type="ComputedRef<Set<unknown>>">
+      Computed set of selected ticket values
+    </ResponseField>
+    
+    <ResponseField name="disabled" type="MaybeRef<boolean>">
+      Disabled state of the selection instance
+    </ResponseField>
+    
+    <ResponseField name="select" type="(id: ID) => void">
+      Select a ticket by ID. Clears other selections if `multiple: false`.
+    </ResponseField>
+    
+    <ResponseField name="unselect" type="(id: ID) => void">
+      Unselect a ticket by ID. Respects mandatory option.
+    </ResponseField>
+    
+    <ResponseField name="toggle" type="(id: ID) => void">
+      Toggle selection state by ID
+    </ResponseField>
+    
+    <ResponseField name="selected" type="(id: ID) => boolean">
+      Check if a ticket is selected
+    </ResponseField>
+    
+    <ResponseField name="mandate" type="() => void">
+      Enforce mandatory selection by selecting first non-disabled item if none selected
+    </ResponseField>
+    
+    <ResponseField name="seek" type="(direction?: 'first' | 'last', from?: number) => E | undefined">
+      Find first/last non-disabled ticket
+    </ResponseField>
+    
+    <ResponseField name="reset" type="() => void">
+      Clear registry and selections, then call mandate()
+    </ResponseField>
+    
+    <ResponseField name="register" type="(ticket?: Partial<Z>) => E">
+      Register a new ticket with selection methods
+    </ResponseField>
+    
+    <ResponseField name="unregister" type="(id: ID) => void">
+      Unregister a ticket and remove from selectedIds
+    </ResponseField>
+    
+    <ResponseField name="onboard" type="(registrations: Partial<Z>[]) => E[]">
+      Register multiple tickets in batch
+    </ResponseField>
+    
+    <ResponseField name="offboard" type="(ids: ID[]) => void">
+      Unregister multiple tickets and remove from selectedIds
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+## Usage
+
+### Basic Selection
+
+```ts
+import { createSelection } from '@vuetify/v0'
+
+const selection = createSelection({ multiple: true })
+
+selection.onboard([
+  { id: 'item-1', value: 'Item 1' },
+  { id: 'item-2', value: 'Item 2' },
+  { id: 'item-3', value: 'Item 3' },
+])
+
+selection.select('item-1')
+selection.select('item-3')
+
+console.log(selection.selectedIds) // Set { 'item-1', 'item-3' }
+console.log(Array.from(selection.selectedValues.value)) // ['Item 1', 'Item 3']
+```
+
+### Mandatory Selection
+
+```ts
+// Prevents deselecting last item
+const selection = createSelection({ mandatory: true })
+
+selection.onboard([
+  { id: 'tab-1', value: 'Home' },
+  { id: 'tab-2', value: 'Settings' },
+])
+
+selection.select('tab-1')
+selection.unselect('tab-1') // Blocked - can't deselect last item
+
+console.log(selection.selected('tab-1')) // true
+```
+
+### Force Mandatory
+
+```ts
+// Auto-select first non-disabled item
+const selection = createSelection({ mandatory: 'force' })
+
+selection.onboard([
+  { id: 'tab-1', value: 'Home' },
+  { id: 'tab-2', value: 'Settings' },
+])
+
+// First item auto-selected
+console.log(selection.selected('tab-1')) // true
+```
+
+### Auto-Enrollment
+
+```ts
+// Auto-select newly registered items
+const selection = createSelection({ 
+  enroll: true, 
+  multiple: true 
+})
+
+selection.onboard([
+  { id: 'item-1', value: 'Item 1' },
+  { id: 'item-2', value: 'Item 2', disabled: true },
+  { id: 'item-3', value: 'Item 3' },
+])
+
+// item-1 and item-3 auto-selected (item-2 skipped - disabled)
+console.log(selection.selectedIds.size) // 2
+console.log(selection.selected('item-2')) // false
+```
+
+### Disabled Items
+
+```ts
+const selection = createSelection()
+
+selection.register({ 
+  id: 'item-1', 
+  value: 'Enabled',
+  disabled: false 
+})
+
+selection.register({ 
+  id: 'item-2', 
+  value: 'Disabled',
+  disabled: true 
+})
+
+selection.select('item-1') // Works
+selection.select('item-2') // Blocked - item is disabled
+
+console.log(selection.selectedIds.size) // 1
+```
+
+### Ticket Methods
+
+```ts
+const selection = createSelection()
+
+const ticket = selection.register({ 
+  id: 'item-1', 
+  value: 'Item 1' 
+})
+
+// Each ticket has selection methods
+ticket.select()
+console.log(ticket.isSelected.value) // true
+
+ticket.unselect()
+console.log(ticket.isSelected.value) // false
+
+ticket.toggle()
+console.log(ticket.isSelected.value) // true
+```
+
+### Context-Level Disabled
+
+```ts
+import { ref } from 'vue'
+
+const disabled = ref(false)
+const selection = createSelection({ disabled })
+
+selection.register({ id: 'item-1' })
+
+selection.select('item-1') // Works
+console.log(selection.selected('item-1')) // true
+
+// Disable entire selection
+disabled.value = true
+selection.unselect('item-1') // Blocked
+console.log(selection.selected('item-1')) // true (still selected)
+```
+
+### Seeking Non-Disabled Items
+
+```ts
+const selection = createSelection()
+
+selection.onboard([
+  { id: 'item-1', value: 'Item 1', disabled: true },
+  { id: 'item-2', value: 'Item 2' },
+  { id: 'item-3', value: 'Item 3', disabled: true },
+  { id: 'item-4', value: 'Item 4' },
+])
+
+const first = selection.seek('first') // Returns item-2 (skips disabled)
+const last = selection.seek('last')   // Returns item-4
+```
+
+## Computed Properties
+
+### selectedItems
+
+Reactive Set of selected ticket objects:
+
+```ts
+const items = Array.from(selection.selectedItems.value)
+items.forEach(item => {
+  console.log(item.id, item.value)
+})
+```
+
+### selectedValues
+
+Reactive Set of selected ticket values:
+
+```ts
+const values = Array.from(selection.selectedValues.value)
+console.log(values) // ['Value 1', 'Value 3']
+```
+
+## Type Safety
+
+```ts
+interface TabTicket extends SelectionTicketInput {
+  label: string
+  icon?: string
+}
+
+const tabs = createSelection<TabTicket>()
+
+const ticket = tabs.register({ 
+  label: 'Home', 
+  icon: 'mdi-home' 
+})
+
+// Type-safe access
+console.log(ticket.label) // string
+console.log(ticket.icon) // string | undefined
+console.log(ticket.isSelected.value) // boolean
+```
+
+## Context Pattern
+
+```ts
+import { createSelectionContext } from '@vuetify/v0'
+
+export const [useCheckboxes, provideCheckboxes, checkboxes] = 
+  createSelectionContext()
+
+// In parent component
+provideCheckboxes()
+
+// In child component
+const checkboxes = useCheckboxes()
+checkboxes.select('checkbox-1')
+```
+
+## Inheritance Chain
+
+```
+createRegistry
+    ↓
+createSelection
+    ↓
+┌───────┬───────────┐
+│       │            │
+createSingle  createGroup  (others)
+```
+
+## See Also
+
+- [createRegistry](/composables/create-registry) - Base registry system
+- [createSingle](/composables/create-single) - Single-selection variant
+- [createGroup](/composables/create-group) - Multi-selection with batch operations
+- [createStep](/composables/create-step) - Sequential navigation

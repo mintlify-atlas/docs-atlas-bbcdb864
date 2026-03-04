@@ -1,0 +1,275 @@
+---
+title: Popover
+description: Non-modal popover component using native Popover API with CSS anchor positioning.
+---
+
+## Overview
+
+Popover provides a lightweight, non-modal overlay using the native Popover API. It includes automatic positioning via CSS anchor positioning and supports toggle behavior with keyboard and mouse interactions.
+
+## Installation
+
+```bash
+import { Popover } from '@vuetify/v0'
+```
+
+<Tip>
+  Popover uses the native Popover API with CSS anchor positioning for automatic placement relative to the activator.
+</Tip>
+
+## Basic Usage
+
+```vue
+<script setup lang="ts">
+import { Popover } from '@vuetify/v0'
+</script>
+
+<template>
+  <Popover.Root>
+    <Popover.Activator>
+      Click to toggle
+    </Popover.Activator>
+
+    <Popover.Content>
+      Popover content goes here.
+    </Popover.Content>
+  </Popover.Root>
+</template>
+```
+
+## v-model Binding
+
+Control popover state externally:
+
+```vue
+<script setup lang="ts">
+import { ref } from 'vue'
+import { Popover } from '@vuetify/v0'
+
+const isOpen = ref(false)
+</script>
+
+<template>
+  <Popover.Root v-model="isOpen">
+    <Popover.Activator>
+      Toggle Popover
+    </Popover.Activator>
+
+    <Popover.Content>
+      <p>Controlled popover content.</p>
+    </Popover.Content>
+  </Popover.Root>
+
+  <button @click="isOpen = !isOpen">Toggle from outside</button>
+</template>
+```
+
+## Positioning
+
+Control popover placement with CSS anchor positioning:
+
+```vue
+<Popover.Root>
+  <Popover.Activator>
+    Click me
+  </Popover.Activator>
+
+  <Popover.Content position-area="top">
+    Appears above the activator
+  </Popover.Content>
+</Popover.Root>
+```
+
+### Position Areas
+
+```vue
+<!-- Bottom (default) -->
+<Popover.Content position-area="bottom">
+  Bottom placement
+</Popover.Content>
+
+<!-- Top -->
+<Popover.Content position-area="top">
+  Top placement
+</Popover.Content>
+
+<!-- Left -->
+<Popover.Content position-area="left">
+  Left placement
+</Popover.Content>
+
+<!-- Right -->
+<Popover.Content position-area="right">
+  Right placement
+</Popover.Content>
+```
+
+## Position Fallbacks
+
+Define fallback positions when primary placement doesn't fit:
+
+```vue
+<Popover.Content
+  position-area="bottom"
+  position-try="most-width top"
+>
+  Will flip to top if bottom doesn't fit
+</Popover.Content>
+```
+
+## Custom Target ID
+
+Manually specify popover target:
+
+```vue
+<Popover.Root id="my-popover">
+  <Popover.Activator target="my-popover">
+    Custom target
+  </Popover.Activator>
+
+  <Popover.Content id="my-popover">
+    Content with custom ID
+  </Popover.Content>
+</Popover.Root>
+```
+
+## Component API
+
+### Popover.Root
+
+Root component that manages popover state and provides context.
+
+<ParamField path="as" type="string | Component" default="null">
+  Element or component to render as (renderless by default).
+</ParamField>
+
+<ParamField path="id" type="string">
+  Unique identifier for the popover (auto-generated if not provided).
+</ParamField>
+
+<ParamField path="modelValue" type="boolean" default="false">
+  Controls the open/closed state of the popover.
+</ParamField>
+
+#### Slot Props
+
+```typescript
+interface PopoverRootSlotProps {
+  id: string
+  isSelected: boolean
+  toggle: () => void
+}
+```
+
+### Popover.Activator
+
+Button that toggles the popover using native `popovertarget` attribute.
+
+<ParamField path="as" type="string | Component" default="'button'">
+  Element or component to render as.
+</ParamField>
+
+<ParamField path="target" type="string">
+  Target popover ID (defaults to parent PopoverRoot id).
+</ParamField>
+
+#### Slot Props
+
+```typescript
+interface PopoverActivatorSlotProps {
+  isOpen: boolean
+  attrs: {
+    'popovertarget': string
+    'type': 'button' | undefined
+    'data-popover-open': '' | undefined
+  }
+}
+```
+
+### Popover.Content
+
+Popover content panel using native popover API.
+
+<ParamField path="as" type="string | Component" default="'div'">
+  Element or component to render as.
+</ParamField>
+
+<ParamField path="id" type="string">
+  Unique identifier (defaults to parent PopoverRoot id).
+</ParamField>
+
+<ParamField path="positionArea" type="string" default="'bottom'">
+  CSS position-area value for anchor positioning (e.g., 'top', 'bottom', 'left', 'right').
+</ParamField>
+
+<ParamField path="positionTry" type="string" default="'most-width bottom'">
+  CSS position-try value for fallback positioning when primary placement doesn't fit.
+</ParamField>
+
+#### Events
+
+<ParamField path="beforetoggle" type="(e: ToggleEvent) => void">
+  Emitted before popover visibility changes.
+</ParamField>
+
+#### Slot Props
+
+```typescript
+interface PopoverContentSlotProps {
+  isOpen: boolean
+  attrs: {
+    id: string
+    popover: ''
+  }
+}
+```
+
+## CSS Anchor Positioning
+
+The activator automatically sets the anchor name:
+
+```vue
+<Popover.Activator>
+  <!-- Sets style="anchor-name: --{id}" -->
+  Click me
+</Popover.Activator>
+
+<Popover.Content>
+  <!-- Sets style="position-anchor: --{id}" -->
+  Positioned content
+</Popover.Content>
+```
+
+<Warning>
+  CSS anchor positioning requires browser support. Check [caniuse.com](https://caniuse.com/css-anchor-positioning) for compatibility.
+</Warning>
+
+## Accessibility
+
+- Uses native Popover API for automatic layer management
+- Activator uses `popovertarget` attribute for semantic connection
+- Light dismiss behavior (click outside closes popover)
+- Keyboard accessible via native button behavior
+- Automatic focus management
+
+## Context API
+
+```typescript
+import { usePopoverContext } from '@vuetify/v0'
+
+const context = usePopoverContext()
+
+interface PopoverContext {
+  isSelected: ShallowRef<boolean>
+  id: string
+  toggle: () => void
+}
+```
+
+## Browser Support
+
+Popover requires:
+- Native Popover API support
+- CSS anchor positioning support
+
+For unsupported browsers, consider using Dialog or custom positioning solutions.

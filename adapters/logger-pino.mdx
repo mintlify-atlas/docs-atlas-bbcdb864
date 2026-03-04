@@ -1,0 +1,404 @@
+---
+title: Pino Adapter
+description: Pino structured logger adapter for Vuetify Zero
+---
+
+# Pino Adapter
+
+The `PinoLoggerAdapter` integrates Pino, a high-performance structured logger, with Vuetify Zero's `useLogger` composable.
+
+## Import
+
+```typescript
+import { PinoLoggerAdapter } from '@vuetify/v0/logger/adapters/pino'
+```
+
+## Installation
+
+Install Pino as a peer dependency:
+
+```bash
+pnpm add pino
+```
+
+## Basic Usage
+
+```typescript
+import { createApp } from 'vue'
+import { createLoggerPlugin } from '@vuetify/v0/logger'
+import { PinoLoggerAdapter } from '@vuetify/v0/logger/adapters/pino'
+import pino from 'pino'
+
+const pinoLogger = pino({
+  level: 'info',
+  browser: {
+    asObject: true
+  }
+})
+
+const adapter = new PinoLoggerAdapter(pinoLogger)
+
+const app = createApp(App)
+app.use(createLoggerPlugin({ adapter }))
+```
+
+## Using in Components
+
+```vue
+<script setup lang="ts">
+import { useLogger } from '@vuetify/v0/logger'
+
+const logger = useLogger()
+
+function handleRequest() {
+  logger.debug('Handling request')
+  
+  try {
+    const result = processRequest()
+    logger.info('Request processed', { result })
+  } catch (error) {
+    logger.error('Request failed', { error })
+  }
+}
+</script>
+```
+
+## Structured Logging
+
+Pino excels at structured logging with metadata:
+
+```typescript
+import { useLogger } from '@vuetify/v0/logger'
+
+const logger = useLogger()
+
+// Log with metadata object
+logger.info('User logged in', {
+  userId: 123,
+  email: 'user@example.com',
+  timestamp: Date.now()
+})
+
+// Log with multiple metadata
+logger.error('API error', {
+  endpoint: '/api/users',
+  method: 'POST',
+  status: 500,
+  duration: 1234
+})
+```
+
+## Log Levels
+
+```typescript
+import { useLogger } from '@vuetify/v0/logger'
+
+const logger = useLogger()
+
+logger.trace('Trace message')   // Level 10
+logger.debug('Debug message')   // Level 20
+logger.info('Info message')     // Level 30
+logger.warn('Warning message')  // Level 40
+logger.error('Error message')   // Level 50
+logger.fatal('Fatal message')   // Level 60
+```
+
+## Pino Configuration
+
+### Browser Configuration
+
+```typescript
+import pino from 'pino'
+import { PinoLoggerAdapter } from '@vuetify/v0/logger/adapters/pino'
+
+const pinoLogger = pino({
+  level: 'debug',
+  browser: {
+    asObject: true,              // Output as objects
+    transmit: {
+      level: 'info',
+      send: (level, logEvent) => {
+        // Send to logging service
+        fetch('/api/logs', {
+          method: 'POST',
+          body: JSON.stringify(logEvent)
+        })
+      }
+    }
+  }
+})
+
+const adapter = new PinoLoggerAdapter(pinoLogger)
+```
+
+### Node.js Configuration
+
+```typescript
+import pino from 'pino'
+import { PinoLoggerAdapter } from '@vuetify/v0/logger/adapters/pino'
+
+const pinoLogger = pino({
+  level: 'info',
+  formatters: {
+    level: (label) => {
+      return { level: label }
+    }
+  },
+  timestamp: pino.stdTimeFunctions.isoTime
+})
+
+const adapter = new PinoLoggerAdapter(pinoLogger)
+```
+
+## Child Loggers
+
+```typescript
+import pino from 'pino'
+import { createLogger } from '@vuetify/v0/logger'
+import { PinoLoggerAdapter } from '@vuetify/v0/logger/adapters/pino'
+
+// Create parent logger
+const parentPino = pino({ level: 'info' })
+
+// Create child loggers with context
+const authPino = parentPino.child({ service: 'auth' })
+const apiPino = parentPino.child({ service: 'api' })
+
+const authLogger = createLogger({ 
+  adapter: new PinoLoggerAdapter(authPino) 
+})
+const apiLogger = createLogger({ 
+  adapter: new PinoLoggerAdapter(apiPino) 
+})
+
+authLogger.info('Login attempt') 
+// { "level":30,"time":1234,"service":"auth","msg":"Login attempt" }
+
+apiLogger.info('API call')
+// { "level":30,"time":1234,"service":"api","msg":"API call" }
+```
+
+## Metadata Formatting
+
+The adapter formats arguments for Pino:
+
+```typescript
+import { useLogger } from '@vuetify/v0/logger'
+
+const logger = useLogger()
+
+// Single object argument - merged with message
+logger.info('User action', { userId: 123, action: 'click' })
+// Output: { level: 30, msg: 'User action', userId: 123, action: 'click' }
+
+// Multiple arguments - wrapped in args array
+logger.info('Multiple', 'args', { foo: 'bar' })
+// Output: { level: 30, msg: 'Multiple', args: ['args', { foo: 'bar' }] }
+
+// No arguments - just message
+logger.info('Simple message')
+// Output: { level: 30, msg: 'Simple message' }
+```
+
+## Integration with pino-pretty
+
+```typescript
+import pino from 'pino'
+import { PinoLoggerAdapter } from '@vuetify/v0/logger/adapters/pino'
+
+const pinoLogger = pino({
+  transport: {
+    target: 'pino-pretty',
+    options: {
+      colorize: true,
+      translateTime: 'SYS:standard',
+      ignore: 'pid,hostname'
+    }
+  }
+})
+
+const adapter = new PinoLoggerAdapter(pinoLogger)
+```
+
+## Remote Logging
+
+```typescript
+import pino from 'pino'
+import { PinoLoggerAdapter } from '@vuetify/v0/logger/adapters/pino'
+
+const pinoLogger = pino({
+  browser: {
+    transmit: {
+      level: 'error',
+      send: async (level, logEvent) => {
+        // Send to remote service (e.g., Datadog, Sentry)
+        await fetch('https://logs.example.com/ingest', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            level,
+            ...logEvent.messages[0]
+          })
+        })
+      }
+    }
+  }
+})
+
+const adapter = new PinoLoggerAdapter(pinoLogger)
+```
+
+## TypeScript
+
+```typescript
+import type { Logger } from 'pino'
+import pino from 'pino'
+import { PinoLoggerAdapter } from '@vuetify/v0/logger/adapters/pino'
+
+const pinoInstance: Logger = pino({ level: 'info' })
+
+const adapter = new PinoLoggerAdapter(pinoInstance)
+
+// Fully typed
+adapter.info('message', { 
+  userId: 123,
+  metadata: { foo: 'bar' }
+})
+```
+
+## Error Handling
+
+The adapter requires a valid Pino instance:
+
+```typescript
+import { PinoLoggerAdapter } from '@vuetify/v0/logger/adapters/pino'
+
+try {
+  const adapter = new PinoLoggerAdapter(null)
+} catch (error) {
+  // Error: Pino instance is required for PinoLoggerAdapter
+}
+```
+
+## Environment-Specific Config
+
+```typescript
+import pino from 'pino'
+import { PinoLoggerAdapter } from '@vuetify/v0/logger/adapters/pino'
+
+const isDev = import.meta.env.DEV
+const isProd = import.meta.env.PROD
+
+const pinoLogger = pino({
+  level: isDev ? 'debug' : 'info',
+  browser: {
+    asObject: true,
+    transmit: isProd ? {
+      level: 'error',
+      send: (level, logEvent) => {
+        // Only send errors in production
+        sendToLoggingService(logEvent)
+      }
+    } : undefined
+  }
+})
+
+const adapter = new PinoLoggerAdapter(pinoLogger)
+```
+
+## Benchmarks
+
+<Note>
+Pino is one of the fastest Node.js loggers:
+
+- **~30-50% faster** than Winston
+- **~10x faster** than Bunyan
+- **Minimal overhead** in production builds
+
+Perfect for high-throughput applications.
+</Note>
+
+## Production Best Practices
+
+```typescript
+import pino from 'pino'
+
+const pinoLogger = pino({
+  // Use numeric levels for performance
+  level: 'info',
+  
+  // Disable pretty printing in production
+  ...(process.env.NODE_ENV !== 'production' && {
+    transport: {
+      target: 'pino-pretty'
+    }
+  }),
+  
+  // Optimize serialization
+  serializers: {
+    error: pino.stdSerializers.err
+  },
+  
+  // Use ISO timestamps
+  timestamp: pino.stdTimeFunctions.isoTime
+})
+```
+
+## Comparison with Other Adapters
+
+| Feature | PinoAdapter | ConsolaAdapter | V0Adapter |
+|---------|-------------|----------------|------------|
+| Performance | Excellent | Good | Good |
+| Structured logs | Yes | Yes | No |
+| Browser support | Yes | Yes | Yes |
+| Node.js support | Yes | Yes | Yes |
+| Pretty output | Via pino-pretty | Built-in | Built-in |
+| Remote logging | Yes | Via reporters | No |
+| Best for | Production | Development | Development |
+
+## API Reference
+
+### Constructor
+
+```typescript
+class PinoLoggerAdapter implements LoggerAdapter
+
+constructor(pinoInstance: Logger)
+```
+
+### Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `pinoInstance` | `Logger` | Yes | Pino logger instance |
+
+### Methods
+
+| Method | Description |
+|--------|-------------|
+| `debug(message, ...args)` | Log debug with metadata |
+| `info(message, ...args)` | Log info with metadata |
+| `warn(message, ...args)` | Log warning with metadata |
+| `error(message, ...args)` | Log error with metadata |
+| `trace(message, ...args)` | Log trace with metadata |
+| `fatal(message, ...args)` | Log fatal with metadata |
+
+### Metadata Format
+
+```typescript
+// Single object - merged
+{ msg: string, ...metadata }
+
+// Multiple args - wrapped
+{ msg: string, args: unknown[] }
+
+// No args - just message
+{ msg: string }
+```
+
+## See Also
+
+- [Consola Adapter](/adapters/logger-consola) - Consola logger integration
+- [V0 Adapter](/adapters/logger-v0) - Built-in console logger
+- [useLogger](/composables/use-logger) - Logger composable
+- [Pino Documentation](https://getpino.io/) - Official Pino docs

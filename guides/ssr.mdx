@@ -1,0 +1,505 @@
+---
+title: Server-Side Rendering
+description: Learn how to use Vuetify Zero with SSR - hydration helpers, browser detection, and lazy rendering
+---
+
+# Server-Side Rendering (SSR)
+
+Vuetify Zero is fully compatible with server-side rendering. This guide covers SSR considerations, hydration patterns, and performance optimization.
+
+## Browser Detection
+
+### IN_BROWSER Constant
+
+Use `IN_BROWSER` to conditionally run browser-only code:
+
+```ts
+import { IN_BROWSER } from '@vuetify/v0'
+
+// Safe for SSR
+if (IN_BROWSER) {
+  // Browser-only code
+  window.addEventListener('resize', handleResize)
+  localStorage.setItem('key', 'value')
+}
+```
+
+`IN_BROWSER` is `true` when `typeof window !== 'undefined'`.
+
+### Other Browser Constants
+
+```ts
+import { 
+  IN_BROWSER,
+  SUPPORTS_TOUCH,
+  SUPPORTS_MATCH_MEDIA,
+  SUPPORTS_OBSERVER,
+  SUPPORTS_INTERSECTION_OBSERVER,
+  SUPPORTS_MUTATION_OBSERVER,
+} from '@vuetify/v0'
+
+// Feature detection for progressive enhancement
+if (SUPPORTS_INTERSECTION_OBSERVER) {
+  // Use IntersectionObserver
+} else {
+  // Fallback behavior
+}
+```
+
+<Warning>
+  Never access `window`, `document`, `localStorage`, or browser APIs at module scope. Always wrap in `IN_BROWSER` checks.
+</Warning>
+
+## Hydration Management
+
+### useHydration Composable
+
+Track hydration state for SSR-safe rendering:
+
+```ts
+import { useHydration } from '@vuetify/v0'
+
+const hydration = useHydration()
+
+console.log(hydration.isHydrated.value)  // false during SSR
+console.log(hydration.isSettled.value)   // false until first tick post-mount
+```
+
+### Hydration States
+
+| Property | Description |
+|----------|-------------|
+| `isHydrated` | `true` after root component mounts (hydration complete) |
+| `isSettled` | `true` after first tick post-hydration (safe for animations) |
+
+### Installation
+
+Install the hydration plugin:
+
+```ts
+import { createApp } from 'vue'
+import { createHydrationPlugin } from '@vuetify/v0'
+import App from './App.vue'
+
+const app = createApp(App)
+
+app.use(createHydrationPlugin())
+
+app.mount('#app')
+```
+
+The plugin automatically detects when the root component mounts and updates hydration state.
+
+### Using in Components
+
+```vue
+<script setup lang="ts">
+import { useHydration } from '@vuetify/v0'
+import { watch } from 'vue'
+
+const hydration = useHydration()
+
+watch(hydration.isHydrated, (hydrated) => {
+  if (hydrated) {
+    // Safe to run browser-specific code
+    initializeClientSideFeatures()
+  }
+})
+</script>
+```
+
+## Lazy Rendering
+
+### useLazy Composable
+
+Defer content rendering until first activation:
+
+```ts
+import { useLazy } from '@vuetify/v0'
+import { ref } from 'vue'
+
+const isOpen = ref(false)
+const { hasContent, onAfterLeave } = useLazy(isOpen)
+```
+
+### Dialog Example
+
+```vue
+<script setup lang="ts">
+import { Dialog } from '@vuetify/v0'
+import { useLazy } from '@vuetify/v0'
+import { ref } from 'vue'
+
+const isOpen = ref(false)
+const { hasContent, onAfterLeave } = useLazy(isOpen)
+</script>
+
+<template>
+  <Dialog.Root v-model="isOpen">
+    <Dialog.Activator>Open Dialog</Dialog.Activator>
+    
+    <Transition @after-leave="onAfterLeave">
+      <Dialog.Content v-if="isOpen">
+        <!-- Only renders after first open -->
+        <template v-if="hasContent">
+          <Dialog.Title>Heavy Content</Dialog.Title>
+          <ExpensiveComponent />
+        </template>
+      </Dialog.Content>
+    </Transition>
+  </Dialog.Root>
+</template>
+```
+
+### Eager Mode
+
+Render immediately without waiting:
+
+```ts
+const { hasContent } = useLazy(isOpen, { eager: true })
+// hasContent.value is always true
+```
+
+### Benefits
+
+- **Reduced initial bundle**: Heavy components only load when needed
+- **Faster hydration**: Less DOM to hydrate on initial page load
+- **Memory savings**: Content can be unmounted when inactive
+
+<Tip>
+  Use `useLazy` for modals, popovers, tooltips, and any conditionally visible content.
+</Tip>
+
+## SSR-Safe Components
+
+### Using IN_BROWSER in Components
+
+```vue
+<script setup lang="ts">
+import { IN_BROWSER } from '@vuetify/v0'
+import { ref, onMounted } from 'vue'
+
+const windowWidth = ref(0)
+
+if (IN_BROWSER) {
+  windowWidth.value = window.innerWidth
+}
+
+onMounted(() => {
+  // Always safe in onMounted
+  window.addEventListener('resize', () => {
+    windowWidth.value = window.innerWidth
+  })
+})
+</script>
+
+<template>
+  <div>Window width: {{ windowWidth }}px</div>
+</template>
+```
+
+### Client-Only Components
+
+Use Vue's `<ClientOnly>` for components that can't run on server:
+
+```vue
+<template>
+  <div>
+    <h1>Server and Client Content</h1>
+    
+    <ClientOnly>
+      <MapComponent />
+      <template #fallback>
+        <div>Loading map...</div>
+      </template>
+    </ClientOnly>
+  </div>
+</template>
+```
+
+## Media Queries & Observers
+
+### useMediaQuery
+
+SSR-safe media query composable:
+
+```ts
+import { useMediaQuery } from '@vuetify/v0'
+import { computed } from 'vue'
+
+const isMobile = useMediaQuery('(max-width: 768px)')
+const isDesktop = useMediaQuery('(min-width: 1024px)')
+const prefersReducedMotion = useMediaQuery('(prefers-reduced-motion: reduce)')
+
+// Returns false during SSR, true/false after hydration
+const layout = computed(() => {
+  if (isMobile.value) return 'mobile'
+  if (isDesktop.value) return 'desktop'
+  return 'tablet'
+})
+```
+
+### useResizeObserver
+
+SSR-safe resize observer:
+
+```ts
+import { useResizeObserver } from '@vuetify/v0'
+import { ref } from 'vue'
+
+const el = ref<HTMLElement>()
+const width = ref(0)
+
+useResizeObserver(el, (entries) => {
+  width.value = entries[0].contentRect.width
+})
+```
+
+### useIntersectionObserver
+
+SSR-safe intersection observer:
+
+```ts
+import { useIntersectionObserver } from '@vuetify/v0'
+import { ref } from 'vue'
+
+const el = ref<HTMLElement>()
+const isVisible = ref(false)
+
+useIntersectionObserver(el, (entries) => {
+  isVisible.value = entries[0].isIntersecting
+})
+```
+
+All observers automatically skip during SSR and activate after hydration.
+
+## Storage
+
+### useStorage Composable
+
+SSR-safe storage with automatic fallback:
+
+```ts
+import { useStorage } from '@vuetify/v0'
+
+const theme = useStorage('theme', 'light')
+
+// During SSR: uses in-memory storage
+// In browser: uses localStorage
+// Syncs across tabs automatically
+```
+
+### Custom Storage Adapter
+
+```ts
+import { useStorage, MemoryAdapter } from '@vuetify/v0'
+
+const cache = useStorage('cache', {}, {
+  adapter: IN_BROWSER ? window.sessionStorage : new MemoryAdapter(),
+})
+```
+
+## Complete SSR Example
+
+```vue
+<script setup lang="ts">
+import { Dialog } from '@vuetify/v0'
+import { 
+  IN_BROWSER,
+  useHydration,
+  useLazy,
+  useMediaQuery,
+  useStorage,
+} from '@vuetify/v0'
+import { ref, computed, watch } from 'vue'
+
+const isOpen = ref(false)
+const hydration = useHydration()
+const { hasContent, onAfterLeave } = useLazy(isOpen)
+
+// SSR-safe media query
+const isMobile = useMediaQuery('(max-width: 768px)')
+
+// SSR-safe storage
+const preference = useStorage('dialog-preference', 'default')
+
+// Only initialize after hydration
+watch(hydration.isHydrated, (hydrated) => {
+  if (hydrated && IN_BROWSER) {
+    // Safe to access browser APIs
+    console.log('Hydrated!', window.innerWidth)
+  }
+})
+
+// Layout adapts to screen size
+const dialogClass = computed(() => 
+  isMobile.value ? 'mobile-dialog' : 'desktop-dialog'
+)
+</script>
+
+<template>
+  <Dialog.Root v-model="isOpen">
+    <Dialog.Activator>
+      Open Dialog
+    </Dialog.Activator>
+    
+    <Transition @after-leave="onAfterLeave">
+      <Dialog.Content v-if="isOpen" :class="dialogClass">
+        <!-- Only renders heavy content after first open -->
+        <template v-if="hasContent">
+          <Dialog.Title>Responsive Dialog</Dialog.Title>
+          
+          <Dialog.Description>
+            This dialog adapts to screen size and only renders
+            after first open for better SSR performance.
+          </Dialog.Description>
+          
+          <ExpensiveComponent v-if="hydration.isSettled.value" />
+          
+          <Dialog.Close>Close</Dialog.Close>
+        </template>
+      </Dialog.Content>
+    </Transition>
+  </Dialog.Root>
+</template>
+
+<style scoped>
+.mobile-dialog {
+  /* Mobile styles */
+  width: 100%;
+  height: 100%;
+}
+
+.desktop-dialog {
+  /* Desktop styles */
+  max-width: 600px;
+  border-radius: 8px;
+}
+</style>
+```
+
+## Best Practices
+
+<Steps>
+
+### Always Check IN_BROWSER
+
+Wrap browser API calls:
+
+```ts
+// Good
+import { IN_BROWSER } from '@vuetify/v0'
+
+if (IN_BROWSER) {
+  localStorage.setItem('key', 'value')
+}
+
+// Bad
+localStorage.setItem('key', 'value')  // ❌ Crashes during SSR
+```
+
+### Use onMounted for Browser Code
+
+`onMounted` only runs in browser:
+
+```ts
+import { onMounted } from 'vue'
+
+onMounted(() => {
+  // Always safe - only runs in browser
+  window.addEventListener('scroll', handleScroll)
+})
+```
+
+### Prefer Composables Over Direct APIs
+
+Vuetify Zero composables are SSR-safe:
+
+```ts
+// Good - SSR-safe
+import { useMediaQuery } from '@vuetify/v0'
+const isMobile = useMediaQuery('(max-width: 768px)')
+
+// Avoid - requires manual SSR handling
+const isMobile = ref(window.matchMedia('(max-width: 768px)').matches)
+```
+
+### Use useLazy for Heavy Content
+
+Defer rendering for better performance:
+
+```ts
+import { useLazy } from '@vuetify/v0'
+
+const { hasContent } = useLazy(isVisible)
+
+// Only render when hasContent is true
+```
+
+### Wait for isSettled Before Animations
+
+Delay animations until after hydration:
+
+```ts
+const hydration = useHydration()
+
+watch(hydration.isSettled, (settled) => {
+  if (settled) {
+    // Safe to start animations
+    startAnimations()
+  }
+})
+```
+
+</Steps>
+
+## Troubleshooting
+
+### Hydration Mismatches
+
+**Problem**: Content differs between SSR and client.
+
+**Solution**: Ensure initial state matches:
+
+```ts
+// Bad - different initial values
+const count = ref(IN_BROWSER ? localStorage.getItem('count') : 0)
+
+// Good - consistent initial value
+const count = ref(0)
+onMounted(() => {
+  count.value = localStorage.getItem('count') || 0
+})
+```
+
+### Window is not defined
+
+**Problem**: Accessing `window` during SSR.
+
+**Solution**: Wrap in `IN_BROWSER` check:
+
+```ts
+import { IN_BROWSER } from '@vuetify/v0'
+
+const width = IN_BROWSER ? window.innerWidth : 0
+```
+
+### Event Listeners Not Working
+
+**Problem**: Listeners added during SSR don't work.
+
+**Solution**: Add in `onMounted`:
+
+```ts
+import { onMounted } from 'vue'
+
+onMounted(() => {
+  window.addEventListener('resize', handleResize)
+})
+```
+
+## Next Steps
+
+- [Building Components](/guides/building-components) - Component patterns
+- [useHydration API](/composables/plugins/use-hydration) - Hydration composable reference
+- [useLazy API](/composables/system/use-lazy) - Lazy rendering reference

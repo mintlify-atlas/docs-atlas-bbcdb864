@@ -1,0 +1,344 @@
+---
+title: useLocale
+description: Internationalization (i18n) composable with adapter pattern for message translation
+---
+
+Internationalization with message translation, token resolution, and locale selection.
+
+## Features
+
+- Locale selection with createSingle
+- Token-based message storage with useTokens
+- Numbered and named placeholder support
+- Number formatting with Intl.NumberFormat
+- Nested message structures
+- Cross-locale references
+
+## Installation
+
+```ts
+import { createLocalePlugin } from '@vuetify/v0'
+
+const app = createApp(App)
+app.use(createLocalePlugin({
+  default: 'en',
+  messages: {
+    en: {
+      hello: 'Hello',
+      greeting: 'Hello {name}',
+    },
+    es: {
+      hello: 'Hola',
+      greeting: 'Hola {name}',
+    },
+  },
+}))
+```
+
+## Basic Usage
+
+```vue
+<script setup lang="ts">
+import { useLocale } from '@vuetify/v0'
+
+const locale = useLocale()
+</script>
+
+<template>
+  <div>
+    <p>{{ locale.t('hello') }}</p>
+    <p>{{ locale.t('greeting', { name: 'World' }) }}</p>
+    
+    <button @click="locale.select('es')">Español</button>
+  </div>
+</template>
+```
+
+## API Reference
+
+### createLocalePlugin()
+
+Creates a locale plugin.
+
+<ParamField path="options" type="LocalePluginOptions">
+  Plugin configuration
+  
+  <ParamField path="default" type="ID">
+    Default locale ID to select on initialization
+  </ParamField>
+  
+  <ParamField path="messages" type="Record<ID, LocaleRecord>">
+    Record of locale messages
+    
+    Example:
+    ```ts
+    {
+      en: {
+        hello: 'Hello',
+        goodbye: 'Goodbye',
+      },
+      es: {
+        hello: 'Hola',
+        goodbye: 'Adiós',
+      },
+    }
+    ```
+  </ParamField>
+  
+  <ParamField path="adapter" type="LocaleAdapter">
+    Custom locale adapter (defaults to Vuetify0LocaleAdapter)
+  </ParamField>
+  
+  <ParamField path="namespace" type="string" default="'v0:locale'">
+    The namespace for the locale context
+  </ParamField>
+</ParamField>
+
+### LocaleContext
+
+<ResponseField name="size" type="number">
+  Number of registered locales
+</ResponseField>
+
+<ResponseField name="selectedId" type="Ref<ID | undefined>">
+  Currently selected locale ID
+</ResponseField>
+
+<ResponseField name="select" type="(id: ID) => void">
+  Select a locale
+  
+  Example:
+  ```ts
+  locale.select('es')
+  ```
+</ResponseField>
+
+<ResponseField name="t" type="(key: string, params?: Record<string, unknown>, fallback?: string) => string">
+  Translate a message key with optional parameters and fallback
+  
+  Parameters:
+  - `key`: Message key to look up (e.g., 'hello', 'Pagination.goToPage')
+  - `params`: Object with named parameters for interpolation
+  - `fallback`: Fallback string if key not found
+  
+  Examples:
+  ```ts
+  locale.t('hello') // 'Hello'
+  locale.t('greeting', { name: 'World' }) // 'Hello World'
+  locale.t('missing.key', {}, 'Default text') // 'Default text'
+  ```
+</ResponseField>
+
+<ResponseField name="n" type="(value: number) => string">
+  Format a number according to current locale
+  
+  Example:
+  ```ts
+  locale.n(1234.56) // '1,234.56' (en-US)
+  locale.n(1234.56) // '1.234,56' (de-DE)
+  ```
+</ResponseField>
+
+<ResponseField name="register" type="(registration: Partial<LocaleTicketInput>) => LocaleTicket">
+  Register a new locale
+  
+  Example:
+  ```ts
+  locale.register({
+    id: 'fr',
+  })
+  ```
+</ResponseField>
+
+<ResponseField name="get" type="(id: ID) => LocaleTicket | undefined">
+  Get a locale by ID
+</ResponseField>
+
+<ResponseField name="has" type="(id: ID) => boolean">
+  Check if a locale exists
+</ResponseField>
+
+## Message Formats
+
+### Simple Messages
+
+```ts
+app.use(createLocalePlugin({
+  default: 'en',
+  messages: {
+    en: {
+      hello: 'Hello',
+      goodbye: 'Goodbye',
+    },
+  },
+}))
+
+// Usage
+const locale = useLocale()
+locale.t('hello') // 'Hello'
+```
+
+### Named Placeholders
+
+```ts
+messages: {
+  en: {
+    greeting: 'Hello {name}',
+    info: 'You have {count} messages',
+  },
+}
+
+// Usage
+locale.t('greeting', { name: 'John' }) // 'Hello John'
+locale.t('info', { count: 5 }) // 'You have 5 messages'
+```
+
+### Nested Messages
+
+```ts
+messages: {
+  en: {
+    Pagination: {
+      goToPage: 'Go to page {page}',
+      currentPage: 'Page {page}, current',
+    },
+  },
+}
+
+// Usage
+locale.t('Pagination.goToPage', { page: 5 }) // 'Go to page 5'
+locale.t('Pagination.currentPage', { page: 3 }) // 'Page 3, current'
+```
+
+### Token References
+
+```ts
+messages: {
+  en: {
+    app: 'My App',
+    version: '1.0',
+    title: '{app} v{version}',
+    welcome: 'Welcome to {title}',
+  },
+}
+
+// Usage
+locale.t('title') // 'My App v1.0'
+locale.t('welcome') // 'Welcome to My App v1.0'
+```
+
+## Locale Switching
+
+```vue
+<script setup lang="ts">
+import { useLocale } from '@vuetify/v0'
+
+const locale = useLocale()
+
+const languages = [
+  { id: 'en', name: 'English' },
+  { id: 'es', name: 'Español' },
+  { id: 'fr', name: 'Français' },
+]
+</script>
+
+<template>
+  <div>
+    <select @change="locale.select($event.target.value)">
+      <option 
+        v-for="lang in languages" 
+        :key="lang.id"
+        :value="lang.id"
+        :selected="locale.selectedId.value === lang.id"
+      >
+        {{ lang.name }}
+      </option>
+    </select>
+    
+    <p>{{ locale.t('hello') }}</p>
+  </div>
+</template>
+```
+
+## Fallback Messages
+
+```ts
+const locale = useLocale()
+
+// With fallback
+locale.t('missing.key', {}, 'Default text') // 'Default text'
+
+// Without fallback (returns key)
+locale.t('missing.key') // 'missing.key'
+```
+
+## Number Formatting
+
+```vue
+<script setup lang="ts">
+import { useLocale } from '@vuetify/v0'
+
+const locale = useLocale()
+
+const price = 1234.56
+</script>
+
+<template>
+  <div>
+    <p>Price: {{ locale.n(price) }}</p>
+  </div>
+</template>
+```
+
+## Advanced Usage
+
+### Custom Adapter
+
+```ts
+import { Vuetify0LocaleAdapter } from '@vuetify/v0'
+import type { LocaleAdapter } from '@vuetify/v0'
+
+class MyLocaleAdapter extends Vuetify0LocaleAdapter implements LocaleAdapter {
+  t(str: string, ...params: unknown[]): string {
+    // Custom translation logic
+    return super.t(str, ...params)
+  }
+}
+
+app.use(createLocalePlugin({
+  adapter: new MyLocaleAdapter(),
+  messages: { /* ... */ },
+}))
+```
+
+### Dynamic Message Loading
+
+```ts
+const locale = useLocale()
+
+// Load messages dynamically
+const loadMessages = async (localeId: string) => {
+  const messages = await import(`./locales/${localeId}.json`)
+  locale.register({ id: localeId })
+  // Messages are loaded via the plugin
+}
+
+await loadMessages('fr')
+locale.select('fr')
+```
+
+### Integration with useDate
+
+```ts
+import { useLocale, useDate } from '@vuetify/v0'
+
+const locale = useLocale()
+const { adapter: dateAdapter } = useDate()
+
+// Both will use the same locale
+locale.select('de')
+
+const date = dateAdapter.date()
+const formatted = dateAdapter.format(date, 'fullDate')
+// Formatted in German
+```

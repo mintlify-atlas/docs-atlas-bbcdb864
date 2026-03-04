@@ -1,0 +1,350 @@
+---
+title: LaunchDarkly Adapter
+description: LaunchDarkly feature flag adapter for Vuetify Zero
+---
+
+# LaunchDarkly Adapter
+
+The `LaunchDarklyFeatureAdapter` integrates LaunchDarkly feature flags with Vuetify Zero's `useFeatures` composable.
+
+## Import
+
+```typescript
+import { LaunchDarklyFeatureAdapter } from '@vuetify/v0/features/adapters/launchdarkly'
+```
+
+## Installation
+
+Install the LaunchDarkly SDK as a peer dependency:
+
+```bash
+pnpm add launchdarkly-js-client-sdk
+```
+
+## Basic Usage
+
+```typescript
+import { createApp } from 'vue'
+import { createFeaturesPlugin } from '@vuetify/v0/features'
+import { LaunchDarklyFeatureAdapter } from '@vuetify/v0/features/adapters/launchdarkly'
+import * as LDClient from 'launchdarkly-js-client-sdk'
+
+const ldClient = LDClient.initialize('your-client-side-id', {
+  key: 'user-123',
+  email: 'user@example.com'
+})
+
+await ldClient.waitUntilReady()
+
+const adapter = new LaunchDarklyFeatureAdapter(ldClient)
+
+const app = createApp(App)
+app.use(createFeaturesPlugin({ adapter }))
+```
+
+## With User Context
+
+```typescript
+import * as LDClient from 'launchdarkly-js-client-sdk'
+import { LaunchDarklyFeatureAdapter } from '@vuetify/v0/features/adapters/launchdarkly'
+
+const user = {
+  key: 'user-123',
+  name: 'John Doe',
+  email: 'john@example.com',
+  custom: {
+    plan: 'enterprise',
+    beta: true
+  }
+}
+
+const ldClient = LDClient.initialize('client-side-id', user)
+await ldClient.waitUntilReady()
+
+const adapter = new LaunchDarklyFeatureAdapter(ldClient)
+```
+
+## Using in Components
+
+```vue
+<script setup lang="ts">
+import { useFeatures } from '@vuetify/v0/features'
+import { computed } from 'vue'
+
+const features = useFeatures()
+
+// Check boolean flag
+const showNewFeature = computed(() => features.has('new-feature'))
+
+// Get multivariate flag variation
+const buttonStyle = computed(() => 
+  features.variation('button-experiment', 'control')
+)
+</script>
+
+<template>
+  <div>
+    <NewFeature v-if="showNewFeature" />
+    
+    <button :class="`btn-${buttonStyle}`">
+      Click Me
+    </button>
+  </div>
+</template>
+```
+
+## Feature Flags
+
+### Boolean Flags
+
+```typescript
+const features = useFeatures()
+
+// Check if feature is enabled
+if (features.has('dark-mode')) {
+  enableDarkMode()
+}
+
+// Get all enabled features
+const enabledFeatures = features.selectedIds.value
+// ['dark-mode', 'new-dashboard', 'beta-features']
+```
+
+### Multivariate Flags
+
+```typescript
+const features = useFeatures()
+
+// Get variation value with fallback
+const layoutVariant = features.variation('layout-experiment', 'default')
+// Returns: 'variant-a', 'variant-b', or 'default'
+
+// Variation structure
+interface FlagWithVariation {
+  $value: boolean        // Always true for variations
+  $variation: unknown    // Variation value (string, number, object, etc.)
+}
+```
+
+### JSON Flags
+
+```typescript
+const features = useFeatures()
+
+const config = features.variation('app-config', {})
+// Returns: { theme: 'dark', lang: 'en' }
+
+const pricing = features.variation('pricing-tiers', [])
+// Returns: [10, 20, 30]
+```
+
+## Change Detection
+
+The adapter automatically syncs when flags change:
+
+```typescript
+import { watch } from 'vue'
+
+const features = useFeatures()
+
+watch(features.selectedIds, (newFlags, oldFlags) => {
+  console.log('Enabled flags changed:', newFlags)
+  
+  // React to specific flag changes
+  if (newFlags.includes('maintenance-mode') && !oldFlags.includes('maintenance-mode')) {
+    showMaintenanceNotice()
+  }
+})
+```
+
+## Updating User Context
+
+```typescript
+import { getCurrentInstance } from 'vue'
+import type { LDClient } from 'launchdarkly-js-client-sdk'
+
+const app = getCurrentInstance()?.appContext.app
+const ldClient = app?.config.globalProperties.$ldClient as LDClient
+
+// Identify new user
+await ldClient.identify({
+  key: 'user-456',
+  email: 'newuser@example.com',
+  custom: {
+    plan: 'pro'
+  }
+})
+
+// Flags automatically update
+```
+
+## Flag Value Types
+
+LaunchDarkly flags are transformed based on their value type:
+
+```typescript
+// Boolean flag
+{
+  'feature-toggle': true
+}
+// Transformed to: { 'feature-toggle': true }
+
+// String/Number/Object flag (multivariate)
+{
+  'experiment': 'variant-a'
+}
+// Transformed to:
+{
+  'experiment': {
+    $value: true,
+    $variation: 'variant-a'
+  }
+}
+
+// JSON flag
+{
+  'config': { theme: 'dark', locale: 'en' }
+}
+// Transformed to:
+{
+  'config': {
+    $value: true,
+    $variation: { theme: 'dark', locale: 'en' }
+  }
+}
+```
+
+## Multiple Environments
+
+```typescript
+import * as LDClient from 'launchdarkly-js-client-sdk'
+
+const clientId = import.meta.env.VITE_LAUNCHDARKLY_CLIENT_ID
+
+const ldClient = LDClient.initialize(clientId, {
+  key: 'anonymous-user',
+  anonymous: true
+})
+
+await ldClient.waitUntilReady()
+
+const adapter = new LaunchDarklyFeatureAdapter(ldClient)
+```
+
+## Offline Mode
+
+```typescript
+import * as LDClient from 'launchdarkly-js-client-sdk'
+
+const ldClient = LDClient.initialize('client-side-id', user, {
+  streaming: false,
+  useReport: false,
+  bootstrap: {
+    'feature-1': true,
+    'feature-2': 'variant-a'
+  }
+})
+
+const adapter = new LaunchDarklyFeatureAdapter(ldClient)
+```
+
+## TypeScript
+
+```typescript
+import type { LDClient } from 'launchdarkly-js-client-sdk'
+import { LaunchDarklyFeatureAdapter } from '@vuetify/v0/features/adapters/launchdarkly'
+
+const client: LDClient = LDClient.initialize('client-id', {
+  key: 'user-123'
+})
+
+const adapter = new LaunchDarklyFeatureAdapter(client)
+
+// Adapter is fully typed
+adapter.setup((flags) => {
+  // flags: FeaturesAdapterFlags
+})
+```
+
+## Cleanup
+
+The adapter automatically unsubscribes from flag changes when the app unmounts:
+
+```typescript
+// Cleanup is automatic
+const adapter = new LaunchDarklyFeatureAdapter(ldClient)
+
+// On app unmount, adapter.dispose() is called
+// This calls ldClient.off('change', updateFlags)
+```
+
+## Multiple Adapters
+
+```typescript
+import { LaunchDarklyFeatureAdapter } from '@vuetify/v0/features/adapters/launchdarkly'
+import { PostHogFeatureAdapter } from '@vuetify/v0/features/adapters/posthog'
+import * as LDClient from 'launchdarkly-js-client-sdk'
+import posthog from 'posthog-js'
+
+const ldClient = LDClient.initialize('ld-client-id', { key: 'user' })
+const phClient = posthog.init('ph-api-key')
+
+await ldClient.waitUntilReady()
+
+const ldAdapter = new LaunchDarklyFeatureAdapter(ldClient)
+const phAdapter = new PostHogFeatureAdapter(phClient)
+
+app.use(createFeaturesPlugin({
+  adapter: [ldAdapter, phAdapter]
+}))
+
+// Flags from both sources are merged
+```
+
+## API Reference
+
+### Constructor
+
+```typescript
+class LaunchDarklyFeatureAdapter implements FeaturesAdapterInterface
+
+constructor(client: LDClient)
+```
+
+### Parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `client` | `LDClient` | LaunchDarkly client instance |
+
+### Methods
+
+| Method | Description |
+|--------|-------------|
+| `setup(onUpdate)` | Initialize adapter and register change handler |
+| `dispose()` | Unsubscribe from flag changes |
+
+### Flag Structure
+
+```typescript
+type FeaturesAdapterFlags = Record<string, boolean | {
+  $value: boolean
+  $variation: unknown
+}>
+```
+
+## Best Practices
+
+<Note>
+- **Always await `waitUntilReady()`** before creating the adapter to ensure initial flags are loaded
+- **Use variations for A/B tests** - Access them with `features.variation(key, fallback)`
+- **Watch flag changes** - React to real-time updates with `watch(features.selectedIds, ...)`
+- **Provide fallbacks** - Always specify fallback values for `variation()` calls
+</Note>
+
+## See Also
+
+- [Flagsmith Adapter](/adapters/features-flagsmith) - Flagsmith integration
+- [PostHog Adapter](/adapters/features-posthog) - PostHog feature flags
+- [useFeatures](/composables/use-features) - Feature flags composable
+- [LaunchDarkly Documentation](https://docs.launchdarkly.com/) - Official LaunchDarkly docs

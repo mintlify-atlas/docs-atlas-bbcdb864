@@ -1,0 +1,288 @@
+---
+title: Client Adapter
+description: Client-side data table adapter with filtering, sorting, and pagination
+---
+
+# Client Adapter
+
+The `ClientAdapter` performs all data processing operations client-side, including filtering, sorting, and pagination. Best for datasets under 10,000 rows.
+
+## Import
+
+```typescript
+import { ClientAdapter } from '@vuetify/v0/data-table/adapters/client'
+```
+
+## Features
+
+- Client-side filtering with `createFilter`
+- Multi-column sorting with locale support
+- Pagination with `createPagination`
+- Automatic page reset on filter/sort changes
+- Custom sort comparators per column
+- Custom filter functions per column
+
+## Basic Usage
+
+```typescript
+import { createDataTable } from '@vuetify/v0/data-table'
+import { ClientAdapter } from '@vuetify/v0/data-table/adapters/client'
+
+const table = createDataTable({
+  items: ref([
+    { id: 1, name: 'Alice', age: 30 },
+    { id: 2, name: 'Bob', age: 25 },
+    { id: 3, name: 'Charlie', age: 35 }
+  ]),
+  adapter: new ClientAdapter(),
+  columns: [
+    { key: 'name', title: 'Name', sortable: true },
+    { key: 'age', title: 'Age', sortable: true }
+  ]
+})
+```
+
+## Pipeline Stages
+
+The adapter processes items through three stages:
+
+1. **Filtering** - Filter items by search query
+2. **Sorting** - Sort by column keys and directions
+3. **Pagination** - Slice items for current page
+
+```typescript
+// Access pipeline stages
+table.allItems.value      // Original items
+table.filteredItems.value // After filtering
+table.sortedItems.value   // After sorting
+table.items.value         // After pagination (visible items)
+```
+
+## Sorting
+
+### Multi-Column Sort
+
+```typescript
+const table = createDataTable({
+  items: users,
+  adapter: new ClientAdapter(),
+  columns: [
+    { key: 'department', sortable: true },
+    { key: 'lastName', sortable: true },
+    { key: 'firstName', sortable: true }
+  ]
+})
+
+// Sort by department, then lastName, then firstName
+table.sort.update([
+  { key: 'department', direction: 'asc' },
+  { key: 'lastName', direction: 'asc' },
+  { key: 'firstName', direction: 'asc' }
+])
+```
+
+### Custom Sort Comparators
+
+```typescript
+const table = createDataTable({
+  items: products,
+  adapter: new ClientAdapter(),
+  columns: [
+    { 
+      key: 'price',
+      sortable: true,
+      sort: (a: number, b: number) => a - b
+    },
+    {
+      key: 'name',
+      sortable: true,
+      sort: (a: string, b: string) => {
+        // Case-insensitive sort
+        return a.toLowerCase().localeCompare(b.toLowerCase())
+      }
+    }
+  ]
+})
+```
+
+### Locale-Aware Sorting
+
+```typescript
+import { useLocale } from '@vuetify/v0/locale'
+
+const locale = useLocale()
+const table = createDataTable({
+  items: names,
+  adapter: new ClientAdapter(),
+  locale: locale.selectedId // Automatically uses current locale
+})
+```
+
+## Filtering
+
+### Basic Search
+
+```typescript
+const table = createDataTable({
+  items: users,
+  adapter: new ClientAdapter(),
+  search: ref(''),
+  columns: [
+    { key: 'name', filterable: true },
+    { key: 'email', filterable: true }
+  ]
+})
+
+// Search filters 'name' and 'email' columns
+table.search.value = 'john'
+```
+
+### Custom Column Filters
+
+```typescript
+const table = createDataTable({
+  items: products,
+  adapter: new ClientAdapter(),
+  columns: [
+    {
+      key: 'price',
+      filterable: true,
+      filter: (value: number, query: string) => {
+        const queryNum = parseFloat(query)
+        return !isNaN(queryNum) && value <= queryNum
+      }
+    },
+    {
+      key: 'tags',
+      filterable: true,
+      filter: (value: string[], query: string) => {
+        return value.some(tag => tag.toLowerCase().includes(query.toLowerCase()))
+      }
+    }
+  ]
+})
+```
+
+## Pagination
+
+```typescript
+const table = createDataTable({
+  items: largeDataset,
+  adapter: new ClientAdapter(),
+  pagination: {
+    itemsPerPage: 25,
+    page: 1
+  }
+})
+
+// Navigate pages
+table.pagination.next()     // Go to next page
+table.pagination.previous() // Go to previous page
+table.pagination.first()    // Go to first page
+table.pagination.last()     // Go to last page
+table.pagination.page.value = 3 // Go to specific page
+
+// Access pagination state
+table.pagination.page.value           // Current page number
+table.pagination.pageCount.value      // Total pages
+table.pagination.itemsPerPage.value   // Items per page
+table.pagination.pageStart.value      // Start index
+table.pagination.pageStop.value       // Stop index
+```
+
+## Nested Property Access
+
+The adapter supports dot notation for nested properties:
+
+```typescript
+const table = createDataTable({
+  items: ref([
+    { user: { profile: { name: 'Alice' } }, stats: { score: 95 } },
+    { user: { profile: { name: 'Bob' } }, stats: { score: 87 } }
+  ]),
+  adapter: new ClientAdapter(),
+  columns: [
+    { key: 'user.profile.name', title: 'Name', sortable: true },
+    { key: 'stats.score', title: 'Score', sortable: true }
+  ]
+})
+```
+
+## Performance
+
+<Note>
+The `ClientAdapter` is optimized for datasets up to 10,000 rows. For larger datasets, consider:
+- **VirtualAdapter** for 10,000-100,000 rows with virtual scrolling
+- **ServerAdapter** for 100,000+ rows with server-side processing
+</Note>
+
+## TypeScript
+
+```typescript
+interface User {
+  id: number
+  name: string
+  email: string
+  role: 'admin' | 'user'
+}
+
+const table = createDataTable<User>({
+  items: ref<User[]>([]),
+  adapter: new ClientAdapter<User>(),
+  columns: [
+    { key: 'name', title: 'Name', sortable: true },
+    { key: 'role', title: 'Role', sortable: true }
+  ]
+})
+
+// table.items.value is typed as readonly User[]
+```
+
+## API Reference
+
+### Constructor
+
+```typescript
+class ClientAdapter<T extends Record<string, unknown>>
+```
+
+### Methods
+
+| Method | Description |
+|--------|-------------|
+| `setup(context)` | Sets up the adapter with data table context |
+
+### Context Interface
+
+```typescript
+interface DataTableAdapterContext<T> {
+  items: MaybeRefOrGetter<T[]>
+  search: ShallowRef<string>
+  filterableKeys: ReadonlyArray<keyof T & string>
+  sortBy: Readonly<Ref<SortEntry[]>>
+  locale: Readonly<Ref<string | undefined>>
+  filterOptions: Omit<FilterOptions, 'keys'>
+  paginationOptions: Omit<PaginationOptions, 'size'>
+  customSorts: Partial<Record<keyof T & string, (a: unknown, b: unknown) => number>>
+  customColumnFilters: Partial<Record<keyof T & string, (value: unknown, query: string) => boolean>>
+}
+```
+
+### Return Value
+
+```typescript
+interface DataTableAdapterResult<T> {
+  allItems: Readonly<Ref<readonly T[]>>
+  filteredItems: Readonly<Ref<readonly T[]>>
+  sortedItems: Readonly<Ref<readonly T[]>>
+  items: Readonly<Ref<readonly T[]>>
+  pagination: PaginationContext
+  total: Readonly<Ref<number>>
+}
+```
+
+## See Also
+
+- [Server Adapter](/adapters/data-table-server) - Server-side processing
+- [Virtual Adapter](/adapters/data-table-virtual) - Virtual scrolling
+- [createDataTable](/composables/create-data-table) - Data table composable

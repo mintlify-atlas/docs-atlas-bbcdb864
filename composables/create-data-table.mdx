@@ -1,0 +1,641 @@
+---
+title: createDataTable
+description: Composable data table with sort, filter, pagination, selection, and grouping.
+---
+
+## Overview
+
+A composable data table that provides sort controls, filtering, pagination, row selection, expansion, and grouping. Uses an adapter pattern for data pipeline strategy (client-side, server-side, or virtual scrolling).
+
+## Basic Usage
+
+```ts
+import { createDataTable } from '@vuetify/v0'
+
+interface User {
+  id: number
+  name: string
+  email: string
+  department: string
+}
+
+const users: User[] = [
+  { id: 1, name: 'Alice', email: 'alice@test.com', department: 'Engineering' },
+  { id: 2, name: 'Bob', email: 'bob@test.com', department: 'Design' },
+  { id: 3, name: 'Carol', email: 'carol@test.com', department: 'Engineering' },
+]
+
+const table = createDataTable({
+  items: users,
+  columns: [
+    { key: 'name', title: 'Name', sortable: true, filterable: true },
+    { key: 'email', title: 'Email', sortable: true, filterable: true },
+    { key: 'department', title: 'Dept', sortable: true },
+  ],
+})
+
+// Search
+table.search('alice')
+
+// Sort
+table.sort.toggle('name')
+
+// Paginate
+table.pagination.next()
+
+// Select rows
+table.selection.toggle(1)
+```
+
+## Function Signature
+
+```ts
+function createDataTable<T extends Record<string, unknown>>(
+  options: DataTableOptions<T>
+): DataTableContext<T>
+```
+
+### Parameters
+
+<ParamField path="options" type="DataTableOptions<T>" required>
+  Configuration options for the data table
+  
+  <ParamField path="items" type="MaybeRefOrGetter<T[]>" required>
+    Source items (array or ref)
+  </ParamField>
+  
+  <ParamField path="columns" type="DataTableColumn<T>[]" required>
+    Column definitions
+    
+    ```ts
+    {
+      key: 'name',
+      title: 'Name',
+      sortable: true,
+      filterable: true,
+      sort: (a, b) => customComparator(a, b),
+      filter: (value, query) => customFilter(value, query),
+    }
+    ```
+  </ParamField>
+  
+  <ParamField path="itemValue" type="string" default="'id'">
+    Property used as row identifier (must be string or number)
+  </ParamField>
+  
+  <ParamField path="sortMultiple" type="boolean" default="false">
+    Enable multi-column sort
+  </ParamField>
+  
+  <ParamField path="mandate" type="boolean" default="false">
+    Prevent clearing sort (asc ↔ desc cycle only)
+  </ParamField>
+  
+  <ParamField path="firstSortOrder" type="'asc' | 'desc'" default="'asc'">
+    Direction for first sort click
+  </ParamField>
+  
+  <ParamField path="selectStrategy" type="'single' | 'page' | 'all'" default="'page'">
+    Row selection strategy
+  </ParamField>
+  
+  <ParamField path="itemSelectable" type="keyof T">
+    Property that controls per-row selectability
+  </ParamField>
+  
+  <ParamField path="groupBy" type="keyof T">
+    Column key to group rows by
+  </ParamField>
+  
+  <ParamField path="enroll" type="boolean" default="false">
+    Auto-open all groups on creation
+  </ParamField>
+  
+  <ParamField path="expandMultiple" type="boolean" default="true">
+    Allow multiple rows expanded simultaneously
+  </ParamField>
+  
+  <ParamField path="pagination" type="PaginationOptions">
+    Pagination configuration
+  </ParamField>
+  
+  <ParamField path="filter" type="FilterOptions">
+    Filter configuration
+  </ParamField>
+  
+  <ParamField path="locale" type="string">
+    Locale for sorting (defaults to browser default)
+  </ParamField>
+  
+  <ParamField path="adapter" type="DataTableAdapterInterface">
+    Data pipeline adapter (ClientAdapter, ServerAdapter, VirtualAdapter)
+  </ParamField>
+</ParamField>
+
+### Returns
+
+<ResponseField name="DataTableContext<T>" type="object">
+  Data table context with pipeline stages and controls
+  
+  <ResponseField name="items" type="Ref<readonly T[]>">
+    Final paginated items for rendering
+  </ResponseField>
+  
+  <ResponseField name="allItems" type="Ref<readonly T[]>">
+    Raw unprocessed items
+  </ResponseField>
+  
+  <ResponseField name="filteredItems" type="Ref<readonly T[]>">
+    Items after filtering
+  </ResponseField>
+  
+  <ResponseField name="sortedItems" type="Ref<readonly T[]>">
+    Items after filtering and sorting
+  </ResponseField>
+  
+  <ResponseField name="search" type="function">
+    Set the search query
+  </ResponseField>
+  
+  <ResponseField name="query" type="ShallowRef<string>">
+    Current search query (readonly)
+  </ResponseField>
+  
+  <ResponseField name="sort" type="DataTableSort">
+    Sort controls and state
+  </ResponseField>
+  
+  <ResponseField name="pagination" type="PaginationContext">
+    Pagination controls
+  </ResponseField>
+  
+  <ResponseField name="selection" type="DataTableSelection">
+    Row selection controls
+  </ResponseField>
+  
+  <ResponseField name="expansion" type="DataTableExpansion">
+    Row expansion controls
+  </ResponseField>
+  
+  <ResponseField name="grouping" type="DataTableGrouping<T>">
+    Row grouping controls
+  </ResponseField>
+  
+  <ResponseField name="total" type="Ref<number>">
+    Total row count for aria-rowcount
+  </ResponseField>
+  
+  <ResponseField name="loading" type="Ref<boolean>">
+    Loading state (managed by adapter)
+  </ResponseField>
+  
+  <ResponseField name="error" type="Ref<Error | null>">
+    Error state (managed by adapter)
+  </ResponseField>
+</ResponseField>
+
+## Sorting
+
+### Basic Sort Cycle
+
+Default cycle: none → asc → desc → none
+
+```ts
+const table = createDataTable({ items, columns })
+
+table.sort.toggle('name') // asc
+table.sort.toggle('name') // desc
+table.sort.toggle('name') // none
+```
+
+### Reverse First Sort Order
+
+Start with descending:
+
+```ts
+const table = createDataTable({
+  items,
+  columns,
+  firstSortOrder: 'desc',
+})
+
+table.sort.toggle('name') // desc first
+```
+
+### Mandate Sort
+
+Prevent clearing sort:
+
+```ts
+const table = createDataTable({
+  items,
+  columns,
+  mandate: true,
+})
+
+table.sort.toggle('name') // asc
+table.sort.toggle('name') // desc
+table.sort.toggle('name') // asc (no clear)
+```
+
+### Multi-Column Sort
+
+```ts
+const table = createDataTable({
+  items,
+  columns,
+  sortMultiple: true,
+})
+
+table.sort.toggle('department') // Sort by department first
+table.sort.toggle('name')       // Then by name
+
+console.log(table.sort.columns.value)
+// [{ key: 'department', direction: 'asc' }, { key: 'name', direction: 'asc' }]
+
+console.log(table.sort.priority('department')) // 0
+console.log(table.sort.priority('name'))       // 1
+```
+
+### Custom Sort Comparator
+
+```ts
+const columns: DataTableColumn<User>[] = [
+  {
+    key: 'salary',
+    title: 'Salary',
+    sortable: true,
+    sort: (a, b) => Number(a) - Number(b),
+  },
+]
+
+const table = createDataTable({ items, columns })
+table.sort.toggle('salary')
+```
+
+### Sort Methods
+
+```ts
+// Get sort direction for a column
+table.sort.direction('name') // 'asc' | 'desc' | 'none'
+
+// Get sort priority (0-based index)
+table.sort.priority('name') // 0 | -1 if not sorted
+
+// Reset all sort state
+table.sort.reset()
+```
+
+## Filtering
+
+### Search Query
+
+```ts
+const table = createDataTable({
+  items,
+  columns: [
+    { key: 'name', filterable: true },
+    { key: 'email', filterable: true },
+  ],
+})
+
+table.search('alice')
+console.log(table.filteredItems.value) // Items matching 'alice'
+
+table.search('') // Clear filter
+```
+
+### Custom Column Filter
+
+```ts
+const columns: DataTableColumn<User>[] = [
+  {
+    key: 'name',
+    filterable: true,
+    filter: (value, query) => {
+      return String(value).toLowerCase().startsWith(query)
+    },
+  },
+]
+```
+
+## Pagination
+
+```ts
+const table = createDataTable({
+  items,
+  columns,
+  pagination: {
+    itemsPerPage: 10,
+  },
+})
+
+// Navigate pages
+table.pagination.next()
+table.pagination.prev()
+table.pagination.goto(3)
+
+// Check state
+console.log(table.pagination.page.value)         // Current page
+console.log(table.pagination.itemsPerPage.value) // Items per page
+console.log(table.pagination.total.value)        // Total pages
+```
+
+## Selection
+
+### Basic Selection
+
+```ts
+const table = createDataTable({ items, columns })
+
+// Select/unselect rows
+table.selection.select(1)
+table.selection.unselect(1)
+table.selection.toggle(1)
+
+// Check state
+table.selection.isSelected(1) // boolean
+console.log(table.selection.selectedIds) // Set<ID>
+```
+
+### Selection Strategies
+
+**Single**: Only one row at a time
+
+```ts
+const table = createDataTable({
+  items,
+  columns,
+  selectStrategy: 'single',
+})
+
+table.selection.select(1)
+table.selection.select(2) // Clears row 1
+```
+
+**Page**: Operates on visible items only
+
+```ts
+const table = createDataTable({
+  items,
+  columns,
+  selectStrategy: 'page',
+  pagination: { itemsPerPage: 10 },
+})
+
+table.selection.selectAll() // Selects 10 visible items
+```
+
+**All**: Operates on all filtered items
+
+```ts
+const table = createDataTable({
+  items,
+  columns,
+  selectStrategy: 'all',
+})
+
+table.selection.selectAll() // Selects all items
+```
+
+### Selectable Rows
+
+Control per-row selectability:
+
+```ts
+interface User {
+  id: number
+  name: string
+  active: boolean
+}
+
+const table = createDataTable({
+  items,
+  columns,
+  itemSelectable: 'active',
+})
+
+// Inactive users cannot be selected
+table.selection.select(inactiveUserId) // No-op
+table.selection.isSelectable(inactiveUserId) // false
+```
+
+### Bulk Selection
+
+```ts
+// Select all in scope
+table.selection.selectAll()
+
+// Unselect all
+table.selection.unselectAll()
+
+// Toggle all
+table.selection.toggleAll()
+
+// Check state
+table.selection.isAllSelected.value // boolean
+table.selection.isMixed.value       // boolean (some but not all)
+```
+
+## Expansion
+
+### Basic Expansion
+
+```ts
+const table = createDataTable({ items, columns })
+
+// Expand/collapse rows
+table.expansion.expand(1)
+table.expansion.collapse(1)
+table.expansion.toggle(1)
+
+// Check state
+table.expansion.isExpanded(1) // boolean
+console.log(table.expansion.expandedIds) // Set<ID>
+```
+
+### Single Expansion
+
+```ts
+const table = createDataTable({
+  items,
+  columns,
+  expandMultiple: false,
+})
+
+table.expansion.expand(1)
+table.expansion.expand(2) // Collapses row 1
+```
+
+### Bulk Expansion
+
+```ts
+// Expand all visible items
+table.expansion.expandAll() // Requires expandMultiple: true
+
+// Collapse all (across all pages)
+table.expansion.collapseAll()
+```
+
+## Grouping
+
+### Basic Grouping
+
+```ts
+const table = createDataTable({
+  items,
+  columns,
+  groupBy: 'department',
+})
+
+const groups = table.grouping.groups.value
+// [
+//   { key: 'Engineering', value: 'Engineering', items: [...] },
+//   { key: 'Design', value: 'Design', items: [...] },
+// ]
+```
+
+### Group Controls
+
+```ts
+// Open/close groups
+table.grouping.open('Engineering')
+table.grouping.close('Engineering')
+table.grouping.toggle('Engineering')
+
+// Check state
+table.grouping.isOpen('Engineering') // boolean
+
+// Bulk operations
+table.grouping.openAll()
+table.grouping.closeAll()
+```
+
+### Auto-Open Groups
+
+```ts
+const table = createDataTable({
+  items,
+  columns,
+  groupBy: 'department',
+  enroll: true, // All groups open initially
+})
+```
+
+## Adapters
+
+### Client Adapter (Default)
+
+Performs filtering, sorting, and pagination client-side:
+
+```ts
+import { createDataTable, ClientAdapter } from '@vuetify/v0'
+
+const table = createDataTable({
+  items,
+  columns,
+  adapter: new ClientAdapter(), // Default
+})
+```
+
+### Server Adapter
+
+Delegates to server for data operations:
+
+```ts
+import { createDataTable, ServerAdapter } from '@vuetify/v0'
+
+const table = createDataTable({
+  items: ref([]),
+  columns,
+  adapter: new ServerAdapter({
+    total: 1000,
+    fetch: async ({ search, sortBy, page, itemsPerPage }) => {
+      const response = await api.fetchUsers({ search, sortBy, page, itemsPerPage })
+      return response.data
+    },
+  }),
+})
+
+// Adapter manages loading/error states
+console.log(table.loading.value) // boolean
+console.log(table.error.value)   // Error | null
+```
+
+### Virtual Adapter
+
+For large datasets with virtual scrolling:
+
+```ts
+import { createDataTable, VirtualAdapter } from '@vuetify/v0'
+
+const table = createDataTable({
+  items: largeDataset,
+  columns,
+  adapter: new VirtualAdapter({
+    itemHeight: 48,
+    overscan: 5,
+  }),
+})
+```
+
+## Context Pattern
+
+Use dependency injection for global table access:
+
+```ts
+import { createDataTableContext } from '@vuetify/v0'
+
+export const [useUserTable, provideUserTable, userTable] = createDataTableContext({
+  namespace: 'app:users',
+  items: users,
+  columns,
+})
+
+// Parent component
+provideUserTable()
+
+// Child component
+const table = useUserTable()
+table.sort.toggle('name')
+```
+
+## TypeScript
+
+### Type-Safe Columns
+
+```ts
+interface User {
+  id: number
+  name: string
+  email: string
+}
+
+const columns: DataTableColumn<User>[] = [
+  { key: 'name', title: 'Name', sortable: true }, // ✓ Valid
+  { key: 'invalid', title: 'Invalid' },           // ✗ Type error
+]
+```
+
+### Custom Item Value
+
+```ts
+interface Product {
+  sku: string
+  name: string
+  price: number
+}
+
+const table = createDataTable<Product>({
+  items: products,
+  columns,
+  itemValue: 'sku', // Use SKU as identifier
+})
+```
+
+## Related
+
+- [use-filter](/composables/create-filter) - Filtering logic
+- [use-pagination](/composables/create-pagination) - Pagination controls
+- [createSelection](/composables/create-selection) - Selection patterns
+- [createGroup](/composables/create-group) - Grouping logic

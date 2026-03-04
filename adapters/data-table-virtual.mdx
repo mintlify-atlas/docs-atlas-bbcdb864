@@ -1,0 +1,360 @@
+---
+title: Virtual Adapter
+description: Virtual scrolling data table adapter for large datasets
+---
+
+# Virtual Adapter
+
+The `VirtualAdapter` performs client-side filtering and sorting but skips pagination, returning all sorted items for use with virtual scrolling. Best for datasets between 10,000-100,000 rows.
+
+## Import
+
+```typescript
+import { VirtualAdapter } from '@vuetify/v0/data-table/adapters/virtual'
+```
+
+## Features
+
+- Client-side filtering and sorting
+- No pagination slicing (returns all items)
+- Integrates with `createVirtual` for viewport rendering
+- Single-page mode (all items on page 1)
+- Efficient for large datasets with virtual scrolling
+
+## Basic Usage
+
+```typescript
+import { createDataTable } from '@vuetify/v0/data-table'
+import { VirtualAdapter } from '@vuetify/v0/data-table/adapters/virtual'
+import { createVirtual } from '@vuetify/v0'
+import { ref } from 'vue'
+
+const table = createDataTable({
+  items: ref(Array.from({ length: 50000 }, (_, i) => ({
+    id: i,
+    name: `User ${i}`,
+    email: `user${i}@example.com`
+  }))),
+  adapter: new VirtualAdapter(),
+  columns: [
+    { key: 'name', title: 'Name', sortable: true },
+    { key: 'email', title: 'Email', sortable: true }
+  ]
+})
+
+// Use createVirtual for viewport rendering
+const virtual = createVirtual({
+  items: table.items,
+  itemHeight: 48,
+  containerHeight: 600
+})
+```
+
+## With Virtual Scrolling
+
+```vue
+<script setup lang="ts">
+import { createDataTable } from '@vuetify/v0/data-table'
+import { VirtualAdapter } from '@vuetify/v0/data-table/adapters/virtual'
+import { createVirtual } from '@vuetify/v0'
+import { ref } from 'vue'
+
+const largeDataset = ref(
+  Array.from({ length: 100000 }, (_, i) => ({
+    id: i,
+    name: `Item ${i}`,
+    value: Math.random() * 1000
+  }))
+)
+
+const table = createDataTable({
+  items: largeDataset,
+  adapter: new VirtualAdapter(),
+  columns: [
+    { key: 'name', sortable: true, filterable: true },
+    { key: 'value', sortable: true }
+  ],
+  search: ref('')
+})
+
+const containerRef = ref<HTMLElement>()
+
+const virtual = createVirtual({
+  items: table.items,
+  itemHeight: 48,
+  containerRef
+})
+</script>
+
+<template>
+  <div>
+    <input v-model="table.search.value" placeholder="Search..." />
+    
+    <div ref="containerRef" class="virtual-container" style="height: 600px; overflow-y: auto;">
+      <div :style="{ height: virtual.totalHeight.value + 'px', position: 'relative' }">
+        <div
+          v-for="item in virtual.visibleItems.value"
+          :key="item.id"
+          :style="{
+            position: 'absolute',
+            top: virtual.offsetY(item.index) + 'px',
+            height: '48px',
+            width: '100%'
+          }"
+        >
+          {{ item.data.name }} - {{ item.data.value.toFixed(2) }}
+        </div>
+      </div>
+    </div>
+    
+    <div>Total: {{ table.total.value }} items</div>
+  </div>
+</template>
+```
+
+## Pipeline Behavior
+
+The `VirtualAdapter` processes items through two stages:
+
+1. **Filtering** - Filter items by search query
+2. **Sorting** - Sort by column keys and directions
+3. **No pagination** - Returns all sorted items
+
+```typescript
+const table = createDataTable({
+  items: largeDataset,
+  adapter: new VirtualAdapter()
+})
+
+// All pipeline stages available
+table.allItems.value      // Original items
+table.filteredItems.value // After filtering
+table.sortedItems.value   // After sorting
+table.items.value         // Same as sortedItems (no pagination)
+```
+
+## Pagination State
+
+The adapter creates pagination with `itemsPerPage` equal to the total item count, effectively placing all items on a single page:
+
+```typescript
+const table = createDataTable({
+  items: ref(Array(50000).fill(null).map((_, i) => ({ id: i }))),
+  adapter: new VirtualAdapter()
+})
+
+table.pagination.page.value           // 1 (always)
+table.pagination.pageCount.value      // 1 (all items on one page)
+table.pagination.itemsPerPage.value   // 50000 (equals total)
+table.total.value                     // 50000
+```
+
+## Sorting
+
+### Basic Sorting
+
+```typescript
+const table = createDataTable({
+  items: largeDataset,
+  adapter: new VirtualAdapter(),
+  columns: [
+    { key: 'name', sortable: true },
+    { key: 'score', sortable: true }
+  ]
+})
+
+// Sort by name ascending
+table.sort.toggle('name')
+```
+
+### Custom Comparators
+
+```typescript
+const table = createDataTable({
+  items: products,
+  adapter: new VirtualAdapter(),
+  columns: [
+    {
+      key: 'price',
+      sortable: true,
+      sort: (a: number, b: number) => a - b
+    },
+    {
+      key: 'category',
+      sortable: true,
+      sort: (a: string, b: string) => {
+        const order = ['electronics', 'clothing', 'books']
+        return order.indexOf(a) - order.indexOf(b)
+      }
+    }
+  ]
+})
+```
+
+## Filtering
+
+```typescript
+const table = createDataTable({
+  items: largeDataset,
+  adapter: new VirtualAdapter(),
+  search: ref(''),
+  columns: [
+    { key: 'name', filterable: true },
+    { key: 'description', filterable: true }
+  ]
+})
+
+// Search filters name and description
+table.search.value = 'query'
+
+// Filtered count
+table.total.value // Number of items matching query
+```
+
+## Performance Optimization
+
+### Debounced Search
+
+```typescript
+import { refDebounced } from '@vueuse/core'
+
+const searchInput = ref('')
+const debouncedSearch = refDebounced(searchInput, 300)
+
+const table = createDataTable({
+  items: largeDataset,
+  adapter: new VirtualAdapter(),
+  search: debouncedSearch // Use debounced value
+})
+```
+
+### Dynamic Item Height
+
+```typescript
+const virtual = createVirtual({
+  items: table.items,
+  itemHeight: (item) => {
+    // Calculate height based on content
+    return item.description ? 72 : 48
+  },
+  containerRef
+})
+```
+
+### Memoized Virtual Items
+
+```typescript
+import { computed } from 'vue'
+
+const virtualItems = computed(() => {
+  return virtual.visibleItems.value.map(item => ({
+    ...item,
+    // Pre-compute expensive operations
+    formattedDate: formatDate(item.data.createdAt)
+  }))
+})
+```
+
+## When to Use
+
+<CardGroup cols={3}>
+  <Card title="VirtualAdapter" icon="scroll">
+    **10,000-100,000 rows**
+    Client-side processing with virtual scrolling
+  </Card>
+  <Card title="ClientAdapter" icon="laptop">
+    **Less than 10,000 rows**
+    Client-side with pagination
+  </Card>
+  <Card title="ServerAdapter" icon="server">
+    **100,000+ rows**
+    Server-side processing
+  </Card>
+</CardGroup>
+
+## TypeScript
+
+```typescript
+interface Product {
+  id: number
+  name: string
+  price: number
+  category: string
+}
+
+const table = createDataTable<Product>({
+  items: ref<Product[]>([]),
+  adapter: new VirtualAdapter<Product>(),
+  columns: [
+    { key: 'name', sortable: true },
+    { key: 'price', sortable: true }
+  ]
+})
+
+const virtual = createVirtual<Product>({
+  items: table.items,
+  itemHeight: 56
+})
+
+// Fully typed
+virtual.visibleItems.value // { index: number, data: Product }[]
+```
+
+## Reset on Changes
+
+The adapter automatically resets to page 1 (which contains all items) when search or sort changes:
+
+```typescript
+table.search.value = 'new query'
+// Pagination resets, but since all items are on page 1, no visible change
+```
+
+## Comparison with Client Adapter
+
+| Feature | VirtualAdapter | ClientAdapter |
+|---------|----------------|---------------|
+| Filtering | ✓ Client-side | ✓ Client-side |
+| Sorting | ✓ Client-side | ✓ Client-side |
+| Pagination | Single page | Multi-page |
+| Best for | 10K-100K rows | Less than 10K rows |
+| Virtual scroll | Required | Optional |
+| Page navigation | No | Yes |
+
+## API Reference
+
+### Constructor
+
+```typescript
+class VirtualAdapter<T extends Record<string, unknown>>
+  extends DataTableAdapter<T>
+```
+
+### Methods
+
+| Method | Description |
+|--------|-------------|
+| `setup(context)` | Sets up the adapter with data table context |
+
+### Return Value
+
+```typescript
+interface DataTableAdapterResult<T> {
+  allItems: Readonly<Ref<readonly T[]>>
+  filteredItems: Readonly<Ref<readonly T[]>>
+  sortedItems: Readonly<Ref<readonly T[]>>
+  items: Readonly<Ref<readonly T[]>>      // Same as sortedItems
+  pagination: PaginationContext            // Single-page mode
+  total: Readonly<Ref<number>>             // Count of sorted items
+}
+```
+
+<Note>
+The `VirtualAdapter` extends `DataTableAdapter` and uses the same filtering and sorting logic as `ClientAdapter`, but returns all sorted items instead of paginating them.
+</Note>
+
+## See Also
+
+- [Client Adapter](/adapters/data-table-client) - Client-side with pagination
+- [Server Adapter](/adapters/data-table-server) - Server-side processing
+- [createVirtual](/composables/create-virtual) - Virtual scrolling composable
+- [createDataTable](/composables/create-data-table) - Data table composable

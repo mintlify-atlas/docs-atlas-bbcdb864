@@ -1,0 +1,226 @@
+---
+title: useLazy
+description: Deferred content rendering for performance optimization
+---
+
+## Overview
+
+Deferred content rendering composable for performance optimization. Content only renders after first activation unless eager mode is enabled.
+
+## Features
+
+- Content only renders after first activation (unless eager)
+- Optional reset on deactivation for memory savings
+- Readonly state refs for template binding
+- Manual reset control
+- SSR-safe
+
+## Function Signature
+
+```ts
+function useLazy(
+  active: MaybeRefOrGetter<boolean>,
+  options?: LazyOptions
+): LazyContext
+```
+
+## Parameters
+
+<ParamField path="active" type="MaybeRefOrGetter<boolean>">
+  Reactive boolean controlling activation state.
+</ParamField>
+
+<ParamField path="options" type="LazyOptions">
+  <ParamField path="eager" type="boolean" default="false">
+    When true, content renders immediately without waiting for activation.
+  </ParamField>
+</ParamField>
+
+## Return Value
+
+<ResponseField name="isBooted" type="Readonly<ShallowRef<boolean>>">
+  Whether the lazy content has been activated at least once.
+</ResponseField>
+
+<ResponseField name="hasContent" type="Readonly<Ref<boolean>>">
+  Whether content should be rendered. True when: `isBooted` OR `eager` OR `active`.
+</ResponseField>
+
+<ResponseField name="reset" type="() => void">
+  Reset booted state. Call on leave transition if not eager.
+</ResponseField>
+
+<ResponseField name="onAfterLeave" type="() => void">
+  Transition callback for after-leave. Resets if not eager.
+</ResponseField>
+
+## Examples
+
+### Basic usage
+
+```ts
+import { ref } from 'vue'
+import { useLazy } from '@vuetify/v0'
+
+const isOpen = ref(false)
+const { hasContent, onAfterLeave } = useLazy(isOpen)
+```
+
+### With transitions
+
+```vue
+<script setup>
+import { ref } from 'vue'
+import { useLazy } from '@vuetify/v0'
+
+const isOpen = ref(false)
+const { hasContent, onAfterLeave } = useLazy(isOpen)
+</script>
+
+<template>
+  <Transition @after-leave="onAfterLeave">
+    <div v-if="isOpen">
+      <template v-if="hasContent">
+        <!-- Heavy content here -->
+      </template>
+    </div>
+  </Transition>
+</template>
+```
+
+### Eager mode
+
+```ts
+const { hasContent } = useLazy(isOpen, { eager: true })
+// hasContent.value is always true
+```
+
+### With reactive eager prop
+
+```ts
+const props = defineProps<{ eager: boolean }>()
+
+const { hasContent } = useLazy(
+  isOpen,
+  { eager: toRef(() => props.eager) }
+)
+```
+
+### Manual reset
+
+```ts
+const { hasContent, reset, isBooted } = useLazy(isOpen)
+
+// Manually reset content
+reset()
+console.log(isBooted.value) // false
+```
+
+### Dialog with lazy content
+
+```vue
+<script setup>
+import { ref } from 'vue'
+import { useLazy } from '@vuetify/v0'
+
+const isDialogOpen = ref(false)
+const { hasContent, onAfterLeave } = useLazy(isDialogOpen)
+
+function openDialog() {
+  isDialogOpen.value = true
+}
+
+function closeDialog() {
+  isDialogOpen.value = false
+}
+</script>
+
+<template>
+  <button @click="openDialog">Open Dialog</button>
+  
+  <Transition @after-leave="onAfterLeave">
+    <dialog v-if="isDialogOpen" @click="closeDialog">
+      <template v-if="hasContent">
+        <!-- Expensive component tree -->
+        <HeavyDataTable />
+        <ComplexChart />
+      </template>
+    </dialog>
+  </Transition>
+</template>
+```
+
+### Menu with lazy items
+
+```vue
+<script setup>
+import { ref } from 'vue'
+import { useLazy } from '@vuetify/v0'
+
+const isMenuOpen = ref(false)
+const { hasContent, onAfterLeave } = useLazy(isMenuOpen)
+</script>
+
+<template>
+  <div class="menu">
+    <button @click="isMenuOpen = !isMenuOpen">
+      Menu
+    </button>
+    
+    <Transition @after-leave="onAfterLeave">
+      <ul v-if="isMenuOpen" class="menu-items">
+        <template v-if="hasContent">
+          <MenuItem v-for="item in items" :key="item.id" :item="item" />
+        </template>
+      </ul>
+    </Transition>
+  </div>
+</template>
+```
+
+## Use Cases
+
+- **Dialogs**: Defer rendering heavy dialog content until opened
+- **Menus**: Load menu items only when menu is opened
+- **Tooltips**: Render tooltip content on first hover
+- **Tabs**: Render tab panels only when activated
+- **Accordions**: Render panel content when expanded
+- **Drawers**: Defer drawer content until opened
+
+## Behavior
+
+### Without eager mode
+
+1. Component mounts with `active: false`
+   - `isBooted: false`
+   - `hasContent: false`
+   - Content not rendered
+
+2. `active` becomes `true`
+   - `isBooted: true`
+   - `hasContent: true`
+   - Content renders
+
+3. `active` becomes `false`
+   - `isBooted: true` (stays true)
+   - `hasContent: true` (stays true)
+   - Content stays rendered until transition completes
+
+4. `onAfterLeave()` called
+   - `isBooted: false` (reset)
+   - `hasContent: false`
+   - Content removed
+
+### With eager mode
+
+- `hasContent` is always `true`
+- `onAfterLeave()` does not reset state
+- Content never removed once rendered
+
+## Notes
+
+- Use `onAfterLeave` as the `@after-leave` callback for Vue transitions
+- Pairs well with Vue's `<Transition>` component
+- Eager mode is useful for content that should persist after first render
+- Manual `reset()` allows custom cleanup logic
+- SSR-safe: works without browser APIs

@@ -1,0 +1,471 @@
+---
+title: useOverflow
+description: Composable for computing how many items fit in a container
+---
+
+# useOverflow
+
+Composable for computing how many items fit in a container based on available width.
+
+## Overview
+
+Enables responsive truncation logic for Pagination, Breadcrumbs, and similar components by tracking container width and calculating item capacity.
+
+**Key Features:**
+- Container width tracking via ResizeObserver
+- Two modes: variable-width (per-item) or uniform-width (sample-based)
+- Computes capacity (how many items fit)
+- SSR-safe with Infinity fallback
+- Supports reserved space for nav buttons, ellipsis, etc.
+- Gap handling between items
+- Reverse calculation for trailing priority
+
+## Functions
+
+### createOverflow
+
+Create an overflow context.
+
+```ts
+function createOverflow<E extends OverflowContext = OverflowContext>(
+  options?: OverflowOptions,
+): E
+```
+
+### createOverflowContext
+
+Create an overflow context with dependency injection support.
+
+```ts
+function createOverflowContext<E extends OverflowContext = OverflowContext>(
+  options?: OverflowContextOptions,
+): ContextTrinity<E>
+```
+
+### useOverflow
+
+Returns the current overflow context from dependency injection.
+
+```ts
+function useOverflow<E extends OverflowContext = OverflowContext>(
+  namespace?: string,
+): E
+```
+
+## Types
+
+```ts
+interface OverflowOptions {
+  container?: MaybeRefOrGetter<Element | null | undefined>
+  gap?: MaybeRefOrGetter<number>
+  reserved?: MaybeRefOrGetter<number>
+  itemWidth?: MaybeRefOrGetter<number>
+  reverse?: MaybeRefOrGetter<boolean>
+}
+
+interface OverflowContext {
+  container: ShallowRef<Element | null | undefined>
+  width: Readonly<ShallowRef<number>>
+  capacity: ComputedRef<number>
+  total: ComputedRef<number>
+  isOverflowing: Readonly<Ref<boolean>>
+  measure: (index: number, el: Element | undefined) => void
+  reset: () => void
+}
+```
+
+## Parameters
+
+<ParamField path="options" type="OverflowOptions">
+  Configuration options for overflow detection.
+
+  <ParamField path="container" type="MaybeRefOrGetter<Element | null | undefined>">
+    Container element to track. When provided, automatically tracks container width.
+  </ParamField>
+
+  <ParamField path="gap" type="MaybeRefOrGetter<number>" default="0">
+    Gap between items in pixels.
+  </ParamField>
+
+  <ParamField path="reserved" type="MaybeRefOrGetter<number>" default="0">
+    Reserved space in pixels (for nav buttons, ellipsis, etc).
+  </ParamField>
+
+  <ParamField path="itemWidth" type="MaybeRefOrGetter<number>">
+    Uniform item width in pixels. Enables uniform mode where capacity is calculated as `available / itemWidth`.
+  </ParamField>
+
+  <ParamField path="reverse" type="MaybeRefOrGetter<boolean>" default="false">
+    Calculate capacity from end instead of start. Useful for breadcrumbs where trailing items take priority.
+  </ParamField>
+</ParamField>
+
+## Context Properties
+
+<ResponseField name="container" type="ShallowRef<Element | null | undefined>">
+  Container element ref. Set this to the element you want to track.
+</ResponseField>
+
+<ResponseField name="width" type="Readonly<ShallowRef<number>>">
+  Current container width in pixels.
+</ResponseField>
+
+<ResponseField name="capacity" type="ComputedRef<number>">
+  How many items fit in available space. Returns `Infinity` during SSR or when not measured.
+</ResponseField>
+
+<ResponseField name="total" type="ComputedRef<number>">
+  Total width of all measured items (including gaps).
+</ResponseField>
+
+<ResponseField name="isOverflowing" type="Readonly<Ref<boolean>>">
+  Whether items overflow the container.
+</ResponseField>
+
+<ResponseField name="measure" type="(index: number, el: Element | undefined) => void">
+  Register an item's element for width measurement. Call with `undefined` to unregister.
+</ResponseField>
+
+<ResponseField name="reset" type="() => void">
+  Clear all measurements.
+</ResponseField>
+
+## Modes
+
+### Variable Width (Default)
+
+Measures each item individually. Use for items with different widths like breadcrumbs:
+
+```ts
+import { createOverflow } from '@vuetify/v0'
+
+const overflow = createOverflow({
+  gap: 8,
+  reserved: 40, // Space for ellipsis button
+})
+
+// Each item measured individually
+overflow.measure(0, element1) // width: 120px
+overflow.measure(1, element2) // width: 80px
+overflow.measure(2, element3) // width: 150px
+
+// Capacity computed based on actual widths
+```
+
+### Uniform Width
+
+Uses a single width for all items. More efficient for same-width items like pagination buttons:
+
+```ts
+import { createOverflow } from '@vuetify/v0'
+
+const buttonWidth = ref(40)
+const overflow = createOverflow({
+  itemWidth: buttonWidth,
+  gap: 4,
+  reserved: 160, // Space for prev/next buttons
+})
+
+// Capacity = (containerWidth - reserved) / (itemWidth + gap)
+// No individual measurements needed
+```
+
+## Basic Usage
+
+### Variable-Width Breadcrumbs
+
+```vue
+<script setup lang="ts">
+import { useTemplateRef } from 'vue'
+import { createOverflow } from '@vuetify/v0'
+
+const items = ref(['Home', 'Products', 'Electronics', 'Laptops', 'Gaming'])
+
+const containerRef = useTemplateRef('container')
+const overflow = createOverflow({
+  container: containerRef,
+  gap: 8,
+  reserved: 40, // Ellipsis button
+})
+</script>
+
+<template>
+  <nav ref="container" class="breadcrumbs">
+    <span
+      v-for="(item, i) in items.slice(0, overflow.capacity.value)"
+      :key="i"
+      :ref="(el) => overflow.measure(i, el as Element)"
+    >
+      {{ item }}
+    </span>
+    
+    <button v-if="overflow.isOverflowing.value" class="ellipsis">
+      ...
+    </button>
+  </nav>
+</template>
+```
+
+### Uniform-Width Pagination
+
+```vue
+<script setup lang="ts">
+import { useTemplateRef } from 'vue'
+import { createOverflow } from '@vuetify/v0'
+
+const containerRef = useTemplateRef('container')
+const buttonWidth = ref(40)
+
+const overflow = createOverflow({
+  container: containerRef,
+  itemWidth: buttonWidth,
+  gap: 4,
+  reserved: 160, // Prev/Next buttons (40px each + margins)
+})
+
+const totalPages = 100
+const visiblePages = Math.min(overflow.capacity.value, totalPages)
+</script>
+
+<template>
+  <div ref="container" class="pagination">
+    <button class="prev">Previous</button>
+    
+    <button
+      v-for="page in visiblePages"
+      :key="page"
+      class="page-button"
+    >
+      {{ page }}
+    </button>
+    
+    <button class="next">Next</button>
+  </div>
+</template>
+```
+
+## Advanced Usage
+
+### Reverse Priority (Trailing Items First)
+
+```vue
+<script setup lang="ts">
+import { useTemplateRef } from 'vue'
+import { createOverflow } from '@vuetify/v0'
+
+const items = ref(['Root', 'Folder1', 'Folder2', 'Folder3', 'Current'])
+
+const containerRef = useTemplateRef('container')
+const overflow = createOverflow({
+  container: containerRef,
+  gap: 8,
+  reserved: 40,
+  reverse: true, // Prioritize trailing items
+})
+
+// Show last N items that fit
+const visibleItems = computed(() => {
+  const capacity = overflow.capacity.value
+  if (capacity >= items.value.length) return items.value
+  return items.value.slice(-capacity)
+})
+</script>
+
+<template>
+  <nav ref="container" class="breadcrumbs">
+    <button v-if="overflow.isOverflowing.value">...</button>
+    
+    <span
+      v-for="(item, i) in visibleItems"
+      :key="i"
+      :ref="(el) => overflow.measure(items.length - visibleItems.length + i, el as Element)"
+    >
+      {{ item }}
+    </span>
+  </nav>
+</template>
+```
+
+### Dynamic Reserved Space
+
+```vue
+<script setup lang="ts">
+import { ref, computed, useTemplateRef } from 'vue'
+import { createOverflow } from '@vuetify/v0'
+
+const showFilters = ref(true)
+const containerRef = useTemplateRef('container')
+
+const reserved = computed(() => {
+  let space = 80 // Base buttons
+  if (showFilters.value) space += 120 // Filter dropdown
+  return space
+})
+
+const overflow = createOverflow({
+  container: containerRef,
+  gap: 8,
+  reserved,
+})
+</script>
+
+<template>
+  <div ref="container" class="toolbar">
+    <button @click="showFilters = !showFilters">Toggle Filters</button>
+    
+    <div v-if="showFilters" class="filters">
+      <!-- Filter UI -->
+    </div>
+    
+    <div
+      v-for="(item, i) in items.slice(0, overflow.capacity.value)"
+      :key="i"
+      :ref="(el) => overflow.measure(i, el as Element)"
+    >
+      {{ item }}
+    </div>
+  </div>
+</template>
+```
+
+### With Margin Handling
+
+```vue
+<script setup lang="ts">
+import { useTemplateRef } from 'vue'
+import { createOverflow } from '@vuetify/v0'
+
+const containerRef = useTemplateRef('container')
+const overflow = createOverflow({
+  container: containerRef,
+  gap: 0, // Margins handled by measure()
+})
+
+// measure() automatically includes margins in width calculation
+</script>
+
+<template>
+  <div ref="container">
+    <span
+      v-for="(item, i) in items.slice(0, overflow.capacity.value)"
+      :key="i"
+      :ref="(el) => overflow.measure(i, el as Element)"
+      style="margin-right: 8px;"
+    >
+      {{ item }}
+    </span>
+  </div>
+</template>
+```
+
+### Dependency Injection
+
+```ts
+// composables/useBreadcrumbOverflow.ts
+import { createOverflowContext } from '@vuetify/v0'
+
+export const [
+  useBreadcrumbOverflow,
+  provideBreadcrumbOverflow,
+  breadcrumbOverflow,
+] = createOverflowContext({
+  namespace: 'app:breadcrumb-overflow',
+  gap: 8,
+  reserved: 40,
+})
+```
+
+```vue
+<!-- Parent.vue -->
+<script setup lang="ts">
+import { provideBreadcrumbOverflow } from '@/composables/useBreadcrumbOverflow'
+
+provideBreadcrumbOverflow()
+</script>
+
+<template>
+  <Breadcrumbs />
+</template>
+```
+
+```vue
+<!-- Breadcrumbs.vue -->
+<script setup lang="ts">
+import { useBreadcrumbOverflow } from '@/composables/useBreadcrumbOverflow'
+import { useTemplateRef } from 'vue'
+
+const overflow = useBreadcrumbOverflow()
+const containerRef = useTemplateRef('container')
+
+overflowContext.container.value = containerRef.value
+</script>
+
+<template>
+  <nav ref="container">
+    <!-- Breadcrumb items -->
+  </nav>
+</template>
+```
+
+## SSR Support
+
+```ts
+import { createOverflow } from '@vuetify/v0'
+
+const overflow = createOverflow()
+
+// During SSR (width = 0)
+console.log(overflow.capacity.value) // Infinity (renders all items)
+
+// After hydration (width measured)
+console.log(overflow.capacity.value) // Actual capacity
+```
+
+## Performance
+
+```ts
+import { createOverflow } from '@vuetify/v0'
+
+// Uniform mode: O(1) capacity calculation
+const uniformOverflow = createOverflow({ itemWidth: 40 })
+// No individual measurements, instant capacity
+
+// Variable mode: O(n) capacity calculation
+const variableOverflow = createOverflow()
+variableOverflow.measure(0, el1)
+variableOverflow.measure(1, el2)
+// Calculates capacity by summing measured widths
+```
+
+## Type Safety
+
+```ts
+import { createOverflow } from '@vuetify/v0'
+import type { OverflowContext } from '@vuetify/v0'
+
+const overflow: OverflowContext = createOverflow({
+  gap: 8,
+  reserved: 40,
+})
+
+const capacity: number = overflow.capacity.value
+const isOverflowing: boolean = overflow.isOverflowing.value
+```
+
+## Notes
+
+- Returns `Infinity` capacity during SSR or before first measurement
+- `measure()` automatically includes element margins in width
+- Uniform mode ignores individual measurements
+- Variable mode requires measuring each item
+- `reverse` only affects variable mode (uniform is direction-independent)
+- Gap is added between items, not before first or after last
+- Reserved space subtracted from available width
+- Capacity clamped to 0 if available space is negative
+
+## Related
+
+- [usePagination](/composables/use-pagination) - Page navigation
+- [useResizeObserver](/composables/use-resize-observer) - Element size tracking
+- [useVirtual](/composables/use-virtual) - Virtual scrolling
+- [createBreadcrumbs](/composables/create-breadcrumbs) - Uses overflow internally

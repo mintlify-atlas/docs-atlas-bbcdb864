@@ -1,0 +1,545 @@
+---
+title: TypeScript
+description: Learn how to use TypeScript with Vuetify Zero - types, generics, type safety, and best practices
+---
+
+# TypeScript
+
+Vuetify Zero is written in TypeScript and provides full type safety for components, composables, and utilities.
+
+## Importing Types
+
+### Component Types
+
+Import types directly from component modules:
+
+```ts
+import type { 
+  DialogRootProps,
+  DialogRootSlotProps,
+  DialogContext,
+} from '@vuetify/v0'
+
+// Or from specific paths
+import type { DialogRootProps } from '@vuetify/v0/components/Dialog'
+```
+
+### Common Types from `#v0/types`
+
+Vuetify Zero provides reusable types in the types module:
+
+```ts
+import type { 
+  ID,              // string | number
+  Activation,      // 'automatic' | 'manual'
+  MaybeArray,      // T | T[]
+  DeepPartial,     // Recursively optional
+  Extensible,      // String union with autocomplete
+  DOMElement,      // Valid h() element types
+} from '@vuetify/v0'
+```
+
+<Tip>
+  Always import types from `@vuetify/v0` or `#v0/types`, not relative paths.
+</Tip>
+
+## Type Reference
+
+### ID Type
+
+Universal identifier type for registry systems:
+
+```ts
+import type { ID } from '@vuetify/v0'
+
+const stringId: ID = 'item-1'    // ✓ string
+const numberId: ID = 42          // ✓ number
+const symbolId: ID = Symbol()    // ✗ Error
+```
+
+Used by all components with `id` props and registry tickets.
+
+### Activation Type
+
+Keyboard activation mode for navigable components:
+
+```ts
+import type { Activation } from '@vuetify/v0'
+
+const mode: Activation = 'automatic'  // Selection follows focus
+const mode: Activation = 'manual'     // Enter/Space required
+```
+
+Used by Tabs, Radio, and other keyboard-navigable components.
+
+### MaybeArray Type
+
+Accepts single values or arrays:
+
+```ts
+import type { MaybeArray } from '@vuetify/v0'
+
+function process(input: MaybeArray<string>) {
+  const items = Array.isArray(input) ? input : [input]
+  // ...
+}
+
+process('single')           // ✓
+process(['a', 'b', 'c'])    // ✓
+```
+
+### DeepPartial Type
+
+Recursively makes all properties optional:
+
+```ts
+import type { DeepPartial } from '@vuetify/v0'
+
+interface Theme {
+  colors: {
+    primary: string
+    secondary: string
+  }
+  spacing: {
+    small: number
+    large: number
+  }
+}
+
+const partial: DeepPartial<Theme> = {
+  colors: {
+    primary: '#000',  // secondary is optional
+  },
+  // spacing is optional
+}
+```
+
+Used by `mergeDeep` utility and configuration objects.
+
+### Extensible Type
+
+Preserves autocomplete for known values while allowing custom strings:
+
+```ts
+import type { Extensible } from '@vuetify/v0'
+
+type Color = 'primary' | 'secondary' | 'accent'
+
+function setColor(color: Extensible<Color>) {
+  // TypeScript suggests 'primary' | 'secondary' | 'accent'
+  // but also accepts any string
+}
+
+setColor('primary')   // ✓ Autocomplete works
+setColor('custom')    // ✓ Custom values allowed
+```
+
+## Generic Components
+
+### Tabs with Generic Values
+
+Tabs support generic types for type-safe tab values:
+
+```vue
+<script setup lang="ts" generic="T extends string">
+import { Tabs } from '@vuetify/v0'
+import { ref } from 'vue'
+
+type TabValue = 'profile' | 'settings' | 'billing'
+
+const selected = ref<TabValue>('profile')
+</script>
+
+<template>
+  <Tabs.Root v-model="selected">
+    <Tabs.List>
+      <Tabs.Item value="profile">Profile</Tabs.Item>
+      <Tabs.Item value="settings">Settings</Tabs.Item>
+      <Tabs.Item value="invalid"> <!-- TypeScript error -->
+        Invalid
+      </Tabs.Item>
+    </Tabs.List>
+  </Tabs.Root>
+</template>
+```
+
+### Checkbox with Generic Values
+
+```vue
+<script setup lang="ts" generic="V">
+import { Checkbox } from '@vuetify/v0'
+import { ref } from 'vue'
+
+interface NotificationType {
+  id: string
+  label: string
+  enabled: boolean
+}
+
+const notifications = ref<NotificationType[]>([...])
+const selected = ref<string[]>([])
+</script>
+
+<template>
+  <Checkbox.Group v-model="selected">
+    <Checkbox.Root
+      v-for="notification in notifications"
+      :key="notification.id"
+      :value="notification.id"
+    >
+      <Checkbox.Indicator>✓</Checkbox.Indicator>
+      {{ notification.label }}
+    </Checkbox.Root>
+  </Checkbox.Group>
+</template>
+```
+
+### Registry with Generic Items
+
+```ts
+import { createRegistry } from '@vuetify/v0'
+import type { ID } from '@vuetify/v0'
+
+interface User {
+  id: ID
+  name: string
+  email: string
+}
+
+const users = createRegistry<User>()
+
+const ticket = users.register({
+  id: 'user-1',
+  name: 'John Doe',
+  email: 'john@example.com',
+})
+
+// Ticket is fully typed
+ticket.item.name  // string
+ticket.item.email // string
+```
+
+## Slot Props Type Safety
+
+### Typing Slot Props
+
+Components provide typed slot props:
+
+```vue
+<script setup lang="ts">
+import { Dialog } from '@vuetify/v0'
+import type { DialogRootSlotProps } from '@vuetify/v0'
+
+function handleSlotProps(props: DialogRootSlotProps) {
+  console.log(props.isOpen)  // boolean
+  props.close()              // () => void
+}
+</script>
+
+<template>
+  <Dialog.Root v-slot="props">
+    <Dialog.Activator>
+      {{ props.isOpen ? 'Close' : 'Open' }}
+    </Dialog.Activator>
+  </Dialog.Root>
+</template>
+```
+
+### Destructured Slot Props
+
+```vue
+<template>
+  <Tabs.Root v-slot="{ select, next, prev, isDisabled }">
+    <button @click="next" :disabled="isDisabled">
+      Next Tab
+    </button>
+  </Tabs.Root>
+</template>
+```
+
+TypeScript infers types from the component definition.
+
+## Context Types
+
+### Using Context Composables
+
+```ts
+import { 
+  useDialogContext,
+  useTabsRoot,
+  useCheckboxRoot,
+} from '@vuetify/v0'
+import type {
+  DialogContext,
+  TabsContext,
+  CheckboxRootContext,
+} from '@vuetify/v0'
+
+// In a child component
+const dialog: DialogContext = useDialogContext()
+dialog.close()  // Fully typed
+
+const tabs: TabsContext<string> = useTabsRoot()
+tabs.select('tab-1')  // Type-safe selection
+```
+
+### Creating Custom Contexts
+
+```ts
+import { createContext } from '@vuetify/v0'
+import type { Ref } from 'vue'
+
+interface MyContext {
+  value: Ref<string>
+  update: (val: string) => void
+}
+
+const [useMyContext, provideMyContext] = createContext<MyContext>()
+
+// Provide in parent
+provideMyContext('my:namespace', {
+  value: ref('initial'),
+  update: (val) => { ... },
+})
+
+// Inject in child
+const context = useMyContext('my:namespace')
+context.update('new value')  // Type-safe
+```
+
+## Utility Types
+
+### Type Guards
+
+Import type guards from utilities:
+
+```ts
+import { 
+  isString, 
+  isNumber, 
+  isBoolean,
+  isObject,
+  isArray,
+  isFunction,
+  isNull,
+  isUndefined,
+  isNullOrUndefined,
+} from '@vuetify/v0'
+
+function process(value: unknown) {
+  if (isString(value)) {
+    // value is string
+    console.log(value.toUpperCase())
+  }
+  
+  if (isObject(value)) {
+    // value is Record<string, unknown>
+    console.log(Object.keys(value))
+  }
+}
+```
+
+### Type-Safe Merge
+
+```ts
+import { mergeDeep } from '@vuetify/v0'
+import type { DeepPartial } from '@vuetify/v0'
+
+interface Config {
+  theme: {
+    colors: {
+      primary: string
+      secondary: string
+    }
+  }
+}
+
+const defaults: Config = {
+  theme: {
+    colors: {
+      primary: '#000',
+      secondary: '#fff',
+    },
+  },
+}
+
+const overrides: DeepPartial<Config> = {
+  theme: {
+    colors: {
+      primary: '#f00',
+    },
+  },
+}
+
+const merged = mergeDeep(defaults, overrides)
+// Result is fully typed as Config
+```
+
+## Component Props
+
+### Extending Component Props
+
+```ts
+import type { DialogRootProps } from '@vuetify/v0'
+
+interface MyDialogProps extends DialogRootProps {
+  title: string
+  description: string
+  confirmText?: string
+  cancelText?: string
+}
+
+defineProps<MyDialogProps>()
+```
+
+### Props with Generics
+
+```vue
+<script setup lang="ts" generic="T">
+import type { CheckboxGroupProps } from '@vuetify/v0'
+
+interface Props extends CheckboxGroupProps {
+  items: T[]
+  itemValue: (item: T) => string
+  itemLabel: (item: T) => string
+}
+
+const props = defineProps<Props>()
+</script>
+```
+
+## Composable Types
+
+### Typed Composable Returns
+
+```ts
+import { createSelection } from '@vuetify/v0'
+import type { SelectionContext } from '@vuetify/v0'
+
+const selection: SelectionContext = createSelection({
+  multiple: true,
+})
+
+// All methods are typed
+selection.select('item-1')
+selection.selectAll()
+selection.isSelected('item-1')  // boolean
+```
+
+### Custom Composables
+
+```ts
+import { ref, computed } from 'vue'
+import type { Ref, ComputedRef } from 'vue'
+import type { ID } from '@vuetify/v0'
+
+interface UseSelectionReturn<T> {
+  selected: Ref<T[]>
+  isSelected: (id: ID) => boolean
+  toggle: (item: T) => void
+  clear: () => void
+}
+
+export function useSelection<T extends { id: ID }>(): UseSelectionReturn<T> {
+  const selected = ref<T[]>([])
+  
+  const isSelected = (id: ID) => {
+    return selected.value.some(item => item.id === id)
+  }
+  
+  const toggle = (item: T) => {
+    const index = selected.value.findIndex(i => i.id === item.id)
+    if (index > -1) {
+      selected.value.splice(index, 1)
+    } else {
+      selected.value.push(item)
+    }
+  }
+  
+  const clear = () => {
+    selected.value = []
+  }
+  
+  return { selected, isSelected, toggle, clear }
+}
+```
+
+## Best Practices
+
+<Steps>
+
+### Always Use Type Imports
+
+Use `import type` for type-only imports:
+
+```ts
+// Good - explicit type import
+import type { DialogRootProps } from '@vuetify/v0'
+
+// Avoid - runtime import for types
+import { DialogRootProps } from '@vuetify/v0'
+```
+
+### Leverage Generic Components
+
+Use generic components for type safety:
+
+```vue
+<script setup lang="ts" generic="T extends string">
+const selected = ref<T>('default')
+</script>
+```
+
+### Import from Package Root
+
+Prefer package root imports:
+
+```ts
+// Good
+import { Dialog } from '@vuetify/v0'
+import type { ID } from '@vuetify/v0'
+
+// Avoid
+import { Dialog } from '@vuetify/v0/components/Dialog'
+import type { ID } from '@vuetify/v0/types'
+```
+
+### Use Type Guards
+
+Use built-in type guards instead of `typeof`:
+
+```ts
+import { isString, isObject } from '@vuetify/v0'
+
+// Good
+if (isString(value)) { ... }
+
+// Avoid
+if (typeof value === 'string') { ... }
+```
+
+### Avoid `any`
+
+Use `unknown` and type guards:
+
+```ts
+import { isObject } from '@vuetify/v0'
+
+// Good
+function process(data: unknown) {
+  if (isObject(data)) {
+    // Narrow to object type
+  }
+}
+
+// Avoid
+function process(data: any) { ... }
+```
+
+</Steps>
+
+## Next Steps
+
+- [Type Definitions](https://github.com/vuetifyjs/vuetify/tree/master/packages/0/src/types) - Browse source types
+- [Component API](/api) - Component type references
+- [Composables](/composables) - Composable type signatures

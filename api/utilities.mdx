@@ -1,0 +1,679 @@
+---
+title: Utilities
+description: Utility functions for type checking, object manipulation, and common transformations
+---
+
+# Utilities
+
+Collection of utility functions for type checking, object manipulation, and common transformations. All exports are tree-shakeable.
+
+## Import
+
+```ts
+import {
+  // Type guards
+  isFunction, isString, isNumber, isBoolean,
+  isObject, isArray, isElement,
+  isNull, isUndefined, isNullOrUndefined,
+  isPrimitive, isSymbol, isNaN,
+  // Object manipulation
+  mergeDeep,
+  // Utilities
+  useId, clamp, range, debounce
+} from '#v0/utilities'
+```
+
+---
+
+## Type Guards
+
+Type guard functions that perform runtime type checking with TypeScript type narrowing.
+
+### isFunction
+
+Checks if a value is a function.
+
+```ts
+function isFunction(item: unknown): item is Function
+```
+
+<ParamField path="item" type="unknown">
+  The value to check
+</ParamField>
+
+<ResponseField name="returns" type="boolean">
+  True if the value is a function
+</ResponseField>
+
+#### Usage
+
+```ts
+isFunction(() => {})  // true
+isFunction('string')  // false
+
+const value: unknown = someValue
+if (isFunction(value)) {
+  value() // TypeScript knows value is a function
+}
+```
+
+---
+
+### isString
+
+Checks if a value is a string.
+
+```ts
+function isString(item: unknown): item is string
+```
+
+<ParamField path="item" type="unknown">
+  The value to check
+</ParamField>
+
+<ResponseField name="returns" type="boolean">
+  True if the value is a string
+</ResponseField>
+
+#### Usage
+
+```ts
+isString('hello')  // true
+isString(123)      // false
+
+const value: unknown = someValue
+if (isString(value)) {
+  console.log(value.toUpperCase()) // TypeScript knows value is a string
+}
+```
+
+---
+
+### isNumber
+
+Checks if a value is a number.
+
+```ts
+function isNumber(item: unknown): item is number
+```
+
+<ParamField path="item" type="unknown">
+  The value to check
+</ParamField>
+
+<ResponseField name="returns" type="boolean">
+  True if the value is a number (including NaN)
+</ResponseField>
+
+<Note>
+This returns `true` for `NaN`. Use `isNaN()` to check for NaN specifically.
+</Note>
+
+#### Usage
+
+```ts
+isNumber(123)       // true
+isNumber(NaN)       // true
+isNumber('123')     // false
+```
+
+---
+
+### isBoolean
+
+Checks if a value is a boolean.
+
+```ts
+function isBoolean(item: unknown): item is boolean
+```
+
+<ParamField path="item" type="unknown">
+  The value to check
+</ParamField>
+
+<ResponseField name="returns" type="boolean">
+  True if the value is a boolean
+</ResponseField>
+
+#### Usage
+
+```ts
+isBoolean(true)   // true
+isBoolean(false)  // true
+isBoolean(0)      // false
+isBoolean(1)      // false
+```
+
+---
+
+### isObject
+
+Checks if a value is a plain object (excludes null and arrays).
+
+```ts
+function isObject(item: unknown): item is Record<string, unknown>
+```
+
+<ParamField path="item" type="unknown">
+  The value to check
+</ParamField>
+
+<ResponseField name="returns" type="boolean">
+  True if the value is a plain object
+</ResponseField>
+
+<Note>
+Returns `false` for null and arrays, even though `typeof null === 'object'` and `typeof [] === 'object'` in JavaScript.
+</Note>
+
+#### Usage
+
+```ts
+isObject({})        // true
+isObject({ a: 1 })  // true
+isObject(null)      // false
+isObject([])        // false
+
+const value: unknown = someValue
+if (isObject(value)) {
+  console.log(value.someProperty) // TypeScript knows value is an object
+}
+```
+
+---
+
+### isArray
+
+Checks if a value is an array.
+
+```ts
+function isArray(item: unknown): item is unknown[]
+```
+
+<ParamField path="item" type="unknown">
+  The value to check
+</ParamField>
+
+<ResponseField name="returns" type="boolean">
+  True if the value is an array
+</ResponseField>
+
+#### Usage
+
+```ts
+isArray([])        // true
+isArray([1, 2, 3]) // true
+isArray('string')  // false
+isArray({})        // false
+```
+
+---
+
+### isElement
+
+Checks if a value is a DOM Element.
+
+```ts
+function isElement(item: unknown): item is Element
+```
+
+<ParamField path="item" type="unknown">
+  The value to check
+</ParamField>
+
+<ResponseField name="returns" type="boolean">
+  True if the value is a DOM Element
+</ResponseField>
+
+#### Usage
+
+```ts
+isElement(document.body) // true
+isElement(document.querySelector('div')) // true (if found)
+isElement('string')      // false
+isElement(null)          // false
+```
+
+---
+
+### isNull
+
+Checks if a value is null.
+
+```ts
+function isNull(item: unknown): item is null
+```
+
+<ParamField path="item" type="unknown">
+  The value to check
+</ParamField>
+
+<ResponseField name="returns" type="boolean">
+  True if the value is null
+</ResponseField>
+
+#### Usage
+
+```ts
+isNull(null)      // true
+isNull(undefined) // false
+isNull(0)         // false
+isNull('')        // false
+```
+
+---
+
+### isUndefined
+
+Checks if a value is undefined.
+
+```ts
+function isUndefined(item: unknown): item is undefined
+```
+
+<ParamField path="item" type="unknown">
+  The value to check
+</ParamField>
+
+<ResponseField name="returns" type="boolean">
+  True if the value is undefined
+</ResponseField>
+
+#### Usage
+
+```ts
+isUndefined(undefined) // true
+isUndefined(null)      // false
+isUndefined(0)         // false
+```
+
+---
+
+### isNullOrUndefined
+
+Checks if a value is null or undefined.
+
+```ts
+function isNullOrUndefined(item: unknown): item is null | undefined
+```
+
+<ParamField path="item" type="unknown">
+  The value to check
+</ParamField>
+
+<ResponseField name="returns" type="boolean">
+  True if the value is null or undefined
+</ResponseField>
+
+<Note>
+Uses loose equality (`== null`) which matches both null and undefined.
+</Note>
+
+#### Usage
+
+```ts
+isNullOrUndefined(null)      // true
+isNullOrUndefined(undefined) // true
+isNullOrUndefined(0)         // false
+isNullOrUndefined('')        // false
+
+// Useful for optional values
+function process(value?: string) {
+  if (!isNullOrUndefined(value)) {
+    console.log(value.toUpperCase())
+  }
+}
+```
+
+---
+
+### isPrimitive
+
+Checks if a value is a primitive (string, number, or boolean).
+
+```ts
+function isPrimitive(item: unknown): item is string | number | boolean
+```
+
+<ParamField path="item" type="unknown">
+  The value to check
+</ParamField>
+
+<ResponseField name="returns" type="boolean">
+  True if the value is a string, number, or boolean
+</ResponseField>
+
+#### Usage
+
+```ts
+isPrimitive('hello') // true
+isPrimitive(123)     // true
+isPrimitive(true)    // true
+isPrimitive({})      // false
+isPrimitive(null)    // false
+isPrimitive(undefined) // false
+```
+
+---
+
+### isSymbol
+
+Checks if a value is a symbol.
+
+```ts
+function isSymbol(item: unknown): item is symbol
+```
+
+<ParamField path="item" type="unknown">
+  The value to check
+</ParamField>
+
+<ResponseField name="returns" type="boolean">
+  True if the value is a symbol
+</ResponseField>
+
+#### Usage
+
+```ts
+isSymbol(Symbol('test')) // true
+isSymbol('symbol')       // false
+```
+
+---
+
+### isNaN
+
+Checks if a value is NaN (Not a Number).
+
+```ts
+function isNaN(item: unknown): item is number
+```
+
+<ParamField path="item" type="unknown">
+  The value to check
+</ParamField>
+
+<ResponseField name="returns" type="boolean">
+  True if the value is NaN
+</ResponseField>
+
+<Note>
+Uses `Number.isNaN()` which only returns true for the actual NaN value, unlike the global `isNaN()` which coerces the argument to a number first.
+</Note>
+
+#### Usage
+
+```ts
+isNaN(NaN)         // true
+isNaN(123)         // false
+isNaN('hello')     // false (unlike global isNaN)
+isNaN(undefined)   // false (unlike global isNaN)
+```
+
+---
+
+## Object Manipulation
+
+### mergeDeep
+
+Deeply merges source objects into a target object.
+
+```ts
+function mergeDeep<T extends object>(
+  target: T,
+  ...sources: DeepPartial<T>[]
+): T
+```
+
+<ParamField path="target" type="T extends object">
+  The target object to merge into (will be mutated)
+</ParamField>
+
+<ParamField path="sources" type="DeepPartial<T>[]">
+  One or more source objects to merge from
+</ParamField>
+
+<ResponseField name="returns" type="T">
+  The mutated target object
+</ResponseField>
+
+<Warning>
+- Mutates the target object in place
+- Arrays are replaced, not merged
+- Protected against prototype pollution (`__proto__`, `constructor`, `prototype`)
+</Warning>
+
+#### Usage
+
+```ts
+// Basic merge
+const target = { a: 1, b: { c: 2 } }
+mergeDeep(target, { b: { d: 3 } })
+// target is now { a: 1, b: { c: 2, d: 3 } }
+
+// Multiple sources
+const result = mergeDeep({}, { a: 1 }, { b: 2 }, { c: 3 })
+// result is { a: 1, b: 2, c: 3 }
+
+// Arrays are replaced
+mergeDeep({ arr: [1, 2] }, { arr: [3] })
+// { arr: [3] }
+
+// Deep nested objects
+const config = {
+  theme: {
+    colors: { primary: 'blue' },
+    spacing: { base: 16 }
+  }
+}
+
+mergeDeep(config, {
+  theme: {
+    colors: { secondary: 'red' }
+  }
+})
+// {
+//   theme: {
+//     colors: { primary: 'blue', secondary: 'red' },
+//     spacing: { base: 16 }
+//   }
+// }
+```
+
+---
+
+## Utilities
+
+### useId
+
+Generates a unique ID, using Vue's useId when in component context.
+
+```ts
+function useId(): string
+```
+
+<ResponseField name="returns" type="string">
+  A unique string ID
+</ResponseField>
+
+<Note>
+- In component setup/lifecycle: Uses Vue's `useId()` for SSR-safe hydration
+- Outside components: Falls back to sequential counter (`v0-0`, `v0-1`, ...)
+- Vapor mode compatible
+</Note>
+
+#### Usage
+
+```ts
+// In component setup - SSR safe
+const id = useId() // 'v:0', 'v:1', etc. (Vue's format)
+
+// Outside component - counter fallback
+const id = useId() // 'v0-0', 'v0-1', etc.
+```
+
+```vue
+<script setup lang="ts">
+import { useId } from '#v0/utilities'
+
+const inputId = useId()
+const labelId = useId()
+</script>
+
+<template>
+  <div>
+    <label :for="inputId" :id="labelId">
+      Username
+    </label>
+    <input :id="inputId" :aria-labelledby="labelId" />
+  </div>
+</template>
+```
+
+---
+
+### clamp
+
+Clamps a value between a minimum and maximum.
+
+```ts
+function clamp(value: number, min = 0, max = 1): number
+```
+
+<ParamField path="value" type="number" required>
+  The value to clamp
+</ParamField>
+
+<ParamField path="min" type="number" default="0">
+  The minimum value
+</ParamField>
+
+<ParamField path="max" type="number" default="1">
+  The maximum value
+</ParamField>
+
+<ResponseField name="returns" type="number">
+  The clamped value
+</ResponseField>
+
+#### Usage
+
+```ts
+clamp(5, 0, 10)   // 5
+clamp(-5, 0, 10)  // 0
+clamp(15, 0, 10)  // 10
+clamp(0.5)        // 0.5 (default range 0-1)
+clamp(1.5)        // 1 (default max is 1)
+
+// Useful for percentages
+const percentage = clamp(progress / total, 0, 1)
+
+// Useful for ranges
+const volume = clamp(newVolume, 0, 100)
+```
+
+---
+
+### range
+
+Creates an array of sequential numbers.
+
+```ts
+function range(length: number, start = 0): number[]
+```
+
+<ParamField path="length" type="number" required>
+  The length of the array to create
+</ParamField>
+
+<ParamField path="start" type="number" default="0">
+  The starting index
+</ParamField>
+
+<ResponseField name="returns" type="number[]">
+  An array of sequential numbers
+</ResponseField>
+
+#### Usage
+
+```ts
+range(3)      // [0, 1, 2]
+range(3, 1)   // [1, 2, 3]
+range(5, 10)  // [10, 11, 12, 13, 14]
+range(0)      // []
+
+// Useful for rendering
+const items = range(10).map(i => ({ id: i, name: `Item ${i}` }))
+
+// Useful for pagination
+const pages = range(totalPages, 1) // [1, 2, 3, ...]
+```
+
+---
+
+### debounce
+
+Debounces a function call by the specified delay.
+
+```ts
+function debounce<T extends (...args: any[]) => any>(
+  fn: T,
+  delay: number
+): {
+  (...args: Parameters<T>): void
+  clear(): void
+  immediate(...args: Parameters<T>): void
+}
+```
+
+<ParamField path="fn" type="T" required>
+  The function to debounce
+</ParamField>
+
+<ParamField path="delay" type="number" required>
+  The delay in milliseconds
+</ParamField>
+
+<ResponseField name="returns" type="DebouncedFunction">
+  A debounced function with `clear()` and `immediate()` methods
+</ResponseField>
+
+#### Usage
+
+```ts
+const debouncedFn = debounce(() => console.log('called'), 500)
+
+// Will call after 500ms of inactivity
+debouncedFn()
+
+// Cancel pending call
+debouncedFn.clear()
+
+// Call immediately
+debouncedFn.immediate()
+```
+
+```vue
+<script setup lang="ts">
+import { debounce } from '#v0/utilities'
+
+const search = ref('')
+
+const performSearch = debounce((query: string) => {
+  console.log('Searching for:', query)
+  // Perform API call
+}, 300)
+
+watch(search, (value) => {
+  performSearch(value)
+})
+
+onUnmounted(() => {
+  performSearch.clear()
+})
+</script>
+
+<template>
+  <input v-model="search" placeholder="Search..." />
+</template>
+```

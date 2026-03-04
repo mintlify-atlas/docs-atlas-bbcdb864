@@ -1,0 +1,422 @@
+---
+title: PostHog Adapter
+description: PostHog feature flag adapter for Vuetify Zero
+---
+
+# PostHog Adapter
+
+The `PostHogFeatureAdapter` integrates PostHog feature flags with Vuetify Zero's `useFeatures` composable.
+
+## Import
+
+```typescript
+import { PostHogFeatureAdapter } from '@vuetify/v0/features/adapters/posthog'
+```
+
+## Installation
+
+Install PostHog as a peer dependency:
+
+```bash
+pnpm add posthog-js
+```
+
+## Basic Usage
+
+```typescript
+import { createApp } from 'vue'
+import { createFeaturesPlugin } from '@vuetify/v0/features'
+import { PostHogFeatureAdapter } from '@vuetify/v0/features/adapters/posthog'
+import posthog from 'posthog-js'
+
+posthog.init('your-api-key', {
+  api_host: 'https://app.posthog.com',
+  loaded: (ph) => {
+    const adapter = new PostHogFeatureAdapter(ph)
+    
+    const app = createApp(App)
+    app.use(createFeaturesPlugin({ adapter }))
+    app.mount('#app')
+  }
+})
+```
+
+## With User Identification
+
+```typescript
+import posthog from 'posthog-js'
+import { PostHogFeatureAdapter } from '@vuetify/v0/features/adapters/posthog'
+
+posthog.init('your-api-key', {
+  api_host: 'https://app.posthog.com'
+})
+
+// Identify user
+posthog.identify('user-123', {
+  email: 'user@example.com',
+  plan: 'enterprise',
+  signupDate: '2024-01-15'
+})
+
+const adapter = new PostHogFeatureAdapter(posthog)
+
+app.use(createFeaturesPlugin({ adapter }))
+```
+
+## Using in Components
+
+```vue
+<script setup lang="ts">
+import { useFeatures } from '@vuetify/v0/features'
+import { computed } from 'vue'
+
+const features = useFeatures()
+
+// Check if feature is enabled
+const showBetaFeature = computed(() => features.has('beta-dashboard'))
+
+// Get feature flag payload
+const theme = computed(() => 
+  features.variation('theme-experiment', 'light')
+)
+</script>
+
+<template>
+  <div>
+    <BetaDashboard v-if="showBetaFeature" />
+    <Dashboard v-else />
+    
+    <div :data-theme="theme">
+      Content
+    </div>
+  </div>
+</template>
+```
+
+## Feature Flags
+
+### Boolean Flags
+
+```typescript
+const features = useFeatures()
+
+// Check if feature is enabled
+if (features.has('new-checkout')) {
+  showNewCheckout()
+}
+
+// Get all enabled features
+features.selectedIds.value // ['new-checkout', 'dark-mode']
+```
+
+### Flags with Variants
+
+```typescript
+const features = useFeatures()
+
+// Get variant value
+const buttonColor = features.variation('button-color-test', 'blue')
+// Returns: 'red', 'green', 'blue', or fallback 'blue'
+
+// Variant structure
+interface FlagWithVariant {
+  $value: boolean        // Always true for variants
+  $variation: unknown    // Variant value
+}
+```
+
+### Flags with Payloads
+
+```typescript
+const features = useFeatures()
+
+// Get payload data
+const config = features.variation('app-config', {})
+// Returns: { maxItems: 50, showAds: false }
+
+const pricingTiers = features.variation('pricing', [])
+// Returns: [10, 25, 50]
+```
+
+## Feature Flag Types
+
+PostHog flags are transformed based on their configuration:
+
+```typescript
+// Simple boolean flag
+posthog.isFeatureEnabled('simple-flag') // true
+// Transformed to: { 'simple-flag': true }
+
+// Flag with string variant
+posthog.getFeatureFlag('experiment') // 'variant-a'
+// Transformed to:
+{
+  'experiment': {
+    $value: true,
+    $variation: 'variant-a'
+  }
+}
+
+// Flag with payload
+posthog.getFeatureFlagPayload('config') // { theme: 'dark' }
+// Transformed to:
+{
+  'config': {
+    $value: true,
+    $variation: { theme: 'dark' }
+  }
+}
+```
+
+## Change Detection
+
+The adapter automatically syncs when flags change:
+
+```typescript
+import { watch } from 'vue'
+
+const features = useFeatures()
+
+watch(features.selectedIds, (enabledFlags) => {
+  console.log('Active features:', enabledFlags)
+  
+  // Track flag changes
+  posthog.capture('feature_flags_changed', {
+    flags: enabledFlags
+  })
+})
+```
+
+## Conditional Feature Access
+
+```vue
+<script setup lang="ts">
+import { useFeatures } from '@vuetify/v0/features'
+import { computed } from 'vue'
+
+const features = useFeatures()
+
+const canAccessAdmin = computed(() => 
+  features.has('admin-panel')
+)
+
+const maxUploads = computed(() => 
+  features.variation('upload-limit', 5)
+)
+</script>
+
+<template>
+  <nav>
+    <RouterLink v-if="canAccessAdmin" to="/admin">
+      Admin
+    </RouterLink>
+  </nav>
+  
+  <FileUpload :max-files="maxUploads" />
+</template>
+```
+
+## SSR Support
+
+The adapter includes SSR safety checks:
+
+```typescript
+import { PostHogFeatureAdapter } from '@vuetify/v0/features/adapters/posthog'
+import posthog from 'posthog-js'
+
+// Only initialize in browser
+if (typeof window !== 'undefined') {
+  posthog.init('api-key')
+  const adapter = new PostHogFeatureAdapter(posthog)
+  
+  app.use(createFeaturesPlugin({ adapter }))
+}
+```
+
+The adapter's `setup()` method returns empty flags `{}` when not in browser.
+
+## Update User Properties
+
+```typescript
+import posthog from 'posthog-js'
+
+// Update user properties
+posthog.setPersonProperties({
+  plan: 'pro',
+  beta_tester: true
+})
+
+// Flags will update based on new properties
+```
+
+## Group Flags
+
+```typescript
+import posthog from 'posthog-js'
+
+// Associate user with group
+posthog.group('company', 'company-123', {
+  name: 'Acme Inc',
+  plan: 'enterprise'
+})
+
+// Flags can target groups
+const features = useFeatures()
+const hasEnterpriseFeature = features.has('enterprise-analytics')
+```
+
+## TypeScript
+
+```typescript
+import type { PostHog } from 'posthog-js'
+import { PostHogFeatureAdapter } from '@vuetify/v0/features/adapters/posthog'
+
+const client: PostHog = posthog.init('api-key')
+
+const adapter = new PostHogFeatureAdapter(client)
+
+// Fully typed
+adapter.setup((flags) => {
+  // flags: FeaturesAdapterFlags
+})
+```
+
+## Bootstrap Flags
+
+Load flags from server-side for faster initial render:
+
+```typescript
+// Server-side
+const flags = await posthog.getFeatureFlags('user-123')
+
+// Client-side
+posthog.init('api-key', {
+  bootstrap: {
+    featureFlags: flags
+  }
+})
+
+const adapter = new PostHogFeatureAdapter(posthog)
+// Flags available immediately
+```
+
+## Cleanup
+
+The adapter automatically unsubscribes from flag changes on unmount:
+
+```typescript
+const adapter = new PostHogFeatureAdapter(posthog)
+
+// On app unmount, adapter.dispose() is called automatically
+// This removes the onFeatureFlags callback
+```
+
+## Multiple Adapters
+
+```typescript
+import { PostHogFeatureAdapter } from '@vuetify/v0/features/adapters/posthog'
+import { FlagsmithFeatureAdapter } from '@vuetify/v0/features/adapters/flagsmith'
+import posthog from 'posthog-js'
+import flagsmith from 'flagsmith'
+
+posthog.init('ph-api-key')
+const phAdapter = new PostHogFeatureAdapter(posthog)
+
+const fsAdapter = new FlagsmithFeatureAdapter(flagsmith, {
+  environmentID: 'fs-env-id'
+})
+
+app.use(createFeaturesPlugin({
+  adapter: [phAdapter, fsAdapter]
+}))
+
+// Flags from both sources are merged
+```
+
+## Debugging
+
+```typescript
+import posthog from 'posthog-js'
+import { watch } from 'vue'
+import { useFeatures } from '@vuetify/v0/features'
+
+// Enable PostHog debug mode
+posthog.debug()
+
+const features = useFeatures()
+
+// Log flag changes
+watch(features.selectedIds, (flags) => {
+  console.log('Active flags:', flags)
+  
+  // Log individual flag states
+  flags.forEach(flag => {
+    const variation = features.variation(flag)
+    console.log(`${flag}:`, variation)
+  })
+})
+```
+
+## API Reference
+
+### Constructor
+
+```typescript
+class PostHogFeatureAdapter implements FeaturesAdapterInterface
+
+constructor(client: PostHog)
+```
+
+### Parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `client` | `PostHog` | PostHog client instance |
+
+### Methods
+
+| Method | Description |
+|--------|-------------|
+| `setup(onUpdate)` | Initialize adapter and register callback |
+| `dispose()` | Unsubscribe from flag changes |
+
+### Flag Structure
+
+```typescript
+type FeaturesAdapterFlags = Record<string, boolean | {
+  $value: boolean
+  $variation: unknown
+}>
+```
+
+## PostHog Integration
+
+The adapter uses these PostHog APIs:
+
+| API | Usage |
+|-----|-------|
+| `featureFlags.getFlags()` | Get all active flags |
+| `isFeatureEnabled(key)` | Check if flag is enabled |
+| `getFeatureFlag(key)` | Get flag variant |
+| `getFeatureFlagPayload(key)` | Get flag payload |
+| `onFeatureFlags(callback)` | Subscribe to changes |
+
+## Best Practices
+
+<Note>
+- **Identify users early** - Call `posthog.identify()` before mounting the app
+- **Use payloads for config** - Store complex configuration in flag payloads
+- **Provide fallbacks** - Always specify fallback values in `variation()` calls
+- **Bootstrap in SSR** - Pre-load flags server-side for faster hydration
+</Note>
+
+<Warning>
+The adapter only works in browser environments. It returns empty flags `{}` during SSR.
+</Warning>
+
+## See Also
+
+- [Flagsmith Adapter](/adapters/features-flagsmith) - Flagsmith integration
+- [LaunchDarkly Adapter](/adapters/features-launchdarkly) - LaunchDarkly integration
+- [useFeatures](/composables/use-features) - Feature flags composable
+- [PostHog Documentation](https://posthog.com/docs) - Official PostHog docs

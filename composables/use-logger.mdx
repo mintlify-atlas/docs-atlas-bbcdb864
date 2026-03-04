@@ -1,0 +1,306 @@
+---
+title: useLogger
+description: Logging composable with adapter pattern supporting console, consola, and pino
+---
+
+Logging with multiple log levels and adapter pattern for console, consola, and pino integration.
+
+## Features
+
+- Multiple log levels (trace, debug, info, warn, error, fatal)
+- Adapter pattern for console/consola/pino integration
+- Enable/disable logging
+- Level-based filtering
+- Prefix support
+
+## Installation
+
+```ts
+import { createLoggerPlugin } from '@vuetify/v0'
+
+const app = createApp(App)
+app.use(createLoggerPlugin({
+  level: 'info',
+  prefix: '[MyApp]',
+}))
+```
+
+## Basic Usage
+
+```vue
+<script setup lang="ts">
+import { useLogger } from '@vuetify/v0'
+
+const logger = useLogger()
+
+logger.info('Application started')
+logger.debug('Debug information', { data: 'value' })
+logger.error('An error occurred', error)
+</script>
+```
+
+## API Reference
+
+### createLoggerPlugin()
+
+Creates a logger plugin.
+
+<ParamField path="options" type="LoggerPluginOptions">
+  Plugin configuration
+  
+  <ParamField path="level" type="LogLevel" default="'info'">
+    Minimum log level to output:
+    - `'trace'`: All messages
+    - `'debug'`: Debug and above
+    - `'info'`: Info and above (default)
+    - `'warn'`: Warnings and above
+    - `'error'`: Errors only
+    - `'fatal'`: Fatal errors only
+    - `'silent'`: No output
+  </ParamField>
+  
+  <ParamField path="prefix" type="string">
+    Prefix for all log messages
+  </ParamField>
+  
+  <ParamField path="enabled" type="boolean" default="true">
+    Enable or disable logging
+  </ParamField>
+  
+  <ParamField path="adapter" type="LoggerAdapter">
+    Logger adapter (defaults to Vuetify0LoggerAdapter)
+  </ParamField>
+  
+  <ParamField path="namespace" type="string" default="'v0:logger'">
+    The namespace for the logger context
+  </ParamField>
+</ParamField>
+
+### LoggerContext
+
+<ResponseField name="debug" type="(message: string, ...args: unknown[]) => void">
+  Log debug message (level: 1)
+</ResponseField>
+
+<ResponseField name="info" type="(message: string, ...args: unknown[]) => void">
+  Log info message (level: 2)
+</ResponseField>
+
+<ResponseField name="warn" type="(message: string, ...args: unknown[]) => void">
+  Log warning message (level: 3)
+</ResponseField>
+
+<ResponseField name="error" type="(message: string, ...args: unknown[]) => void">
+  Log error message (level: 4)
+</ResponseField>
+
+<ResponseField name="trace" type="(message: string, ...args: unknown[]) => void">
+  Log trace message (level: 0)
+</ResponseField>
+
+<ResponseField name="fatal" type="(message: string, ...args: unknown[]) => void">
+  Log fatal error message (level: 5)
+</ResponseField>
+
+<ResponseField name="level" type="(level: LogLevel) => void">
+  Change the current log level
+  
+  Example:
+  ```ts
+  logger.level('debug')
+  ```
+</ResponseField>
+
+<ResponseField name="current" type="() => LogLevel">
+  Get the current log level
+  
+  Example:
+  ```ts
+  const level = logger.current() // 'info'
+  ```
+</ResponseField>
+
+<ResponseField name="enable" type="() => void">
+  Enable logging
+</ResponseField>
+
+<ResponseField name="disable" type="() => void">
+  Disable logging
+</ResponseField>
+
+<ResponseField name="enabled" type="() => boolean">
+  Check if logging is enabled
+</ResponseField>
+
+## Log Levels
+
+Log levels in order from lowest to highest:
+
+1. **trace** (0): Very detailed debugging information
+2. **debug** (1): Debugging information
+3. **info** (2): Informational messages
+4. **warn** (3): Warning messages
+5. **error** (4): Error messages
+6. **fatal** (5): Fatal error messages
+7. **silent** (6): No output
+
+```ts
+const logger = useLogger()
+
+// Set level to 'warn' - only warn, error, and fatal will be logged
+logger.level('warn')
+
+logger.trace('Not logged')
+logger.debug('Not logged')
+logger.info('Not logged')
+logger.warn('Logged') // ✓
+logger.error('Logged') // ✓
+logger.fatal('Logged') // ✓
+```
+
+## Examples
+
+### Basic Logging
+
+```ts
+import { useLogger } from '@vuetify/v0'
+
+const logger = useLogger()
+
+logger.info('User logged in', { userId: 123 })
+logger.error('Failed to load data', error)
+logger.debug('Request payload', payload)
+```
+
+### Dynamic Level Control
+
+```vue
+<script setup lang="ts">
+import { useLogger } from '@vuetify/v0'
+import { ref } from 'vue'
+
+const logger = useLogger()
+const currentLevel = ref(logger.current())
+
+const changeLevel = (level: LogLevel) => {
+  logger.level(level)
+  currentLevel.value = level
+}
+</script>
+
+<template>
+  <div>
+    <p>Current level: {{ currentLevel }}</p>
+    <button @click="changeLevel('debug')">Debug</button>
+    <button @click="changeLevel('info')">Info</button>
+    <button @click="changeLevel('warn')">Warn</button>
+  </div>
+</template>
+```
+
+### Enable/Disable Logging
+
+```ts
+const logger = useLogger()
+
+// Disable logging
+logger.disable()
+logger.info('This will not be logged')
+
+// Enable logging
+logger.enable()
+logger.info('This will be logged')
+
+// Check if enabled
+if (logger.enabled()) {
+  logger.debug('Logging is enabled')
+}
+```
+
+## Adapters
+
+### Console Adapter (Default)
+
+```ts
+import { createLoggerPlugin, Vuetify0LoggerAdapter } from '@vuetify/v0'
+
+app.use(createLoggerPlugin({
+  adapter: new Vuetify0LoggerAdapter({ prefix: '[App]' }),
+}))
+```
+
+### Consola Adapter
+
+```ts
+import { ConsolaLoggerAdapter } from '@vuetify/v0'
+import { createConsola } from 'consola'
+
+const consola = createConsola({
+  level: 3,
+})
+
+app.use(createLoggerPlugin({
+  adapter: new ConsolaLoggerAdapter(consola),
+}))
+```
+
+### Pino Adapter
+
+```ts
+import { PinoLoggerAdapter } from '@vuetify/v0'
+import pino from 'pino'
+
+const logger = pino({
+  level: 'info',
+})
+
+app.use(createLoggerPlugin({
+  adapter: new PinoLoggerAdapter(logger),
+}))
+```
+
+### Custom Adapter
+
+```ts
+import type { LoggerAdapter } from '@vuetify/v0'
+
+class MyLoggerAdapter implements LoggerAdapter {
+  debug(message: string, ...args: unknown[]) {
+    myService.log('debug', message, ...args)
+  }
+  
+  info(message: string, ...args: unknown[]) {
+    myService.log('info', message, ...args)
+  }
+  
+  warn(message: string, ...args: unknown[]) {
+    myService.log('warn', message, ...args)
+  }
+  
+  error(message: string, ...args: unknown[]) {
+    myService.log('error', message, ...args)
+  }
+  
+  trace(message: string, ...args: unknown[]) {
+    myService.log('trace', message, ...args)
+  }
+  
+  fatal(message: string, ...args: unknown[]) {
+    myService.log('fatal', message, ...args)
+  }
+}
+
+app.use(createLoggerPlugin({
+  adapter: new MyLoggerAdapter(),
+}))
+```
+
+## Development Mode
+
+In development mode, the logger is exposed on `window` for debugging:
+
+```ts
+// In browser console (dev mode only)
+window.__v0Logger__.level('trace')
+window.__v0Logger__.info('Test message')
+```

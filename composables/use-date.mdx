@@ -1,0 +1,309 @@
+---
+title: useDate
+description: Date manipulation composable with adapter pattern for date operations
+---
+
+Date manipulation with adapter pattern supporting multiple date libraries and locale-aware formatting.
+
+## Features
+
+- Adapter pattern for date library abstraction
+- Locale-aware formatting via Intl.DateTimeFormat
+- Integration with useLocale for automatic locale sync
+- Temporal API support (Vuetify0DateAdapter)
+- Arithmetic operations (add/subtract days, months, etc.)
+- Comparison utilities (isBefore, isAfter, etc.)
+
+## Installation
+
+```ts
+import { createDatePlugin, Vuetify0DateAdapter } from '@vuetify/v0'
+
+const app = createApp(App)
+app.use(createDatePlugin({ 
+  adapter: new Vuetify0DateAdapter() 
+}))
+```
+
+## Basic Usage
+
+```vue
+<script setup lang="ts">
+import { useDate } from '@vuetify/v0'
+
+const { adapter, locale } = useDate()
+
+const today = adapter.date()
+const formatted = adapter.format(today, 'fullDate')
+const nextWeek = adapter.addDays(today, 7)
+</script>
+
+<template>
+  <div>
+    <p>Today: {{ formatted }}</p>
+    <p>Locale: {{ locale }}</p>
+  </div>
+</template>
+```
+
+## API Reference
+
+### createDatePlugin()
+
+Creates a date plugin with adapter.
+
+<ParamField path="options" type="DatePluginOptions" required>
+  Plugin configuration
+  
+  <ParamField path="adapter" type="DateAdapter<Z>" required>
+    Date adapter instance (e.g., `new Vuetify0DateAdapter()`)
+  </ParamField>
+  
+  <ParamField path="locale" type="string">
+    Default locale for formatting (e.g., 'en-US', 'de-DE')
+  </ParamField>
+  
+  <ParamField path="locales" type="Record<string, string>">
+    Short locale codes mapped to full Intl locale strings
+    
+    Example: `{ en: 'en-US', de: 'de-DE' }`
+  </ParamField>
+  
+  <ParamField path="namespace" type="string" default="'v0:date'">
+    The namespace for the date context
+  </ParamField>
+</ParamField>
+
+### DateContext
+
+<ResponseField name="adapter" type="DateAdapter<Z>">
+  The date adapter instance with date manipulation methods
+</ResponseField>
+
+<ResponseField name="locale" type="ComputedRef<string | undefined>">
+  Current locale (reactive, synced with useLocale if available)
+</ResponseField>
+
+### DateAdapter Methods
+
+#### Construction
+
+<ResponseField name="date" type="(value?: any) => Z | null">
+  Create a date from various inputs (ISO string, timestamp, Date object, etc.)
+</ResponseField>
+
+<ResponseField name="toJsDate" type="(date: Z) => Date">
+  Convert adapter date to JavaScript Date
+</ResponseField>
+
+<ResponseField name="parseISO" type="(iso: string) => Z">
+  Parse ISO 8601 string to date
+</ResponseField>
+
+<ResponseField name="toISO" type="(date: Z) => string">
+  Convert date to ISO 8601 string
+</ResponseField>
+
+<ResponseField name="isValid" type="(value: any) => boolean">
+  Check if a value is a valid date
+</ResponseField>
+
+#### Formatting
+
+<ResponseField name="format" type="(date: Z, format: string) => string">
+  Format date using preset formats:
+  - `'fullDate'`: Full date (e.g., 'January 15, 2024')
+  - `'shortDate'`: Short date (e.g., '1/15/24')
+  - `'normalDate'`: Normal date (e.g., 'Jan 15, 2024')
+  - `'year'`: Year only (e.g., '2024')
+  - `'month'`: Full month (e.g., 'January')
+  - `'monthShort'`: Short month (e.g., 'Jan')
+  - `'dayOfMonth'`: Day of month (e.g., '15')
+  - `'hours12h'`: 12-hour format (e.g., '2 PM')
+  - `'hours24h'`: 24-hour format (e.g., '14')
+  - `'fullTime'`: Full time with seconds
+</ResponseField>
+
+<ResponseField name="formatByString" type="(date: Z, format: string) => string">
+  Format date using token string:
+  - `YYYY`: 4-digit year
+  - `MM`: 2-digit month
+  - `DD`: 2-digit day
+  - `HH`: 2-digit hours (24h)
+  - `hh`: 2-digit hours (12h)
+  - `mm`: 2-digit minutes
+  - `ss`: 2-digit seconds
+  - `A`: AM/PM
+</ResponseField>
+
+#### Arithmetic
+
+<ResponseField name="addMinutes" type="(date: Z, amount: number) => Z">
+  Add/subtract minutes (negative for subtraction)
+</ResponseField>
+
+<ResponseField name="addHours" type="(date: Z, amount: number) => Z">
+  Add/subtract hours
+</ResponseField>
+
+<ResponseField name="addDays" type="(date: Z, amount: number) => Z">
+  Add/subtract days
+</ResponseField>
+
+<ResponseField name="addWeeks" type="(date: Z, amount: number) => Z">
+  Add/subtract weeks
+</ResponseField>
+
+<ResponseField name="addMonths" type="(date: Z, amount: number) => Z">
+  Add/subtract months
+</ResponseField>
+
+<ResponseField name="addYears" type="(date: Z, amount: number) => Z">
+  Add/subtract years
+</ResponseField>
+
+#### Comparison
+
+<ResponseField name="isAfter" type="(date: Z, comparing: Z) => boolean">
+  Check if date is after comparing date
+</ResponseField>
+
+<ResponseField name="isBefore" type="(date: Z, comparing: Z) => boolean">
+  Check if date is before comparing date
+</ResponseField>
+
+<ResponseField name="isEqual" type="(date: Z, comparing: Z) => boolean">
+  Check if dates are equal
+</ResponseField>
+
+<ResponseField name="isSameDay" type="(date: Z, comparing: Z) => boolean">
+  Check if dates are on the same day
+</ResponseField>
+
+<ResponseField name="isSameMonth" type="(date: Z, comparing: Z) => boolean">
+  Check if dates are in the same month
+</ResponseField>
+
+<ResponseField name="isSameYear" type="(date: Z, comparing: Z) => boolean">
+  Check if dates are in the same year
+</ResponseField>
+
+<ResponseField name="isWithinRange" type="(date: Z, range: [Z, Z]) => boolean">
+  Check if date is within range (inclusive)
+</ResponseField>
+
+#### Boundaries
+
+<ResponseField name="startOfDay" type="(date: Z) => Z">
+  Get start of day (midnight)
+</ResponseField>
+
+<ResponseField name="endOfDay" type="(date: Z) => Z">
+  Get end of day (23:59:59)
+</ResponseField>
+
+<ResponseField name="startOfWeek" type="(date: Z, firstDayOfWeek?: number) => Z">
+  Get start of week (0 = Sunday, 1 = Monday)
+</ResponseField>
+
+<ResponseField name="endOfWeek" type="(date: Z) => Z">
+  Get end of week
+</ResponseField>
+
+<ResponseField name="startOfMonth" type="(date: Z) => Z">
+  Get start of month
+</ResponseField>
+
+<ResponseField name="endOfMonth" type="(date: Z) => Z">
+  Get end of month
+</ResponseField>
+
+<ResponseField name="startOfYear" type="(date: Z) => Z">
+  Get start of year
+</ResponseField>
+
+<ResponseField name="endOfYear" type="(date: Z) => Z">
+  Get end of year
+</ResponseField>
+
+#### Getters
+
+<ResponseField name="getYear" type="(date: Z) => number">
+  Get year (4-digit)
+</ResponseField>
+
+<ResponseField name="getMonth" type="(date: Z) => number">
+  Get month (0-indexed: 0 = January)
+</ResponseField>
+
+<ResponseField name="getDate" type="(date: Z) => number">
+  Get day of month (1-31)
+</ResponseField>
+
+<ResponseField name="getHours" type="(date: Z) => number">
+  Get hours (0-23)
+</ResponseField>
+
+<ResponseField name="getMinutes" type="(date: Z) => number">
+  Get minutes (0-59)
+</ResponseField>
+
+<ResponseField name="getSeconds" type="(date: Z) => number">
+  Get seconds (0-59)
+</ResponseField>
+
+<ResponseField name="getDiff" type="(date: Z, comparing: Z | string, unit?: string) => number">
+  Get difference between dates in specified unit (days, hours, minutes, etc.)
+</ResponseField>
+
+## Examples
+
+### Date Arithmetic
+
+```ts
+const { adapter } = useDate()
+
+const today = adapter.date()
+const tomorrow = adapter.addDays(today, 1)
+const nextWeek = adapter.addWeeks(today, 1)
+const nextMonth = adapter.addMonths(today, 1)
+```
+
+### Date Comparison
+
+```ts
+const { adapter } = useDate()
+
+const date1 = adapter.date('2024-01-15')
+const date2 = adapter.date('2024-01-20')
+
+const isAfter = adapter.isAfter(date2, date1) // true
+const isSameMonth = adapter.isSameMonth(date1, date2) // true
+```
+
+### Locale Integration
+
+```ts
+import { createDatePlugin, createLocalePlugin, Vuetify0DateAdapter } from '@vuetify/v0'
+
+app.use(createLocalePlugin({
+  default: 'en',
+  messages: {
+    en: { hello: 'Hello' },
+    de: { hello: 'Hallo' },
+  },
+}))
+
+app.use(createDatePlugin({ 
+  adapter: new Vuetify0DateAdapter(),
+  locales: { en: 'en-US', de: 'de-DE' },
+}))
+
+// Date formatting will automatically use the selected locale
+const locale = useLocale()
+locale.select('de')
+
+const { adapter } = useDate()
+const date = adapter.date()
+const formatted = adapter.format(date, 'fullDate') // German format
+```

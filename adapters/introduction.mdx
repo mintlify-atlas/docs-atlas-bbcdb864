@@ -1,0 +1,97 @@
+---
+title: Adapters Overview
+description: Learn about adapter patterns in Vuetify Zero for extensible data handling, logging, theming, and feature flags
+---
+
+# Adapters
+
+Adapters provide pluggable implementations for core Vuetify Zero composables, enabling integration with external services and custom logic.
+
+## Adapter Types
+
+Vuetify Zero includes adapters for:
+
+### Data Table Adapters
+
+- **Client Adapter** - Client-side filtering, sorting, and pagination
+- **Server Adapter** - Server-side data processing with loading states
+- **Virtual Adapter** - Virtual scrolling for large datasets
+
+### Feature Flag Adapters
+
+- **Flagsmith** - Flagsmith feature flag integration
+- **LaunchDarkly** - LaunchDarkly SDK integration
+- **PostHog** - PostHog feature flags
+
+### Logger Adapters
+
+- **Consola** - Consola logging library integration
+- **Pino** - Pino structured logging
+- **V0** - Built-in console logger with formatting
+
+### Core Adapters
+
+- **Locale V0** - Translation and number formatting with Intl API
+- **Permissions V0** - RBAC/ABAC permission checking
+- **Storage Memory** - In-memory storage adapter
+- **Theme V0** - CSS custom property injection
+
+## Adapter Pattern
+
+All adapters implement a common interface pattern:
+
+```typescript
+interface Adapter {
+  setup?: (context: Context) => void
+  // Adapter-specific methods
+}
+```
+
+## Using Adapters
+
+Adapters are passed to composables or plugins during initialization:
+
+```typescript
+import { createDataTable } from '@vuetify/v0/data-table'
+import { ServerAdapter } from '@vuetify/v0/data-table/adapters/server'
+
+const table = createDataTable({
+  items: data,
+  adapter: new ServerAdapter({ total: 100 })
+})
+```
+
+## Custom Adapters
+
+You can create custom adapters by implementing the required interface:
+
+```typescript
+import { LoggerAdapter } from '@vuetify/v0/logger'
+
+class CustomLoggerAdapter implements LoggerAdapter {
+  debug(message: string, ...args: unknown[]) {
+    // Your implementation
+  }
+  info(message: string, ...args: unknown[]) {
+    // Your implementation
+  }
+  // ... other methods
+}
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Data Table Adapters" icon="table" href="/adapters/data-table-client">
+    Client, server, and virtual scrolling adapters
+  </Card>
+  <Card title="Feature Flags" icon="flag" href="/adapters/features-flagsmith">
+    External feature flag service integration
+  </Card>
+  <Card title="Logging" icon="terminal" href="/adapters/logger-consola">
+    Consola, Pino, and built-in loggers
+  </Card>
+  <Card title="Core Adapters" icon="puzzle" href="/adapters/locale-v0">
+    Locale, permissions, storage, and theme
+  </Card>
+</CardGroup>

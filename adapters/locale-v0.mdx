@@ -1,0 +1,423 @@
+---
+title: Locale V0 Adapter
+description: Built-in locale adapter with translation and number formatting
+---
+
+# Locale V0 Adapter (Vuetify0LocaleAdapter)
+
+The `Vuetify0LocaleAdapter` is the default locale adapter for Vuetify Zero, providing translation and number formatting using the Intl API.
+
+## Import
+
+```typescript
+import { Vuetify0LocaleAdapter } from '@vuetify/v0/locale/adapters/v0'
+```
+
+## Basic Usage
+
+```typescript
+import { createApp } from 'vue'
+import { createLocalePlugin } from '@vuetify/v0/locale'
+import { Vuetify0LocaleAdapter } from '@vuetify/v0/locale/adapters/v0'
+
+const app = createApp(App)
+
+app.use(createLocalePlugin({
+  adapter: new Vuetify0LocaleAdapter(),
+  default: 'en',
+  messages: {
+    en: {
+      welcome: 'Welcome',
+      greeting: 'Hello {name}'
+    },
+    es: {
+      welcome: 'Bienvenido',
+      greeting: 'Hola {name}'
+    }
+  }
+}))
+```
+
+<Note>
+The `Vuetify0LocaleAdapter` is the **default adapter** when no adapter is specified:
+
+```typescript
+app.use(createLocalePlugin()) // Uses Vuetify0LocaleAdapter automatically
+```
+</Note>
+
+## Using in Components
+
+```vue
+<script setup lang="ts">
+import { useLocale } from '@vuetify/v0/locale'
+
+const locale = useLocale()
+
+const welcomeMessage = computed(() => locale.t('welcome'))
+const greeting = computed(() => locale.t('greeting', { name: 'Alice' }))
+</script>
+
+<template>
+  <div>
+    <h1>{{ welcomeMessage }}</h1>
+    <p>{{ greeting }}</p>
+  </div>
+</template>
+```
+
+## Translation
+
+### Basic Translation
+
+```typescript
+import { useLocale } from '@vuetify/v0/locale'
+
+const locale = useLocale()
+
+const message = locale.t('welcome')
+// Returns: 'Welcome' (from current locale messages)
+```
+
+### Named Placeholders
+
+```typescript
+import { useLocale } from '@vuetify/v0/locale'
+
+const locale = useLocale()
+
+// Message: 'Hello {name}, you have {count} messages'
+const message = locale.t('greeting', {
+  name: 'Alice',
+  count: 5
+})
+// Returns: 'Hello Alice, you have 5 messages'
+```
+
+### Numbered Placeholders
+
+```typescript
+import { useLocale } from '@vuetify/v0/locale'
+
+const locale = useLocale()
+
+// Message: 'You have {0} items in {1}'
+const message = locale.t('cartMessage', {}, 'You have {0} items in {1}', 3, 'cart')
+// Returns: 'You have 3 items in cart'
+```
+
+### Fallback Messages
+
+```typescript
+import { useLocale } from '@vuetify/v0/locale'
+
+const locale = useLocale()
+
+// If 'unknownKey' doesn't exist
+const message = locale.t('unknownKey', {}, 'Default message')
+// Returns: 'Default message'
+```
+
+## Number Formatting
+
+### Basic Formatting
+
+```typescript
+import { useLocale } from '@vuetify/v0/locale'
+
+const locale = useLocale()
+
+// Format number according to current locale
+const formatted = locale.n(1234.56)
+// en: '1,234.56'
+// de: '1.234,56'
+// fr: '1 234,56'
+```
+
+### Currency Formatting
+
+```typescript
+import { useLocale } from '@vuetify/v0/locale'
+
+const locale = useLocale()
+
+const price = locale.n(99.99, {
+  style: 'currency',
+  currency: 'USD'
+})
+// en-US: '$99.99'
+// en-GB: 'US$99.99'
+// de-DE: '99,99 $'
+```
+
+### Percentage Formatting
+
+```typescript
+import { useLocale } from '@vuetify/v0/locale'
+
+const locale = useLocale()
+
+const percent = locale.n(0.85, {
+  style: 'percent'
+})
+// Returns: '85%' (locale-aware)
+```
+
+### Custom Formatting Options
+
+```typescript
+import { useLocale } from '@vuetify/v0/locale'
+
+const locale = useLocale()
+
+const formatted = locale.n(1234567.89, {
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+  useGrouping: true
+})
+// en: '1,234,567.89'
+```
+
+## Placeholder Types
+
+The adapter supports two placeholder formats:
+
+### Named Placeholders
+
+```typescript
+// Message definition
+const messages = {
+  en: {
+    userInfo: 'User {name} has {count} points'
+  }
+}
+
+// Usage
+const message = locale.t('userInfo', {
+  name: 'Alice',
+  count: 100
+})
+// Returns: 'User Alice has 100 points'
+```
+
+### Numbered Placeholders
+
+```typescript
+// Message definition
+const messages = {
+  en: {
+    status: 'Status: {0} - Code: {1}'
+  }
+}
+
+// Usage
+const message = locale.t('status', {}, 'Status: {0} - Code: {1}', 'active', 200)
+// Returns: 'Status: active - Code: 200'
+```
+
+## Mixed Placeholders
+
+```typescript
+// Named variables from object, numbered from remaining args
+const messages = {
+  en: {
+    order: 'Order {orderId} has {0} items'
+  }
+}
+
+const message = locale.t('order', { orderId: 'ORD-123' }, 'fallback', 5)
+// Returns: 'Order ORD-123 has 5 items'
+```
+
+## SSR Support
+
+The adapter is SSR-safe and handles server/client environments:
+
+```typescript
+import { Vuetify0LocaleAdapter } from '@vuetify/v0/locale/adapters/v0'
+
+const adapter = new Vuetify0LocaleAdapter()
+
+// In browser: Uses Intl.NumberFormat
+adapter.n(1234.56, 'en-US')
+// Returns: '1,234.56'
+
+// In Node.js: Uses Intl.NumberFormat
+adapter.n(1234.56, 'de-DE')
+// Returns: '1.234,56'
+
+// Without locale or in unsupported environment: Falls back
+adapter.n(1234.56, undefined)
+// Returns: '1234.56' (toString)
+```
+
+## TypeScript
+
+```typescript
+import { Vuetify0LocaleAdapter } from '@vuetify/v0/locale/adapters/v0'
+import type { ID } from '@vuetify/v0/types'
+
+const adapter = new Vuetify0LocaleAdapter()
+
+// Translation with named params
+const message: string = adapter.t('greeting', { name: 'Alice' })
+
+// Number formatting
+const formatted: string = adapter.n(1234.56, 'en' as ID, {
+  style: 'currency',
+  currency: 'USD'
+})
+```
+
+## Custom Locale Adapter
+
+You can create a custom adapter by implementing the `LocaleAdapter` interface:
+
+```typescript
+import type { LocaleAdapter } from '@vuetify/v0/locale'
+import type { ID } from '@vuetify/v0/types'
+
+class CustomLocaleAdapter implements LocaleAdapter {
+  t(message: string, ...params: unknown[]): string {
+    // Custom translation logic
+    return message
+  }
+  
+  n(value: number, locale: ID | undefined, ...params: unknown[]): string {
+    // Custom number formatting
+    return value.toString()
+  }
+}
+```
+
+## Integration with i18n Libraries
+
+While the built-in adapter works well for simple cases, you can create adapters for libraries like `vue-i18n`:
+
+```typescript
+import type { LocaleAdapter } from '@vuetify/v0/locale'
+import type { Composer } from 'vue-i18n'
+
+class VueI18nAdapter implements LocaleAdapter {
+  constructor(private i18n: Composer) {}
+  
+  t(message: string, ...params: unknown[]): string {
+    return this.i18n.t(message, params[0] as any)
+  }
+  
+  n(value: number, locale: ID | undefined, ...params: unknown[]): string {
+    return this.i18n.n(value, params[0] as any)
+  }
+}
+
+// Usage
+const i18n = createI18n({ ... })
+const adapter = new VueI18nAdapter(i18n.global)
+
+app.use(createLocalePlugin({ adapter }))
+```
+
+## API Reference
+
+### Constructor
+
+```typescript
+class Vuetify0LocaleAdapter implements LocaleAdapter
+
+constructor()
+```
+
+### Methods
+
+#### `t(message, ...params)`
+
+Translate a message with variable substitution.
+
+**Parameters:**
+- `message: string` - The message template
+- `params: unknown[]` - Variables for substitution
+
+**Returns:** `string` - Translated message
+
+**Named Variables:**
+```typescript
+adapter.t('Hello {name}', { name: 'Alice' })
+// Returns: 'Hello Alice'
+```
+
+**Numbered Variables:**
+```typescript
+adapter.t('Item {0} of {1}', {}, 1, 10)
+// Returns: 'Item 1 of 10'
+```
+
+#### `n(value, locale, ...params)`
+
+Format a number according to locale.
+
+**Parameters:**
+- `value: number` - Number to format
+- `locale: ID | undefined` - Locale identifier
+- `params: unknown[]` - Intl.NumberFormatOptions
+
+**Returns:** `string` - Formatted number
+
+**Example:**
+```typescript
+adapter.n(1234.56, 'en-US', {
+  style: 'currency',
+  currency: 'USD'
+})
+// Returns: '$1,234.56'
+```
+
+## Intl API Support
+
+The adapter uses the native Intl API for number formatting:
+
+```typescript
+interface Intl.NumberFormatOptions {
+  style?: 'decimal' | 'currency' | 'percent' | 'unit'
+  currency?: string
+  currencyDisplay?: 'symbol' | 'narrowSymbol' | 'code' | 'name'
+  minimumIntegerDigits?: number
+  minimumFractionDigits?: number
+  maximumFractionDigits?: number
+  minimumSignificantDigits?: number
+  maximumSignificantDigits?: number
+  useGrouping?: boolean | 'always' | 'auto' | 'min2'
+  notation?: 'standard' | 'scientific' | 'engineering' | 'compact'
+  compactDisplay?: 'short' | 'long'
+  signDisplay?: 'auto' | 'never' | 'always' | 'exceptZero'
+}
+```
+
+## Features
+
+- **Named placeholders** - `{name}` syntax
+- **Numbered placeholders** - `{0}`, `{1}` syntax
+- **Mixed placeholders** - Combine named and numbered
+- **Number formatting** - Locale-aware via Intl API
+- **Currency formatting** - Built-in currency support
+- **Percentage formatting** - Built-in percent support
+- **SSR-safe** - Works in Node.js and browser
+- **Zero dependencies** - Uses native JavaScript APIs
+
+## Limitations
+
+<Warning>
+The `Vuetify0LocaleAdapter` does not support:
+
+- **Pluralization** - Use vue-i18n for complex plural rules
+- **Date/time formatting** - Use `useDate` composable instead
+- **Nested translations** - Token references are handled by `useLocale`, not the adapter
+- **Message compilation** - Messages are evaluated at runtime
+
+For advanced i18n features, consider integrating with vue-i18n or another i18n library.
+</Warning>
+
+## See Also
+
+- [useLocale](/composables/use-locale) - Locale composable
+- [createTokens](/composables/create-tokens) - Token system for nested messages
+- [Intl.NumberFormat](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Intl/NumberFormat) - MDN documentation

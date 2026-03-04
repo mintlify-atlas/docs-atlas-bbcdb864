@@ -1,0 +1,490 @@
+---
+title: useVirtual
+description: Virtual scrolling composable for efficiently rendering large lists
+---
+
+# useVirtual
+
+Virtual scrolling composable for efficiently rendering large lists by only rendering visible items.
+
+## Overview
+
+Renders only visible items (viewport + overscan) instead of the entire list, enabling smooth performance with thousands of items.
+
+**Key Features:**
+- Renders only visible items (viewport + overscan)
+- Dynamic or fixed item heights
+- SSR-safe (checks `IN_BROWSER`)
+- Bidirectional scrolling (forward/reverse for chat apps)
+- Scroll anchoring (maintains position across data changes)
+- Edge detection for infinite scroll
+- iOS momentum and elastic scrolling
+- Configurable overscan buffer
+
+## Functions
+
+### createVirtual
+
+Create a virtual scrolling instance.
+
+```ts
+function createVirtual<T = unknown>(
+  items: Ref<readonly T[]>,
+  options?: VirtualOptions,
+): VirtualContext<T>
+```
+
+### createVirtualContext
+
+Create a virtual scrolling context with dependency injection support.
+
+```ts
+function createVirtualContext<T = unknown>(
+  items: Ref<readonly T[]>,
+  options?: VirtualContextOptions,
+): ContextTrinity<VirtualContext<T>>
+```
+
+### useVirtual
+
+Returns the current virtual context from dependency injection.
+
+```ts
+function useVirtual<T = unknown>(
+  namespace?: string,
+): VirtualContext<T>
+```
+
+## Types
+
+```ts
+type VirtualDirection = 'forward' | 'reverse'
+type VirtualState = 'loading' | 'empty' | 'error' | 'ok'
+type VirtualAnchor = 'auto' | 'start' | 'end' | ((items: readonly unknown[]) => number | string)
+
+interface ScrollToOptions {
+  behavior?: 'auto' | 'smooth' | 'instant'
+  block?: 'start' | 'center' | 'end' | 'nearest'
+  offset?: number
+}
+
+interface VirtualItem<T = unknown> {
+  raw: T
+  index: number
+}
+
+interface VirtualContext<T = unknown> {
+  element: Ref<HTMLElement | undefined>
+  items: ComputedRef<VirtualItem<T>[]>
+  offset: Readonly<ShallowRef<number>>
+  size: Readonly<ShallowRef<number>>
+  state: ShallowRef<VirtualState>
+  scrollTo: (index: number, options?: ScrollToOptions) => void
+  scroll: () => void
+  scrollend: () => void
+  resize: (index: number, height: number) => void
+  reset: () => void
+}
+```
+
+## Parameters
+
+<ParamField path="items" type="Ref<readonly T[]>" required>
+  Reactive array of items to virtualize.
+</ParamField>
+
+<ParamField path="options" type="VirtualOptions">
+  Configuration options for virtual scrolling.
+
+  <ParamField path="itemHeight" type="number | string | null">
+    Fixed height of each item. Required for initial render. Use `null` for dynamic heights.
+  </ParamField>
+
+  <ParamField path="height" type="number | string">
+    Height of the scrollable container.
+  </ParamField>
+
+  <ParamField path="overscan" type="number" default="5">
+    Number of extra items to render above and below viewport for smooth scrolling.
+  </ParamField>
+
+  <ParamField path="direction" type="VirtualDirection" default="forward">
+    Scroll direction: `forward` (top-down) or `reverse` (bottom-up for chat).
+  </ParamField>
+
+  <ParamField path="anchor" type="VirtualAnchor" default="auto">
+    Scroll position to maintain across data changes.
+  </ParamField>
+
+  <ParamField path="anchorSmooth" type="boolean" default="true">
+    Whether to smoothly animate anchor position changes.
+  </ParamField>
+
+  <ParamField path="onStartReached" type="(distance: number) => void | Promise<void>">
+    Callback when scrolled near the start. For infinite scroll.
+  </ParamField>
+
+  <ParamField path="onEndReached" type="(distance: number) => void | Promise<void>">
+    Callback when scrolled near the end. For infinite scroll.
+  </ParamField>
+
+  <ParamField path="startThreshold" type="number" default="0">
+    Distance from start (in px) to trigger `onStartReached`.
+  </ParamField>
+
+  <ParamField path="endThreshold" type="number" default="0">
+    Distance from end (in px) to trigger `onEndReached`.
+  </ParamField>
+
+  <ParamField path="momentum" type="boolean">
+    Enable iOS momentum scrolling. Auto-detected on iOS.
+  </ParamField>
+
+  <ParamField path="elastic" type="boolean">
+    Enable iOS elastic scrolling. Auto-detected on iOS.
+  </ParamField>
+</ParamField>
+
+## Basic Usage
+
+### Fixed Height Items
+
+```vue
+<script setup lang="ts">
+import { ref } from 'vue'
+import { createVirtual } from '@vuetify/v0'
+
+const items = ref(
+  Array.from({ length: 10000 }, (_, i) => ({
+    id: i,
+    name: `Item ${i}`,
+  }))
+)
+
+const virtual = createVirtual(items, {
+  itemHeight: 50,
+  height: 600,
+})
+</script>
+
+<template>
+  <div
+    ref="virtual.element"
+    style="height: 600px; overflow-y: auto;"
+    @scroll="virtual.scroll"
+  >
+    <div :style="{ height: `${virtual.offset.value}px` }" />
+    
+    <div
+      v-for="item in virtual.items.value"
+      :key="item.index"
+      style="height: 50px;"
+    >
+      {{ item.raw.name }}
+    </div>
+    
+    <div :style="{ height: `${virtual.size.value}px` }" />
+  </div>
+</template>
+```
+
+### Dynamic Height Items
+
+```vue
+<script setup lang="ts">
+import { ref } from 'vue'
+import { createVirtual } from '@vuetify/v0'
+
+const items = ref(Array.from({ length: 1000 }, (_, i) => `Item ${i}`))
+
+const virtual = createVirtual(items, {
+  itemHeight: 50, // Estimated height
+  height: 600,
+})
+
+function onResize(index: number, el: HTMLElement | null) {
+  if (!el) return
+  virtual.resize(index, el.offsetHeight)
+}
+</script>
+
+<template>
+  <div
+    ref="virtual.element"
+    style="height: 600px; overflow-y: auto;"
+    @scroll="virtual.scroll"
+  >
+    <div :style="{ height: `${virtual.offset.value}px` }" />
+    
+    <div
+      v-for="item in virtual.items.value"
+      :key="item.index"
+      :ref="(el) => onResize(item.index, el as HTMLElement)"
+    >
+      {{ item.raw }}
+    </div>
+    
+    <div :style="{ height: `${virtual.size.value}px` }" />
+  </div>
+</template>
+```
+
+## Advanced Usage
+
+### Infinite Scroll
+
+```vue
+<script setup lang="ts">
+import { ref } from 'vue'
+import { createVirtual } from '@vuetify/v0'
+
+const items = ref(Array.from({ length: 50 }, (_, i) => `Item ${i}`))
+const loading = ref(false)
+
+const virtual = createVirtual(items, {
+  itemHeight: 50,
+  height: 600,
+  endThreshold: 200, // Load more when 200px from bottom
+  onEndReached: async () => {
+    if (loading.value) return
+    
+    loading.value = true
+    await new Promise(resolve => setTimeout(resolve, 1000))
+    
+    const start = items.value.length
+    items.value = [
+      ...items.value,
+      ...Array.from({ length: 50 }, (_, i) => `Item ${start + i}`),
+    ]
+    
+    loading.value = false
+  },
+})
+</script>
+
+<template>
+  <div
+    ref="virtual.element"
+    style="height: 600px; overflow-y: auto;"
+    @scroll="virtual.scroll"
+  >
+    <div :style="{ height: `${virtual.offset.value}px` }" />
+    
+    <div
+      v-for="item in virtual.items.value"
+      :key="item.index"
+      style="height: 50px;"
+    >
+      {{ item.raw }}
+    </div>
+    
+    <div :style="{ height: `${virtual.size.value}px` }" />
+    
+    <div v-if="loading" style="height: 50px; text-align: center;">
+      Loading more...
+    </div>
+  </div>
+</template>
+```
+
+### Chat Application (Reverse)
+
+```vue
+<script setup lang="ts">
+import { ref } from 'vue'
+import { createVirtual } from '@vuetify/v0'
+
+const messages = ref([
+  { id: 1, text: 'Hello', user: 'Alice' },
+  { id: 2, text: 'Hi there!', user: 'Bob' },
+  // ... thousands of messages
+])
+
+const virtual = createVirtual(messages, {
+  itemHeight: 60,
+  height: 600,
+  direction: 'reverse', // Newest at bottom
+  anchor: 'end', // Keep scrolled to bottom on new messages
+})
+
+function sendMessage(text: string) {
+  messages.value.push({
+    id: Date.now(),
+    text,
+    user: 'Me',
+  })
+  // Auto-scrolls to bottom due to anchor: 'end'
+}
+</script>
+
+<template>
+  <div
+    ref="virtual.element"
+    style="height: 600px; overflow-y: auto;"
+    @scroll="virtual.scroll"
+  >
+    <div :style="{ height: `${virtual.offset.value}px` }" />
+    
+    <div
+      v-for="item in virtual.items.value"
+      :key="item.index"
+      style="height: 60px;"
+    >
+      <strong>{{ item.raw.user }}:</strong>
+      {{ item.raw.text }}
+    </div>
+    
+    <div :style="{ height: `${virtual.size.value}px` }" />
+  </div>
+</template>
+```
+
+### Scroll to Item
+
+```vue
+<script setup lang="ts">
+import { ref } from 'vue'
+import { createVirtual } from '@vuetify/v0'
+
+const items = ref(Array.from({ length: 1000 }, (_, i) => `Item ${i}`))
+const virtual = createVirtual(items, { itemHeight: 50, height: 600 })
+
+function scrollToItem(index: number) {
+  virtual.scrollTo(index, {
+    behavior: 'smooth',
+    block: 'center',
+  })
+}
+</script>
+
+<template>
+  <div>
+    <button @click="scrollToItem(0)">Top</button>
+    <button @click="scrollToItem(500)">Middle</button>
+    <button @click="scrollToItem(999)">Bottom</button>
+    
+    <div
+      ref="virtual.element"
+      style="height: 600px; overflow-y: auto;"
+      @scroll="virtual.scroll"
+    >
+      <div :style="{ height: `${virtual.offset.value}px` }" />
+      
+      <div
+        v-for="item in virtual.items.value"
+        :key="item.index"
+        style="height: 50px;"
+      >
+        {{ item.raw }}
+      </div>
+      
+      <div :style="{ height: `${virtual.size.value}px` }" />
+    </div>
+  </div>
+</template>
+```
+
+### With ResizeObserver
+
+```vue
+<script setup lang="ts">
+import { ref } from 'vue'
+import { createVirtual } from '@vuetify/v0'
+import { useResizeObserver } from '@vuetify/v0'
+
+const items = ref(Array.from({ length: 1000 }, (_, i) => ({ text: `Item ${i}` })))
+const virtual = createVirtual(items, { itemHeight: 50, height: 600 })
+
+function setupResize(index: number, el: HTMLElement | null) {
+  if (!el) return
+  
+  useResizeObserver(ref(el), () => {
+    virtual.resize(index, el.offsetHeight)
+  })
+}
+</script>
+
+<template>
+  <div
+    ref="virtual.element"
+    style="height: 600px; overflow-y: auto;"
+    @scroll="virtual.scroll"
+  >
+    <div :style="{ height: `${virtual.offset.value}px` }" />
+    
+    <div
+      v-for="item in virtual.items.value"
+      :key="item.index"
+      :ref="(el) => setupResize(item.index, el as HTMLElement)"
+    >
+      {{ item.raw.text }}
+    </div>
+    
+    <div :style="{ height: `${virtual.size.value}px` }" />
+  </div>
+</template>
+```
+
+## Performance
+
+```ts
+import { ref } from 'vue'
+import { createVirtual } from '@vuetify/v0'
+
+// Handle 1 million items efficiently
+const items = ref(
+  Array.from({ length: 1_000_000 }, (_, i) => ({ id: i }))
+)
+
+const virtual = createVirtual(items, {
+  itemHeight: 50,
+  height: 600,
+  overscan: 3, // Smaller overscan = better perf
+})
+
+// Only renders ~15 items at a time (viewport + overscan)
+console.log(virtual.items.value.length) // ~15
+```
+
+## Type Safety
+
+```ts
+import { ref } from 'vue'
+import { createVirtual } from '@vuetify/v0'
+import type { VirtualItem } from '@vuetify/v0'
+
+interface Message {
+  id: number
+  text: string
+  user: string
+  timestamp: Date
+}
+
+const messages = ref<Message[]>([])
+const virtual = createVirtual<Message>(messages, {
+  itemHeight: 80,
+  height: 600,
+})
+
+virtual.items.value.forEach((item: VirtualItem<Message>) => {
+  console.log(item.raw.text) // Type-safe
+  console.log(item.index)
+})
+```
+
+## Notes
+
+- Requires `itemHeight` for initial render (can be estimate for dynamic heights)
+- Use `resize()` to update individual item heights
+- `offset` and `size` are spacer div heights (above/below visible items)
+- iOS optimizations auto-applied when detected
+- Uses `requestAnimationFrame` for smooth scrolling
+- Automatic cleanup via `onScopeDispose`
+- Edge callbacks debounced via RAF
+- Binary search for efficient visible range calculation
+
+## Related
+
+- [usePagination](/composables/use-pagination) - Page-based navigation
+- [useResizeObserver](/composables/use-resize-observer) - Element size tracking
+- [useOverflow](/composables/use-overflow) - Container overflow detection

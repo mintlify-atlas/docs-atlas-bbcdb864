@@ -1,0 +1,543 @@
+---
+title: createBreadcrumbs
+description: Breadcrumb navigation composable with path truncation and hierarchical navigation
+---
+
+## Overview
+
+The **createBreadcrumbs** composable extends `createSingle` to provide breadcrumb navigation with automatic path truncation. When you select a breadcrumb, all items after it are automatically removed.
+
+Perfect for file browser navigation, hierarchical settings, and drill-down interfaces.
+
+## Signature
+
+```ts
+function createBreadcrumbs<
+  Z extends BreadcrumbTicketInput = BreadcrumbTicketInput,
+  E extends BreadcrumbTicket<Z> = BreadcrumbTicket<Z>
+>(options?: BreadcrumbsOptions): BreadcrumbsContext<Z, E>
+```
+
+<ParamField path="options" type="BreadcrumbsOptions">
+  Configuration options (inherits from SingleOptions)
+</ParamField>
+
+<ResponseField name="BreadcrumbsContext" type="object">
+  Breadcrumbs navigation instance
+  
+  <Expandable title="properties">
+    <ResponseField name="depth" type="Readonly<Ref<number>>">
+      Number of items in the path (same as `size`)
+    </ResponseField>
+    
+    <ResponseField name="isRoot" type="Readonly<Ref<boolean>>">
+      True when at root level (depth is 1 or less)
+    </ResponseField>
+    
+    <ResponseField name="isEmpty" type="Readonly<Ref<boolean>>">
+      True when path is empty (depth === 0)
+    </ResponseField>
+    
+    <ResponseField name="first" type="() => void">
+      Navigate to root (truncates to first item)
+    </ResponseField>
+    
+    <ResponseField name="prev" type="() => void">
+      Navigate up one level (removes last item)
+    </ResponseField>
+    
+    <ResponseField name="select" type="(id: ID) => void">
+      Navigate to specific item (truncates everything after it)
+    </ResponseField>
+    
+    <ResponseField name="register" type="(ticket?: Partial<Z>) => E">
+      Add item to path and auto-select it (requires `text` property)
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+## Usage
+
+### Basic Navigation
+
+```ts
+import { createBreadcrumbs } from '@vuetify/v0'
+
+const breadcrumbs = createBreadcrumbs()
+
+breadcrumbs.register({ text: 'Home' })
+breadcrumbs.register({ text: 'Products' })
+breadcrumbs.register({ text: 'Electronics' })
+breadcrumbs.register({ text: 'Phones' })
+
+console.log(breadcrumbs.depth.value) // 4
+console.log(breadcrumbs.selectedItem.value?.text) // 'Phones'
+
+// Navigate back one level
+breadcrumbs.prev()
+console.log(breadcrumbs.depth.value) // 3
+console.log(breadcrumbs.selectedItem.value?.text) // 'Electronics'
+
+// Navigate to root
+breadcrumbs.first()
+console.log(breadcrumbs.depth.value) // 1
+console.log(breadcrumbs.selectedItem.value?.text) // 'Home'
+```
+
+### Path Truncation
+
+```ts
+const breadcrumbs = createBreadcrumbs()
+
+const items = breadcrumbs.onboard([
+  { text: 'Home' },
+  { text: 'Products' },
+  { text: 'Electronics' },
+  { text: 'Phones' },
+])
+
+// Select 'Products' (index 1)
+breadcrumbs.select(items[1]!.id)
+
+// Everything after 'Products' is removed
+console.log(breadcrumbs.depth.value) // 2
+console.log(breadcrumbs.has(items[2]!.id)) // false (Electronics removed)
+console.log(breadcrumbs.has(items[3]!.id)) // false (Phones removed)
+```
+
+### Derived State
+
+```ts
+const breadcrumbs = createBreadcrumbs()
+
+console.log(breadcrumbs.isEmpty.value) // true
+console.log(breadcrumbs.isRoot.value) // true
+
+breadcrumbs.register({ text: 'Home' })
+console.log(breadcrumbs.isEmpty.value) // false
+console.log(breadcrumbs.isRoot.value) // true (depth = 1)
+
+breadcrumbs.register({ text: 'Settings' })
+console.log(breadcrumbs.isRoot.value) // false (depth = 2)
+```
+
+### File Browser Example
+
+```vue
+<script setup lang="ts">
+import { createBreadcrumbs } from '@vuetify/v0'
+
+const breadcrumbs = createBreadcrumbs()
+
+// Initialize with root
+breadcrumbs.register({ id: 'root', text: 'My Files' })
+
+function navigateToFolder(name: string) {
+  breadcrumbs.register({ text: name })
+}
+
+function navigateUp() {
+  if (!breadcrumbs.isRoot.value) {
+    breadcrumbs.prev()
+  }
+}
+</script>
+
+<template>
+  <nav class="breadcrumbs">
+    <a
+      v-for="(item, index) in breadcrumbs.values()"
+      :key="item.id"
+      @click="breadcrumbs.select(item.id)"
+      :class="{ active: item.isSelected.value }"
+    >
+      {{ item.text }}
+      <span v-if="index < breadcrumbs.size - 1">/</span>
+    </a>
+  </nav>
+  
+  <div class="toolbar">
+    <button 
+      @click="navigateUp" 
+      :disabled="breadcrumbs.isRoot.value"
+    >
+      ← Back
+    </button>
+    <button 
+      @click="breadcrumbs.first()" 
+      :disabled="breadcrumbs.isRoot.value"
+    >
+      Home
+    </button>
+  </div>
+</template>
+```
+
+### Building Paths Incrementally
+
+```ts
+const breadcrumbs = createBreadcrumbs()
+
+// Build path step by step
+breadcrumbs.register({ text: 'Home' })
+console.log(breadcrumbs.depth.value) // 1
+
+breadcrumbs.register({ text: 'Documents' })
+console.log(breadcrumbs.depth.value) // 2
+
+breadcrumbs.register({ text: 'Projects' })
+console.log(breadcrumbs.depth.value) // 3
+
+// Navigate back and add different branch
+breadcrumbs.prev() // Back to Documents
+breadcrumbs.register({ text: 'Photos' }) // New branch
+
+// Path is now: Home → Documents → Photos
+console.log(breadcrumbs.values().map(t => t.text))
+// ['Home', 'Documents', 'Photos']
+```
+
+### Auto-Selection
+
+Breadcrumbs use `enroll: true` internally, so newly registered items are automatically selected:
+
+```ts
+const breadcrumbs = createBreadcrumbs()
+
+const home = breadcrumbs.register({ text: 'Home' })
+console.log(breadcrumbs.selectedId.value) // home.id
+
+const products = breadcrumbs.register({ text: 'Products' })
+console.log(breadcrumbs.selectedId.value) // products.id (auto-switched)
+```
+
+### Reactive Depth Tracking
+
+```vue
+<script setup lang="ts">
+import { createBreadcrumbs } from '@vuetify/v0'
+import { watch } from 'vue'
+
+const breadcrumbs = createBreadcrumbs()
+
+watch(() => breadcrumbs.depth.value, (newDepth, oldDepth) => {
+  console.log(`Depth changed from ${oldDepth} to ${newDepth}`)
+})
+
+breadcrumbs.register({ text: 'Home' })
+// Console: Depth changed from 0 to 1
+
+breadcrumbs.register({ text: 'Settings' })
+// Console: Depth changed from 1 to 2
+
+breadcrumbs.first()
+// Console: Depth changed from 2 to 1
+</script>
+```
+
+## Type Safety
+
+```ts
+interface PathItem extends BreadcrumbTicketInput {
+  text: string
+  icon?: string
+  url?: string
+}
+
+const breadcrumbs = createBreadcrumbs<PathItem>()
+
+const item = breadcrumbs.register({
+  text: 'Dashboard',
+  icon: 'mdi-view-dashboard',
+  url: '/dashboard'
+})
+
+// Type-safe access
+console.log(item.text) // string
+console.log(item.icon) // string | undefined
+console.log(item.url) // string | undefined
+```
+
+## Methods Comparison
+
+| Method | Behavior | Use Case |
+|--------|----------|----------|
+| `first()` | Truncate to first item | Go to root |
+| `prev()` | Remove last item | Go up one level |
+| `select(id)` | Truncate to specific item | Jump to any level |
+| `register()` | Add item and select it | Drill down |
+
+## Edge Cases
+
+### Empty Breadcrumbs
+
+```ts
+const breadcrumbs = createBreadcrumbs()
+
+console.log(breadcrumbs.isEmpty.value) // true
+console.log(breadcrumbs.isRoot.value) // true
+console.log(breadcrumbs.depth.value) // 0
+
+breadcrumbs.first() // Does nothing
+breadcrumbs.prev() // Does nothing
+```
+
+### Single Item
+
+```ts
+const breadcrumbs = createBreadcrumbs()
+
+breadcrumbs.register({ text: 'Home' })
+
+console.log(breadcrumbs.isRoot.value) // true
+console.log(breadcrumbs.depth.value) // 1
+
+breadcrumbs.prev() // Does nothing - can't go up from root
+breadcrumbs.first() // Does nothing - already at root
+```
+
+### Selecting Last Item
+
+```ts
+const breadcrumbs = createBreadcrumbs()
+
+const items = breadcrumbs.onboard([
+  { text: 'Home' },
+  { text: 'Products' },
+  { text: 'Electronics' },
+])
+
+// Select last item (no truncation)
+breadcrumbs.select(items[2]!.id)
+console.log(breadcrumbs.size) // 3 (nothing removed)
+```
+
+## Reactivity
+
+Breadcrumbs use `reactive: true` and `enroll: true` internally for automatic reactivity:
+
+```ts
+import { watchEffect } from 'vue'
+
+const breadcrumbs = createBreadcrumbs()
+
+watchEffect(() => {
+  console.log('Current path depth:', breadcrumbs.depth.value)
+})
+
+breadcrumbs.register({ text: 'Home' })
+// Console: Current path depth: 1
+
+breadcrumbs.register({ text: 'Settings' })
+// Console: Current path depth: 2
+```
+
+## Context Pattern
+
+```ts
+import { createBreadcrumbsContext } from '@vuetify/v0'
+
+export const [useBreadcrumbs, provideBreadcrumbs, breadcrumbs] = 
+  createBreadcrumbsContext()
+
+// In parent component
+provideBreadcrumbs()
+
+// In child component
+const breadcrumbs = useBreadcrumbs()
+breadcrumbs.register({ text: 'Settings' })
+```
+
+## Complete Example
+
+```vue
+<script setup lang="ts">
+import { createBreadcrumbs } from '@vuetify/v0'
+
+interface RouteItem extends BreadcrumbTicketInput {
+  text: string
+  path: string
+}
+
+const breadcrumbs = createBreadcrumbs<RouteItem>()
+
+breadcrumbs.register({ 
+  id: 'home',
+  text: 'Home', 
+  path: '/' 
+})
+
+function navigateTo(name: string, path: string) {
+  breadcrumbs.register({ text: name, path })
+}
+
+function handleBreadcrumbClick(id: string) {
+  breadcrumbs.select(id)
+  const item = breadcrumbs.selectedItem.value
+  if (item) {
+    // Navigate to the path
+    window.history.pushState({}, '', item.path)
+  }
+}
+</script>
+
+<template>
+  <nav aria-label="Breadcrumb">
+    <ol class="breadcrumb-list">
+      <li 
+        v-for="(item, index) in breadcrumbs.values()" 
+        :key="item.id"
+      >
+        <a 
+          @click="handleBreadcrumbClick(item.id)"
+          :aria-current="item.isSelected.value ? 'page' : undefined"
+        >
+          {{ item.text }}
+        </a>
+        <span v-if="index < breadcrumbs.depth.value - 1" class="separator">
+          /
+        </span>
+      </li>
+    </ol>
+    
+    <div class="breadcrumb-actions">
+      <button 
+        @click="breadcrumbs.prev()"
+        :disabled="breadcrumbs.isRoot.value"
+        aria-label="Go up one level"
+      >
+        ← Back
+      </button>
+      
+      <button 
+        @click="breadcrumbs.first()"
+        :disabled="breadcrumbs.isRoot.value"
+        aria-label="Go to root"
+      >
+        Home
+      </button>
+    </div>
+  </nav>
+</template>
+```
+
+## Inheritance Chain
+
+```
+createRegistry
+    ↓
+createSelection
+    ↓
+createSingle
+    ↓
+createBreadcrumbs
+```
+
+## Differences from createSingle
+
+| Feature | createSingle | createBreadcrumbs |
+|---------|-------------|------------------|
+| `select(id)` | Just selects item | Selects and truncates path |
+| Auto-enrollment | Optional | Always enabled |
+| Reactivity | Optional | Always enabled |
+| Derived state | None | `depth`, `isRoot`, `isEmpty` |
+| Navigation | None | `first()`, `prev()` |
+| Use case | Tabs, radio buttons | File browser, hierarchical nav |
+
+## Performance
+
+- `prev()`: O(1) lookup + O(k) offboard where k = items to remove
+- `first()`: O(1) lookup + O(n-1) offboard for n items
+- `select(id)`: O(1) lookup + O(k) offboard where k = items after selected
+- `depth`, `isRoot`, `isEmpty`: O(1) computed from size
+
+## Use Cases
+
+### File Browser
+
+```ts
+const breadcrumbs = createBreadcrumbs()
+
+breadcrumbs.register({ text: 'Documents' })
+breadcrumbs.register({ text: 'Projects' })
+breadcrumbs.register({ text: 'Vuetify' })
+breadcrumbs.register({ text: 'src' })
+
+// Click on 'Projects' to navigate there
+const projectsId = breadcrumbs.values()[1]!.id
+breadcrumbs.select(projectsId)
+// Path is now: Documents → Projects
+```
+
+### Settings Navigation
+
+```ts
+const settings = createBreadcrumbs()
+
+settings.register({ text: 'Settings' })
+settings.register({ text: 'Account' })
+settings.register({ text: 'Privacy' })
+settings.register({ text: 'Data Collection' })
+
+// Navigate back
+settings.prev() // Back to Privacy
+settings.prev() // Back to Account
+settings.first() // Jump to Settings root
+```
+
+### E-commerce Category Navigation
+
+```ts
+const categories = createBreadcrumbs()
+
+categories.register({ text: 'All Products' })
+categories.register({ text: 'Electronics' })
+categories.register({ text: 'Computers' })
+categories.register({ text: 'Laptops' })
+
+// User clicks on 'Electronics'
+const electronicsId = categories.values()[1]!.id
+categories.select(electronicsId)
+// Path truncates to: All Products → Electronics
+```
+
+## Context Pattern
+
+```ts
+import { createBreadcrumbsContext } from '@vuetify/v0'
+
+export const [useNavigation, provideNavigation] = 
+  createBreadcrumbsContext()
+
+// In parent layout component
+provideNavigation()
+
+// In child page component
+const nav = useNavigation()
+nav.register({ text: 'Current Page' })
+```
+
+## Registry Methods
+
+All registry methods are inherited:
+
+```ts
+const breadcrumbs = createBreadcrumbs()
+
+breadcrumbs.onboard([
+  { id: 'home', text: 'Home' },
+  { id: 'settings', text: 'Settings' },
+])
+
+// Inherited from registry
+console.log(breadcrumbs.get('home')) // Ticket object
+console.log(breadcrumbs.has('settings')) // true
+console.log(breadcrumbs.keys()) // ['home', 'settings']
+console.log(breadcrumbs.lookup(0)) // 'home'
+```
+
+## See Also
+
+- [createSingle](/composables/create-single) - Base single-selection system
+- [createStep](/composables/create-step) - Sequential navigation with next/prev
+- [createNested](/composables/create-nested) - Hierarchical tree navigation

@@ -1,0 +1,500 @@
+---
+title: createForm
+description: Form validation composable with async rule support and multiple validation modes.
+---
+
+## Overview
+
+Form validation composable with support for synchronous and asynchronous validation rules, multiple validation modes (submit, change, combined), tri-state validation status, and pristine state tracking. Each field is registered independently and tracks its own validation state.
+
+## Basic Usage
+
+```ts
+import { createForm } from '@vuetify/v0'
+import { ref } from 'vue'
+
+const form = createForm()
+
+const username = form.register({
+  id: 'username',
+  value: ref(''),
+  rules: [
+    v => (v as string).length > 0 || 'Username is required',
+    v => (v as string).length >= 3 || 'Minimum 3 characters',
+  ],
+})
+
+const email = form.register({
+  id: 'email',
+  value: ref(''),
+  rules: [
+    v => (v as string).length > 0 || 'Email is required',
+    v => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v as string) || 'Invalid email',
+  ],
+})
+
+// Submit form
+const isValid = await form.submit()
+if (isValid) {
+  console.log('Form submitted:', { 
+    username: username.value, 
+    email: email.value 
+  })
+} else {
+  console.log('Validation errors:', {
+    username: username.errors.value,
+    email: email.errors.value,
+  })
+}
+```
+
+## Function Signature
+
+```ts
+function createForm<
+  Z extends FormTicketInput = FormTicketInput,
+  E extends FormTicket<Z> = FormTicket<Z>,
+  R extends FormContext<Z, E> = FormContext<Z, E>
+>(options?: FormOptions): R
+```
+
+### Parameters
+
+<ParamField path="options" type="FormOptions">
+  Configuration options for the form
+  
+  <ParamField path="validateOn" type="'submit' | 'change' | string" default="'submit'">
+    When validation should trigger. Can be space-separated for multiple modes: `'submit change'`
+  </ParamField>
+</ParamField>
+
+### Returns
+
+<ResponseField name="FormContext" type="object">
+  Form context with field registration and validation
+  
+  <ResponseField name="register" type="function">
+    Register a form field with validation rules
+    
+    ```ts
+    const field = form.register({
+      id: 'username',
+      value: ref(''),
+      rules: [
+        v => (v as string).length > 0 || 'Required',
+      ],
+      validateOn: 'change', // Optional, overrides form default
+      disabled: false,      // Optional
+    })
+    ```
+  </ResponseField>
+  
+  <ResponseField name="submit" type="function">
+    Validate all registered fields. Returns true if all valid.
+    
+    ```ts
+    const isValid = await form.submit()
+    ```
+  </ResponseField>
+  
+  <ResponseField name="reset" type="function">
+    Reset all fields to initial values and clear validation
+    
+    ```ts
+    form.reset()
+    ```
+  </ResponseField>
+  
+  <ResponseField name="isValid" type="ComputedRef<boolean | null>">
+    Form-level validity: `null` (not validated), `true` (valid), `false` (invalid)
+  </ResponseField>
+  
+  <ResponseField name="isValidating" type="ComputedRef<boolean>">
+    Whether any field is currently validating
+  </ResponseField>
+  
+  <ResponseField name="size" type="number">
+    Number of registered fields
+  </ResponseField>
+  
+  <ResponseField name="get" type="function">
+    Get a field by ID
+    
+    ```ts
+    const field = form.get('username')
+    ```
+  </ResponseField>
+</ResponseField>
+
+## Validation Rules
+
+### Synchronous Rules
+
+Return `true` for valid, or an error string:
+
+```ts
+const field = form.register({
+  id: 'age',
+  value: ref(0),
+  rules: [
+    v => v > 0 || 'Age must be positive',
+    v => v < 120 || 'Invalid age',
+  ],
+})
+```
+
+### Asynchronous Rules
+
+Return a Promise:
+
+```ts
+const field = form.register({
+  id: 'username',
+  value: ref(''),
+  rules: [
+    async v => {
+      const available = await checkUsernameAvailability(v)
+      return available || 'Username taken'
+    },
+  ],
+})
+```
+
+### Mixed Rules
+
+Combine sync and async:
+
+```ts
+const field = form.register({
+  id: 'email',
+  value: ref(''),
+  rules: [
+    v => (v as string).length > 0 || 'Required',
+    v => /^[^\s@]+@/.test(v as string) || 'Invalid format',
+    async v => {
+      const exists = await api.checkEmail(v)
+      return !exists || 'Email already registered'
+    },
+  ],
+})
+```
+
+## Validation Modes
+
+### Submit Only (Default)
+
+Validate when `submit()` is called:
+
+```ts
+const form = createForm({ validateOn: 'submit' })
+
+const field = form.register({
+  id: 'username',
+  value: ref(''),
+  rules: [v => (v as string).length > 0 || 'Required'],
+})
+
+// No validation on change
+field.value = 'alice'
+console.log(field.errors.value) // []
+
+// Validates on submit
+await form.submit()
+console.log(field.errors.value) // [] (valid)
+```
+
+### Change Mode
+
+Validate on every value change:
+
+```ts
+const form = createForm({ validateOn: 'change' })
+
+const field = form.register({
+  id: 'username',
+  value: ref(''),
+  rules: [v => (v as string).length >= 3 || 'Min 3 chars'],
+})
+
+field.value = 'ab'
+console.log(field.errors.value) // ['Min 3 chars']
+
+field.value = 'alice'
+console.log(field.errors.value) // []
+```
+
+### Combined Mode
+
+Validate on both submit and change:
+
+```ts
+const form = createForm({ validateOn: 'submit change' })
+```
+
+### Per-Field Override
+
+```ts
+const form = createForm({ validateOn: 'submit' })
+
+const email = form.register({
+  id: 'email',
+  value: ref(''),
+  rules: [...],
+  validateOn: 'change', // Override form default
+})
+```
+
+## Field State
+
+### Validation State
+
+```ts
+const field = form.register({
+  id: 'username',
+  value: ref(''),
+  rules: [v => (v as string).length > 0 || 'Required'],
+})
+
+// Before validation
+console.log(field.isValid.value)       // null
+console.log(field.isValidating.value)  // false
+console.log(field.errors.value)        // []
+
+// During async validation
+await field.validate()
+console.log(field.isValidating.value)  // true
+
+// After validation (valid)
+console.log(field.isValid.value)       // true
+console.log(field.errors.value)        // []
+
+// After validation (invalid)
+field.value = ''
+await field.validate()
+console.log(field.isValid.value)       // false
+console.log(field.errors.value)        // ['Required']
+```
+
+### Pristine State
+
+Tracks whether field has been modified:
+
+```ts
+const field = form.register({
+  id: 'username',
+  value: ref('initial'),
+  rules: [],
+})
+
+console.log(field.isPristine.value) // true
+
+field.value = 'changed'
+console.log(field.isPristine.value) // false
+
+field.value = 'initial'
+console.log(field.isPristine.value) // true (back to initial)
+
+field.reset()
+console.log(field.isPristine.value) // true
+```
+
+## Manual Validation
+
+### Validate Field
+
+```ts
+const field = form.register({
+  id: 'username',
+  value: ref(''),
+  rules: [v => (v as string).length > 0 || 'Required'],
+})
+
+// Trigger validation
+const isValid = await field.validate()
+console.log(isValid) // boolean
+```
+
+### Silent Validation
+
+Validate without updating UI state:
+
+```ts
+const isValid = await field.validate(true) // silent = true
+// Returns validity but doesn't update errors, isValid, or isPristine
+```
+
+### Validate Specific Fields
+
+```ts
+// Not directly supported, but can be done via field methods
+const field1Valid = await field1.validate()
+const field2Valid = await field2.validate()
+const bothValid = field1Valid && field2Valid
+```
+
+## Form-Level State
+
+### Form Validity
+
+```ts
+const form = createForm()
+
+const field1 = form.register({ id: 'field1', value: ref(''), rules: [...] })
+const field2 = form.register({ id: 'field2', value: ref(''), rules: [...] })
+
+// Before any validation
+console.log(form.isValid.value) // null
+
+// After validating some fields
+await field1.validate()
+console.log(form.isValid.value) // null (field2 not validated)
+
+// After validating all fields
+await form.submit()
+console.log(form.isValid.value) // true | false
+```
+
+### Form Validation
+
+```ts
+const form = createForm()
+
+form.register({ id: 'field1', value: ref('valid'), rules: [...] })
+form.register({ id: 'field2', value: ref(''), rules: [...] })
+
+console.log(form.isValidating.value) // false
+
+const promise = form.submit()
+console.log(form.isValidating.value) // true
+
+await promise
+console.log(form.isValidating.value) // false
+```
+
+## Reset Behavior
+
+### Reset Single Field
+
+```ts
+const field = form.register({
+  id: 'username',
+  value: ref('initial'),
+  rules: [v => (v as string).length > 0 || 'Required'],
+})
+
+field.value = 'changed'
+await field.validate()
+
+field.reset()
+
+console.log(field.value)              // 'initial'
+console.log(field.errors.value)       // []
+console.log(field.isPristine.value)   // true
+console.log(field.isValid.value)      // null
+```
+
+### Reset All Fields
+
+```ts
+const form = createForm()
+
+const field1 = form.register({ id: 'field1', value: ref('a'), rules: [...] })
+const field2 = form.register({ id: 'field2', value: ref('b'), rules: [...] })
+
+field1.value = 'changed-a'
+field2.value = 'changed-b'
+await form.submit()
+
+form.reset()
+
+console.log(field1.value) // 'a'
+console.log(field2.value) // 'b'
+console.log(form.isValid.value) // null
+```
+
+## Disabled Fields
+
+```ts
+const field = form.register({
+  id: 'username',
+  value: ref(''),
+  rules: [...],
+  disabled: true,
+})
+
+console.log(field.disabled) // true
+```
+
+## Race Condition Handling
+
+Automatic handling of concurrent validations:
+
+```ts
+const field = form.register({
+  id: 'username',
+  value: ref(''),
+  rules: [
+    async v => {
+      await delay(100)
+      return (v as string).length > 0 || 'Required'
+    },
+  ],
+})
+
+// Trigger multiple validations
+const first = field.validate()
+const second = field.validate()
+
+await Promise.all([first, second])
+
+// Only the latest validation result is applied
+console.log(field.errors.value) // Result from second validation
+```
+
+## Context Pattern
+
+Use dependency injection for global form access:
+
+```ts
+import { createFormContext } from '@vuetify/v0'
+
+export const [useRegistrationForm, provideRegistrationForm, registrationForm] = 
+  createFormContext({
+    validateOn: 'submit change',
+  })
+
+// Parent component
+provideRegistrationForm()
+
+// Child component
+const form = useRegistrationForm()
+const username = form.register({ id: 'username', value: ref(''), rules: [...] })
+```
+
+## TypeScript
+
+### Custom Field Types
+
+```ts
+interface CustomField extends FormTicketInput {
+  placeholder: string
+  maxLength: number
+}
+
+const form = createForm<CustomField>()
+
+const field = form.register({
+  id: 'username',
+  value: ref(''),
+  placeholder: 'Enter username',
+  maxLength: 20,
+  rules: [...],
+})
+
+console.log(field.placeholder) // 'Enter username'
+```
+
+## Related
+
+- [createRegistry](/composables/create-registry) - Base registry primitive
+- [useValidation](/composables/create-form) - Validation utilities

@@ -1,0 +1,302 @@
+---
+title: createRegistry
+description: Foundational registry composable for managing collections of items with unique IDs, index-based ordering, and value-based lookups
+---
+
+## Overview
+
+The **createRegistry** composable provides a foundational system for managing collections of items (tickets) with unique ID-based access, index-based ordering, value-based reverse lookup, and automatic reindexing.
+
+It serves as the base for many other composables including `createSelection`, `createSingle`, `createGroup`, and `createStep`.
+
+## Signature
+
+```ts
+function createRegistry<
+  Z extends RegistryTicketInput = RegistryTicketInput,
+  E extends RegistryTicket & Z = RegistryTicket & Z
+>(options?: RegistryOptions): RegistryContext<Z, E>
+```
+
+<ParamField path="options" type="RegistryOptions">
+  Optional configuration object
+  
+  <Expandable title="properties">
+    <ParamField path="events" type="boolean" default="false">
+      Enable event emission for registry operations. When enabled, the registry emits events for registration, unregistration, updates, clearing, and reindexing.
+    </ParamField>
+    
+    <ParamField path="reactive" type="boolean" default="false">
+      Enable Vue's `shallowReactive` for the collection and tickets. Useful for triggering reactive updates when tickets are modified.
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+<ResponseField name="RegistryContext" type="object">
+  Registry instance with collection management methods
+  
+  <Expandable title="properties">
+    <ResponseField name="collection" type="ReadonlyMap<ID, E>">
+      Read-only view of tickets. Use registry methods to modify.
+    </ResponseField>
+    
+    <ResponseField name="size" type="number">
+      Number of tickets in the registry
+    </ResponseField>
+    
+    <ResponseField name="register" type="(ticket?: Partial<Z>) => E">
+      Register a new ticket. Auto-generates ID if not provided. Value defaults to index if not provided.
+    </ResponseField>
+    
+    <ResponseField name="unregister" type="(id: ID) => void">
+      Remove a ticket by ID and reindex remaining tickets
+    </ResponseField>
+    
+    <ResponseField name="onboard" type="(registrations: Partial<Z>[]) => E[]">
+      Register multiple tickets in a single batched operation
+    </ResponseField>
+    
+    <ResponseField name="offboard" type="(ids: ID[]) => void">
+      Unregister multiple tickets with optimized reindexing
+    </ResponseField>
+    
+    <ResponseField name="get" type="(id: ID) => E | undefined">
+      Retrieve a ticket by ID
+    </ResponseField>
+    
+    <ResponseField name="has" type="(id: ID) => boolean">
+      Check if a ticket exists
+    </ResponseField>
+    
+    <ResponseField name="upsert" type="(id: ID, ticket?: Partial<Z>) => E">
+      Update existing ticket or insert new one
+    </ResponseField>
+    
+    <ResponseField name="browse" type="(value: E['value']) => ID[] | undefined">
+      Find all ticket IDs with a specific value (reverse lookup)
+    </ResponseField>
+    
+    <ResponseField name="lookup" type="(index: number) => ID | undefined">
+      Get ticket ID by index position
+    </ResponseField>
+    
+    <ResponseField name="seek" type="(direction?: 'first' | 'last', from?: number, predicate?: (ticket: E) => boolean) => E | undefined">
+      Find first/last ticket, optionally from a starting index with a predicate filter
+    </ResponseField>
+    
+    <ResponseField name="keys" type="() => readonly ID[]">
+      Get all ticket IDs (cached)
+    </ResponseField>
+    
+    <ResponseField name="values" type="() => readonly E[]">
+      Get all tickets (cached)
+    </ResponseField>
+    
+    <ResponseField name="entries" type="() => readonly [ID, E][]">
+      Get all [ID, ticket] pairs (cached)
+    </ResponseField>
+    
+    <ResponseField name="clear" type="() => void">
+      Remove all tickets from the registry
+    </ResponseField>
+    
+    <ResponseField name="reindex" type="() => void">
+      Rebuild internal index mapping and update all ticket indexes
+    </ResponseField>
+    
+    <ResponseField name="batch" type="<R>(fn: () => R) => R">
+      Execute operations in a batch, deferring cache invalidation and event emission until complete
+    </ResponseField>
+    
+    <ResponseField name="on" type="<K extends string>(event: K, cb: EventHandler<E, K>) => void">
+      Listen for registry events (requires `events: true` option)
+    </ResponseField>
+    
+    <ResponseField name="off" type="<K extends string>(event: K, cb: EventHandler<E, K>) => void">
+      Remove event listener
+    </ResponseField>
+    
+    <ResponseField name="emit" type="<K extends string>(event: K, data: EventPayload<E, K>) => void">
+      Emit custom event
+    </ResponseField>
+    
+    <ResponseField name="dispose" type="() => void">
+      Clear registry and remove all event listeners
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+## Usage
+
+### Basic Registration
+
+```ts
+import { createRegistry } from '@vuetify/v0'
+
+const registry = createRegistry()
+
+// Register with auto-generated ID
+const ticket1 = registry.register()
+// { id: 'auto-id-123', index: 0, value: 0, valueIsIndex: true }
+
+// Register with custom ID and value
+const ticket2 = registry.register({ id: 'user-1', value: { name: 'John' } })
+// { id: 'user-1', index: 1, value: { name: 'John' }, valueIsIndex: false }
+```
+
+### Batch Operations
+
+```ts
+const tickets = registry.onboard([
+  { id: 'item-1', value: 'Apple' },
+  { id: 'item-2', value: 'Banana' },
+  { id: 'item-3', value: 'Cherry' },
+])
+
+console.log(registry.size) // 5
+```
+
+### Value Lookups
+
+```ts
+// Browse by value (reverse lookup)
+const ids = registry.browse('Apple') // ['item-1']
+
+// Lookup by index
+const id = registry.lookup(0) // Returns first ticket's ID
+
+// Get by ID
+const ticket = registry.get('item-1')
+```
+
+### Seeking
+
+```ts
+// Find first ticket
+const first = registry.seek('first')
+
+// Find last ticket
+const last = registry.seek('last')
+
+// Find with predicate
+const found = registry.seek('first', undefined, 
+  ticket => ticket.value.startsWith('B')
+) // Finds 'Banana'
+```
+
+### Event Emission
+
+```ts
+const registry = createRegistry({ events: true })
+
+registry.on('register:ticket', (ticket) => {
+  console.log('Ticket registered:', ticket)
+})
+
+registry.on('unregister:ticket', (ticket) => {
+  console.log('Ticket unregistered:', ticket)
+})
+
+registry.register({ id: 'test' })
+// Console: Ticket registered: { id: 'test', ... }
+```
+
+### Reactive Collections
+
+```ts
+import { watchEffect } from 'vue'
+
+const registry = createRegistry({ reactive: true })
+
+watchEffect(() => {
+  console.log('Size changed:', registry.collection.size)
+})
+
+registry.register({ id: 'item-1' }) // Triggers watcher
+```
+
+### Batch for Performance
+
+```ts
+// Defer cache invalidation and events until batch completes
+const result = registry.batch(() => {
+  registry.register({ id: 'a' })
+  registry.register({ id: 'b' })
+  registry.register({ id: 'c' })
+  return registry.size
+})
+
+console.log(result) // 3
+```
+
+## Events
+
+When `events: true` is set:
+
+<ParamField path="register:ticket" type="(ticket: E) => void">
+  Emitted when a ticket is registered
+</ParamField>
+
+<ParamField path="unregister:ticket" type="(ticket: E) => void">
+  Emitted when a ticket is unregistered
+</ParamField>
+
+<ParamField path="update:ticket" type="(ticket: E) => void">
+  Emitted when a ticket is updated via `upsert`
+</ParamField>
+
+<ParamField path="clear:registry" type="() => void">
+  Emitted when the registry is cleared
+</ParamField>
+
+<ParamField path="reindex:registry" type="() => void">
+  Emitted when the registry is reindexed
+</ParamField>
+
+## Context Pattern
+
+```ts
+import { createRegistryContext } from '@vuetify/v0'
+
+// Create context trinity
+export const [useItems, provideItems, items] = createRegistryContext()
+
+// In parent component
+provideItems()
+
+// In child component
+const items = useItems()
+items.register({ id: 'item-1', value: 'Value 1' })
+```
+
+## Type Safety
+
+```ts
+interface CustomTicket extends RegistryTicketInput {
+  label: string
+  priority: number
+}
+
+const registry = createRegistry<CustomTicket>()
+
+const ticket = registry.register({
+  label: 'Task 1',
+  priority: 5
+})
+
+// ticket.label is typed as string
+// ticket.priority is typed as number
+```
+
+## Performance
+
+- **keys/values/entries**: Cached on first call, O(1) subsequent calls until invalidation
+- **get/has**: O(1) Map lookups
+- **browse**: O(1) value-to-IDs lookup
+- **lookup**: O(1) index-to-ID lookup
+- **reindex**: O(n) full reindexing, or O(k) partial from dirty index
+
+## See Also
+
+- [createSelection](/composables/create-selection) - Extends registry with selection tracking
+- [useProxyRegistry](/composables/use-proxy-registry) - Reactive proxy for registry data

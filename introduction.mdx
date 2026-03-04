@@ -1,0 +1,243 @@
+---
+title: Introduction to Vuetify Zero
+description: Headless Vue 3 UI primitives and composables for building modern applications and design systems without imposed styling
+---
+
+# Introduction to Vuetify Zero
+
+Vuetify Zero (`@vuetify/v0`) is a headless Vue 3 UI framework that provides lightweight, unstyled building blocks for modern applications and design systems. It offers powerful primitives and composables with full TypeScript support and accessibility features built-in.
+
+<Note>
+  This package is in early development (pre-1.0). APIs may change between minor versions.
+</Note>
+
+## What is Vuetify Zero?
+
+Vuetify Zero is the foundation of the Vuetify ecosystem, focusing on providing logic and functionality without imposing any visual styling. It's designed for developers who want complete control over their application's appearance while benefiting from battle-tested component logic and accessibility.
+
+<CodeGroup>
+```vue Headless Components
+<script setup>
+import { Dialog } from '@vuetify/v0'
+</script>
+
+<template>
+  <Dialog.Root>
+    <Dialog.Activator>Open</Dialog.Activator>
+    <Dialog.Content>
+      <Dialog.Title>Welcome</Dialog.Title>
+      <Dialog.Description>Fully accessible dialog</Dialog.Description>
+      <Dialog.Close>Close</Dialog.Close>
+    </Dialog.Content>
+  </Dialog.Root>
+</template>
+```
+
+```vue Powerful Composables
+<script setup>
+import { createSelection } from '@vuetify/v0'
+
+const selection = createSelection({
+  multiple: true,
+  mandatory: false
+})
+
+const items = ['Item 1', 'Item 2', 'Item 3']
+items.forEach(item => selection.register({ id: item }))
+</script>
+```
+</CodeGroup>
+
+## Key Features
+
+### Headless First
+
+Components provide logic, state management, and accessibility without any imposed styling. You have complete freedom to style components however you want—with CSS, Tailwind, UnoCSS, or any styling solution.
+
+```vue
+<Checkbox.Root class="your-custom-styles">
+  <Checkbox.Indicator>✓</Checkbox.Indicator>
+</Checkbox.Root>
+```
+
+### Slot-Driven Architecture
+
+Maximum flexibility through comprehensive slot APIs. Every component exposes its internal state through slots, giving you full control over rendering:
+
+```vue
+<Dialog.Root v-slot="{ isOpen, open, close }">
+  <button @click="open">Open Dialog</button>
+  <p v-if="isOpen">Dialog is open!</p>
+</Dialog.Root>
+```
+
+### CSS Variables for Styling
+
+All styling is configurable via `--v0-*` custom properties, making theming and customization straightforward:
+
+```css
+:root {
+  --v0-dialog-backdrop: rgba(0, 0, 0, 0.5);
+  --v0-dialog-border-radius: 8px;
+}
+```
+
+### TypeScript Native
+
+Full type safety with generics for extensibility. Every component and composable is fully typed:
+
+```typescript
+interface MyTicket extends SelectionTicketInput {
+  label: string
+  disabled?: boolean
+}
+
+const selection = createSelection<MyTicket>()
+```
+
+### Minimal Dependencies
+
+Only Vue 3.5+ is required. No heavy dependencies or external libraries (markdown libraries are optional).
+
+### Composable Architecture
+
+Reusable logic through Vue 3 composables. Build your own components using the same primitives:
+
+- **Foundation**: `createContext`, `createTrinity`, `createPlugin`
+- **Registry**: `createRegistry`, `createQueue`, `createTimeline`
+- **Selection**: `createSelection`, `createGroup`, `createSingle`, `createStep`
+- **System**: `useClickOutside`, `useEventListener`, `useHotkey`, `useIntersectionObserver`
+- **Plugins**: `useTheme`, `useLocale`, `useBreakpoints`, `useFeatures`, `usePermissions`
+
+## Design Principles
+
+<Steps>
+  <Step title="Accessibility Built-in">
+    ARIA attributes, keyboard navigation, and focus management are handled automatically. Every component follows WAI-ARIA best practices.
+  </Step>
+  
+  <Step title="Composition Over Configuration">
+    Build complex UIs by composing simple primitives. Use compound components for flexibility and composables for shared logic.
+  </Step>
+  
+  <Step title="Performance First">
+    Set-based selection tracking, virtual scrolling support, and efficient reactivity patterns ensure optimal performance even with large datasets.
+  </Step>
+  
+  <Step title="Developer Experience">
+    Comprehensive TypeScript types, clear error messages, and extensive documentation make development smooth and predictable.
+  </Step>
+</Steps>
+
+## What's Included
+
+### Components
+
+Vuetify Zero includes 18 headless components:
+
+- **Atom** - Polymorphic base element with renderless mode
+- **Avatar** - Image with fallback display
+- **Breadcrumbs** - Responsive navigation trail with overflow
+- **Checkbox** - Standalone or group with tri-state support
+- **Dialog** - Modal dialog using native `<dialog>`
+- **ExpansionPanel** - Accordion/collapsible panels
+- **Group** - Multi-selection with tri-state
+- **Pagination** - Page navigation with ellipsis
+- **Popover** - CSS anchor-positioned popup
+- **Radio** - Radio button group with single-selection
+- **Scrim** - Backdrop/overlay for overlays
+- **Selection** - Generic single/multi-selection
+- **Single** - Single-selection specialization
+- **Step** - Navigation stepper
+- **Tabs** - Accessible tab interface
+
+### Composables
+
+Over 40 composables organized into categories:
+
+**Foundation** - Core factories for context, plugins, and trinity pattern
+
+**Registration** - Data structures like Registry, Queue, Timeline, Tokens, DataTable
+
+**Selection** - Selection management with Group, Single, Step, Breadcrumbs, Nested
+
+**Forms** - Form validation and state management
+
+**System** - Browser APIs wrapped as composables (click outside, event listeners, observers, hotkeys)
+
+**Plugins** - Pluggable features like theme, locale, breakpoints, permissions, storage
+
+## Tree-Shakeable Exports
+
+The package provides tree-shakeable subpath exports for optimal bundle size:
+
+```typescript
+import { ... } from '@vuetify/v0'            // Everything
+import { ... } from '@vuetify/v0/components' // Components only
+import { ... } from '@vuetify/v0/composables' // Composables only
+import { ... } from '@vuetify/v0/utilities'  // Utilities only
+import { ... } from '@vuetify/v0/types'      // Types only
+import { ... } from '@vuetify/v0/constants'  // Constants only
+import { ... } from '@vuetify/v0/date'       // Date adapter and utilities
+```
+
+## Use Cases
+
+### Building Design Systems
+
+Create your own component library with consistent behavior:
+
+```vue
+<!-- MyButton.vue -->
+<script setup>
+import { Atom } from '@vuetify/v0'
+</script>
+
+<template>
+  <Atom as="button" class="my-button">
+    <slot />
+  </Atom>
+</template>
+```
+
+### Custom Styled Components
+
+Build fully custom UIs without fighting framework opinions:
+
+```vue
+<Tabs.Root v-model="selected">
+  <Tabs.List class="custom-tab-list">
+    <Tabs.Item value="1" class="custom-tab" />
+  </Tabs.List>
+  <Tabs.Panel value="1" class="custom-panel" />
+</Tabs.Root>
+```
+
+### Application Logic
+
+Use composables directly in your application code:
+
+```typescript
+const form = createForm({
+  fields: { email: '', password: '' },
+  rules: {
+    email: [(v) => /.+@.+/.test(v) || 'Invalid email'],
+    password: [(v) => v.length >= 8 || 'Too short']
+  }
+})
+```
+
+<Warning>
+  Vuetify Zero is a low-level library. If you need pre-styled components, consider using Vuetify 3 instead.
+</Warning>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Installation" icon="download" href="/installation">
+    Get started by installing Vuetify Zero in your project
+  </Card>
+  <Card title="Quickstart" icon="rocket" href="/quickstart">
+    Build your first component with a step-by-step guide
+  </Card>
+</CardGroup>

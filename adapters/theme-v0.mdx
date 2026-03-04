@@ -1,0 +1,489 @@
+---
+title: Theme V0 Adapter
+description: Built-in theme adapter with CSS custom property injection
+---
+
+# Theme V0 Adapter (Vuetify0ThemeAdapter)
+
+The `Vuetify0ThemeAdapter` is the default theme adapter for Vuetify Zero, generating and injecting CSS custom properties for dynamic theme switching.
+
+## Import
+
+```typescript
+import { Vuetify0ThemeAdapter } from '@vuetify/v0/theme/adapters/v0'
+```
+
+## Basic Usage
+
+```typescript
+import { createApp } from 'vue'
+import { createThemePlugin } from '@vuetify/v0/theme'
+import { Vuetify0ThemeAdapter } from '@vuetify/v0/theme/adapters/v0'
+
+const app = createApp(App)
+
+app.use(createThemePlugin({
+  adapter: new Vuetify0ThemeAdapter(),
+  default: 'light',
+  themes: {
+    light: {
+      dark: false,
+      colors: {
+        primary: '#3b82f6',
+        secondary: '#8b5cf6',
+        background: '#ffffff',
+        surface: '#f3f4f6'
+      }
+    },
+    dark: {
+      dark: true,
+      colors: {
+        primary: '#60a5fa',
+        secondary: '#a78bfa',
+        background: '#1f2937',
+        surface: '#374151'
+      }
+    }
+  }
+}))
+```
+
+<Note>
+The `Vuetify0ThemeAdapter` is the **default adapter** when no adapter is specified:
+
+```typescript
+app.use(createThemePlugin()) // Uses Vuetify0ThemeAdapter automatically
+```
+</Note>
+
+## Using in Components
+
+```vue
+<script setup lang="ts">
+import { useTheme } from '@vuetify/v0/theme'
+
+const theme = useTheme()
+
+function toggleTheme() {
+  theme.cycle(['light', 'dark'])
+}
+</script>
+
+<template>
+  <div>
+    <button @click="toggleTheme">
+      Toggle Theme
+    </button>
+    
+    <div class="card">
+      <h2>Themed Card</h2>
+      <p>This card uses theme colors</p>
+    </div>
+  </div>
+</template>
+
+<style scoped>
+.card {
+  background: var(--v0-surface);
+  color: var(--v0-on-surface);
+  padding: 1rem;
+  border-radius: 0.5rem;
+}
+
+h2 {
+  color: var(--v0-primary);
+}
+</style>
+```
+
+## CSS Custom Properties
+
+The adapter generates CSS custom properties with a prefix:
+
+```css
+/* Generated CSS */
+:root {
+  --v0-primary: #3b82f6;
+  --v0-secondary: #8b5cf6;
+  --v0-background: #ffffff;
+  --v0-surface: #f3f4f6;
+}
+
+/* Use in your styles */
+.button {
+  background-color: var(--v0-primary);
+  color: var(--v0-on-primary);
+}
+
+.card {
+  background: var(--v0-surface);
+  border: 1px solid var(--v0-border);
+}
+```
+
+## Configuration Options
+
+```typescript
+interface Vuetify0ThemeOptions {
+  cspNonce?: string      // CSP nonce for stylesheet
+  stylesheetId?: string  // Custom stylesheet ID
+  prefix?: string        // CSS variable prefix (default: 'v0')
+}
+```
+
+### Custom Prefix
+
+```typescript
+import { Vuetify0ThemeAdapter } from '@vuetify/v0/theme/adapters/v0'
+
+const adapter = new Vuetify0ThemeAdapter({
+  prefix: 'app'
+})
+
+// Generates: --app-primary, --app-secondary, etc.
+```
+
+### CSP Nonce
+
+For Content Security Policy compliance:
+
+```typescript
+const adapter = new Vuetify0ThemeAdapter({
+  cspNonce: 'random-nonce-value'
+})
+
+// Injects stylesheet with nonce attribute
+```
+
+### Custom Stylesheet ID
+
+```typescript
+const adapter = new Vuetify0ThemeAdapter({
+  stylesheetId: 'my-theme-styles'
+})
+
+// <style id="my-theme-styles">...</style>
+```
+
+## Theme Structure
+
+### Basic Theme
+
+```typescript
+const themes = {
+  light: {
+    dark: false,
+    colors: {
+      primary: '#3b82f6',
+      secondary: '#8b5cf6',
+      success: '#10b981',
+      warning: '#f59e0b',
+      error: '#ef4444',
+      info: '#06b6d4'
+    }
+  }
+}
+```
+
+### Nested Colors
+
+```typescript
+const themes = {
+  light: {
+    dark: false,
+    colors: {
+      primary: {
+        base: '#3b82f6',
+        light: '#60a5fa',
+        dark: '#2563eb'
+      },
+      text: {
+        primary: '#1f2937',
+        secondary: '#6b7280',
+        disabled: '#9ca3af'
+      }
+    }
+  }
+}
+
+// Generated CSS:
+// --v0-primary-base: #3b82f6;
+// --v0-primary-light: #60a5fa;
+// --v0-primary-dark: #2563eb;
+// --v0-text-primary: #1f2937;
+// --v0-text-secondary: #6b7280;
+```
+
+## Dynamic Theme Switching
+
+```vue
+<script setup lang="ts">
+import { useTheme } from '@vuetify/v0/theme'
+
+const theme = useTheme()
+
+// Switch to specific theme
+function setTheme(themeName: string) {
+  theme.select(themeName)
+}
+
+// Cycle through themes
+function cycleThemes() {
+  theme.cycle(['light', 'dark', 'sepia'])
+}
+
+// Check current theme
+const isDark = computed(() => theme.isDark.value)
+</script>
+
+<template>
+  <div>
+    <button @click="setTheme('light')">Light</button>
+    <button @click="setTheme('dark')">Dark</button>
+    <button @click="cycleThemes">Cycle</button>
+    
+    <p>Current theme is {{ isDark ? 'dark' : 'light' }}</p>
+  </div>
+</template>
+```
+
+## Data Attribute
+
+The adapter sets a `data-theme` attribute on the target element:
+
+```html
+<!-- When theme is 'light' -->
+<html data-theme="light">
+  <!-- Your app -->
+</html>
+
+<!-- When theme is 'dark' -->
+<html data-theme="dark">
+  <!-- Your app -->
+</html>
+```
+
+Use this for theme-specific styling:
+
+```css
+[data-theme="light"] .card {
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+[data-theme="dark"] .card {
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+}
+```
+
+## Target Element
+
+By default, the theme is applied to the app container or `#app`:
+
+```typescript
+app.use(createThemePlugin({
+  themes: { ... }
+}))
+
+// Applies to: app._container || document.querySelector('#app') || document.body
+```
+
+### Custom Target
+
+```typescript
+app.use(createThemePlugin({
+  target: '#my-app',  // CSS selector
+  themes: { ... }
+}))
+
+// Or pass element directly
+app.use(createThemePlugin({
+  target: document.documentElement,  // <html>
+  themes: { ... }
+}))
+
+// Or disable target
+app.use(createThemePlugin({
+  target: null,  // No data-theme attribute
+  themes: { ... }
+}))
+```
+
+## SSR Support
+
+The adapter supports server-side rendering with head integration:
+
+```typescript
+import { createSSRApp } from 'vue'
+import { createHead } from '@unhead/vue'
+import { createThemePlugin } from '@vuetify/v0/theme'
+
+const app = createSSRApp(App)
+const head = createHead()
+
+app.use(head)
+app.use(createThemePlugin({
+  themes: { ... }
+}))
+
+// On server, theme styles are injected into <head>
+```
+
+Generated server HTML:
+
+```html
+<html data-theme="light">
+  <head>
+    <style id="v0-theme-styles">
+      :root {
+        --v0-primary: #3b82f6;
+        --v0-secondary: #8b5cf6;
+      }
+    </style>
+  </head>
+  <body>...</body>
+</html>
+```
+
+## Adopted Stylesheets
+
+In browser, the adapter uses [Constructable Stylesheets](https://developer.mozilla.org/en-US/docs/Web/API/CSSStyleSheet):
+
+```typescript
+// Creates CSSStyleSheet and adopts it
+const sheet = new CSSStyleSheet()
+sheet.replaceSync(cssContent)
+document.adoptedStyleSheets = [...document.adoptedStyleSheets, sheet]
+```
+
+This is **more performant** than injecting `<style>` tags.
+
+## TypeScript
+
+```typescript
+import { Vuetify0ThemeAdapter } from '@vuetify/v0/theme/adapters/v0'
+import type { Vuetify0ThemeOptions } from '@vuetify/v0/theme/adapters/v0'
+
+const options: Vuetify0ThemeOptions = {
+  prefix: 'app',
+  cspNonce: undefined,
+  stylesheetId: 'app-theme'
+}
+
+const adapter = new Vuetify0ThemeAdapter(options)
+```
+
+## Custom Theme Adapter
+
+Create custom adapters by extending `ThemeAdapter`:
+
+```typescript
+import { ThemeAdapter } from '@vuetify/v0/theme'
+import type { App } from 'vue'
+import type { ThemeAdapterSetupContext } from '@vuetify/v0/theme'
+
+class TailwindThemeAdapter extends ThemeAdapter {
+  constructor() {
+    super('tw')  // Prefix
+  }
+  
+  setup(app: App, context: ThemeAdapterSetupContext, target?: string | HTMLElement | null) {
+    // Custom theme injection logic
+    // Example: Generate Tailwind classes instead of CSS variables
+    
+    watch([context.colors, context.isDark], ([colors, isDark]) => {
+      // Update theme
+      this.updateTailwindConfig(colors, isDark)
+    })
+  }
+  
+  updateTailwindConfig(colors: Record<string, Colors>, isDark: boolean) {
+    // Custom implementation
+  }
+}
+```
+
+## API Reference
+
+### Constructor
+
+```typescript
+class Vuetify0ThemeAdapter extends ThemeAdapter
+
+constructor(options?: Vuetify0ThemeOptions)
+```
+
+### Options
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `prefix` | `string` | `'v0'` | CSS variable prefix |
+| `cspNonce` | `string` | `undefined` | CSP nonce for stylesheet |
+| `stylesheetId` | `string` | Auto-generated | Stylesheet element ID |
+
+### Methods
+
+| Method | Description |
+|--------|-------------|
+| `setup(app, context, target)` | Initialize theme system |
+| `update(colors, isDark)` | Update theme colors |
+| `upsert(styles)` | Inject/update stylesheet |
+| `generate(colors, isDark)` | Generate CSS string |
+
+### Setup Context
+
+```typescript
+interface ThemeAdapterSetupContext {
+  colors: ComputedRef<Record<ID, Colors>>
+  isDark: Readonly<Ref<boolean>>
+  selectedId: Readonly<Ref<ID | undefined>>
+}
+```
+
+## Generated CSS
+
+The adapter generates flat CSS custom properties:
+
+```typescript
+// Input
+const colors = {
+  light: {
+    primary: '#3b82f6',
+    text: {
+      primary: '#1f2937',
+      secondary: '#6b7280'
+    }
+  }
+}
+
+// Output
+:root {
+  --v0-primary: #3b82f6;
+  --v0-text-primary: #1f2937;
+  --v0-text-secondary: #6b7280;
+}
+```
+
+## Performance
+
+<Note>
+The adapter is optimized for performance:
+
+- **Constructable Stylesheets** - Uses browser-native API for fast updates
+- **No DOM manipulation** - Direct stylesheet replacement, no element creation
+- **Minimal re-renders** - Only updates when colors change
+- **SSR-optimized** - Injects styles synchronously to prevent FOUC
+</Note>
+
+## Browser Support
+
+| Feature | Chrome | Firefox | Safari | Edge |
+|---------|--------|---------|--------|------|
+| CSS Custom Properties | ✓ | ✓ | ✓ | ✓ |
+| Constructable Stylesheets | ✓ 73+ | ✓ 101+ | ✓ 16.4+ | ✓ 79+ |
+
+## See Also
+
+- [useTheme](/composables/use-theme) - Theme composable
+- [createTokens](/composables/create-tokens) - Token system for color aliases
+- [CSS Custom Properties](https://developer.mozilla.org/en-US/docs/Web/CSS/--*) - MDN documentation
+- [Constructable Stylesheets](https://developer.mozilla.org/en-US/docs/Web/API/CSSStyleSheet) - MDN documentation

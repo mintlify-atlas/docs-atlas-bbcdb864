@@ -1,0 +1,248 @@
+---
+title: Types
+description: Shared type definitions used throughout Vuetify Zero
+---
+
+# Types
+
+Shared type definitions used throughout `@vuetify/v0`. All types are exported from `#v0/types`.
+
+## Import
+
+```ts
+import type { ID, Extensible, MaybeArray, DeepPartial, Activation } from '#v0/types'
+```
+
+---
+
+## ID
+
+Identifier type used throughout the registry system.
+
+```ts
+type ID = string | number
+```
+
+### Usage
+
+All tickets, items, and registrable entities use this type for their `id` property.
+
+```ts
+const id: ID = 'item-1'  // string
+const id: ID = 42         // number
+
+// In registry items
+interface Item {
+  id: ID
+  name: string
+}
+```
+
+---
+
+## Extensible
+
+Preserves string literal autocomplete while allowing arbitrary strings.
+
+```ts
+type Extensible<T extends string> = T | (string & {})
+```
+
+### Description
+
+TypeScript normally collapses `'a' | 'b' | string` into just `string`, losing IDE autocomplete for the known values. This type uses the `string & {}` trick to prevent that collapse.
+
+Use for extensible APIs where you want autocomplete for known values but still accept custom strings: event names, theme tokens, CSS classes, etc.
+
+### Usage
+
+```ts
+type Color = 'red' | 'blue' | 'green'
+
+// WITHOUT Extensible - autocomplete lost
+type BadColor = Color | string  // collapses to just `string`
+
+// WITH Extensible - autocomplete preserved
+type GoodColor = Extensible<Color>
+
+function setColor(c: GoodColor) {}
+setColor('red')      // autocomplete suggests 'red' | 'blue' | 'green'
+setColor('purple')   // also OK - custom value accepted
+```
+
+```ts
+// Event system with typed + custom events
+type KnownEvent = 'click' | 'hover' | 'focus'
+
+function on<K extends Extensible<KnownEvent>>(event: K, cb: Callback<K>) {}
+
+on('click', ...)     // autocomplete works
+on('custom', ...)    // custom events allowed
+```
+
+---
+
+## MaybeArray
+
+Union type that accepts either a single value or an array.
+
+```ts
+type MaybeArray<T> = T | T[]
+```
+
+### Description
+
+Used for APIs that accept both single items and arrays.
+
+### Usage
+
+```ts
+function process(input: MaybeArray<string>) {
+  const items = Array.isArray(input) ? input : [input]
+  items.forEach(item => console.log(item))
+}
+
+process('single')        // OK
+process(['a', 'b', 'c']) // OK
+```
+
+```ts
+// Component prop that accepts single or multiple
+interface Props {
+  items: MaybeArray<Item>
+}
+
+const props = defineProps<Props>()
+const itemArray = Array.isArray(props.items) ? props.items : [props.items]
+```
+
+---
+
+## DeepPartial
+
+Recursively makes all properties of T optional.
+
+```ts
+type DeepPartial<T> = T extends object ? {
+  [P in keyof T]?: DeepPartial<T[P]>;
+} : T
+```
+
+### Description
+
+Used by `mergeDeep` to type partial source objects. Unlike TypeScript's built-in `Partial<T>` which only makes the first level optional, `DeepPartial<T>` recursively makes all nested properties optional.
+
+### Usage
+
+```ts
+type User = {
+  name: string
+  address: {
+    city: string
+    country: string
+  }
+}
+
+type PartialUser = DeepPartial<User>
+// {
+//   name?: string
+//   address?: {
+//     city?: string
+//     country?: string
+//   }
+// }
+
+// Used with mergeDeep
+const defaults: User = {
+  name: 'John',
+  address: { city: 'NYC', country: 'USA' }
+}
+
+const overrides: DeepPartial<User> = {
+  address: { city: 'LA' }  // only override city
+}
+
+mergeDeep(defaults, overrides)
+// Result: { name: 'John', address: { city: 'LA', country: 'USA' } }
+```
+
+---
+
+## Activation
+
+Keyboard activation mode for navigable components.
+
+```ts
+type Activation = 'automatic' | 'manual'
+```
+
+### Description
+
+Controls when selection occurs during keyboard navigation:
+
+- **`automatic`** (default): Selection follows focus (arrow keys select). This is the WAI-ARIA standard for radio groups.
+- **`manual`**: Arrow keys move focus only; Enter/Space required to select. Use for toolbar contexts or when deliberate selection is preferred.
+
+### Usage
+
+```vue
+<template>
+  <Radio.Group v-model="selected" activation="manual">
+    <Radio.Root value="a">Option A</Radio.Root>
+    <Radio.Root value="b">Option B</Radio.Root>
+    <Radio.Root value="c">Option C</Radio.Root>
+  </Radio.Group>
+</template>
+
+<script setup lang="ts">
+import type { Activation } from '#v0/types'
+
+const selected = ref('a')
+const mode: Activation = 'manual'
+</script>
+```
+
+---
+
+## Additional Types
+
+### DOMElement
+
+Valid element types for Vue's `h()` render function.
+
+```ts
+type DOMElement = Parameters<typeof h>[0]
+```
+
+Includes HTML tag names, component definitions, and functional components. Used by the `Atom` component for polymorphic rendering.
+
+### GenericObject
+
+Generic object with string keys and any values.
+
+```ts
+type GenericObject = Record<string, any>
+```
+
+<Note>
+Use sparingly - prefer `UnknownObject` for better type safety.
+</Note>
+
+### UnknownObject
+
+Object with string keys and unknown values.
+
+```ts
+type UnknownObject = Record<string, unknown>
+```
+
+Safer alternative to `GenericObject` that requires type narrowing.
+
+```ts
+function process(obj: UnknownObject) {
+  // Must narrow type before using
+  if (typeof obj.name === 'string') {
+    console.log(obj.name)
+  }
+}
+```

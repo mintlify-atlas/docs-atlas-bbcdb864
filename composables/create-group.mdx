@@ -1,0 +1,373 @@
+---
+title: createGroup
+description: Multi-selection composable with batch operations, tri-state support, and select-all functionality
+---
+
+## Overview
+
+The **createGroup** composable extends `createSelection` to support batch selection operations and tri-state (mixed/indeterminate) support. Perfect for checkbox trees, multi-select dropdowns, and bulk operations.
+
+## Signature
+
+```ts
+function createGroup<
+  Z extends GroupTicketInput = GroupTicketInput,
+  E extends GroupTicket<Z> = GroupTicket<Z>
+>(options?: GroupOptions): GroupContext<Z, E>
+```
+
+<ParamField path="options" type="GroupOptions">
+  Configuration options (inherits from SelectionOptions)
+  
+  <Expandable title="properties">
+    <ParamField path="mandatory" type="boolean | 'force'" default="false">
+      Mandatory selection enforcement
+    </ParamField>
+    
+    <ParamField path="multiple" type="boolean" default="true">
+      Allow multiple items to be selected (defaults to true for groups)
+    </ParamField>
+    
+    <ParamField path="disabled" type="MaybeRefOrGetter<boolean>" default="false">
+      Disable entire group
+    </ParamField>
+    
+    <ParamField path="enroll" type="MaybeRefOrGetter<boolean>" default="false">
+      Auto-select newly registered non-disabled items
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+<ResponseField name="GroupContext" type="object">
+  Group selection instance with batch operations
+  
+  <Expandable title="properties">
+    <ResponseField name="selectedIndexes" type="ComputedRef<Set<number>>">
+      Set of selected item indexes for position-based tracking
+    </ResponseField>
+    
+    <ResponseField name="mixedIds" type="Reactive<Set<ID>>">
+      Set of items in mixed/indeterminate state
+    </ResponseField>
+    
+    <ResponseField name="mixedItems" type="ComputedRef<Set<E>>">
+      Set of mixed/indeterminate ticket instances
+    </ResponseField>
+    
+    <ResponseField name="isNoneSelected" type="ComputedRef<boolean>">
+      True when no items are selected
+    </ResponseField>
+    
+    <ResponseField name="isAllSelected" type="ComputedRef<boolean>">
+      True when all selectable (non-disabled) items are selected
+    </ResponseField>
+    
+    <ResponseField name="isMixed" type="ComputedRef<boolean>">
+      True when some but not all items are selected, or any items are in mixed state
+    </ResponseField>
+    
+    <ResponseField name="select" type="(ids: ID | ID[]) => void">
+      Select one or more items by ID (batch operation)
+    </ResponseField>
+    
+    <ResponseField name="unselect" type="(ids: ID | ID[]) => void">
+      Unselect one or more items by ID (batch operation)
+    </ResponseField>
+    
+    <ResponseField name="toggle" type="(ids: ID | ID[]) => void">
+      Toggle one or more items by ID (batch operation)
+    </ResponseField>
+    
+    <ResponseField name="selectAll" type="() => void">
+      Select all non-disabled items
+    </ResponseField>
+    
+    <ResponseField name="unselectAll" type="() => void">
+      Unselect all items (respects mandatory option)
+    </ResponseField>
+    
+    <ResponseField name="toggleAll" type="() => void">
+      Toggle between all selected and none selected
+    </ResponseField>
+    
+    <ResponseField name="mix" type="(ids: ID | ID[]) => void">
+      Set items to mixed/indeterminate state
+    </ResponseField>
+    
+    <ResponseField name="unmix" type="(ids: ID | ID[]) => void">
+      Clear mixed/indeterminate state from items
+    </ResponseField>
+    
+    <ResponseField name="mixed" type="(id: ID) => boolean">
+      Check if an item is in mixed state
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+## Usage
+
+### Batch Selection
+
+```ts
+import { createGroup } from '@vuetify/v0'
+
+const group = createGroup()
+
+group.onboard([
+  { id: 'item-1', value: 'Item 1' },
+  { id: 'item-2', value: 'Item 2' },
+  { id: 'item-3', value: 'Item 3' },
+])
+
+// Select multiple items at once
+group.select(['item-1', 'item-3'])
+
+console.log(group.selectedIds) // Set { 'item-1', 'item-3' }
+console.log(Array.from(group.selectedIndexes.value)) // [0, 2]
+```
+
+### Tri-State (Mixed/Indeterminate)
+
+```ts
+const group = createGroup()
+
+group.onboard([
+  { id: 'item-1', value: 'Item 1' },
+  { id: 'item-2', value: 'Item 2' },
+])
+
+// Select item-1
+group.select('item-1')
+console.log(group.selected('item-1')) // true
+
+// Set to mixed state (clears selected)
+group.mix('item-1')
+console.log(group.mixed('item-1')) // true
+console.log(group.selected('item-1')) // false
+
+// Toggle mixed item selects it
+group.toggle('item-1')
+console.log(group.selected('item-1')) // true
+console.log(group.mixed('item-1')) // false
+```
+
+### Select All / Unselect All
+
+```ts
+const group = createGroup()
+
+group.onboard([
+  { id: 'item-1', value: 'Item 1' },
+  { id: 'item-2', value: 'Item 2', disabled: true },
+  { id: 'item-3', value: 'Item 3' },
+])
+
+// Select all non-disabled items
+group.selectAll()
+console.log(group.selectedIds.size) // 2 (skips disabled)
+console.log(group.isAllSelected.value) // true
+
+// Unselect all
+group.unselectAll()
+console.log(group.isNoneSelected.value) // true
+```
+
+### Toggle All
+
+```ts
+const group = createGroup()
+
+group.onboard([
+  { id: 'item-1', value: 'Item 1' },
+  { id: 'item-2', value: 'Item 2' },
+  { id: 'item-3', value: 'Item 3' },
+])
+
+group.select('item-1')
+
+// Toggles to all selected (some were selected)
+group.toggleAll()
+console.log(group.isAllSelected.value) // true
+
+// Toggles to none selected (all were selected)
+group.toggleAll()
+console.log(group.isNoneSelected.value) // true
+```
+
+### Initial Indeterminate State
+
+```ts
+const group = createGroup()
+
+const ticket = group.register({ 
+  id: 'item-1', 
+  indeterminate: true 
+})
+
+console.log(ticket.isMixed.value) // true
+console.log(group.mixedIds.has('item-1')) // true
+```
+
+### Ticket-Level Tri-State Methods
+
+```ts
+const group = createGroup()
+
+const ticket = group.register({ id: 'item-1', value: 'Item 1' })
+
+// Ticket has tri-state methods
+ticket.mix()
+console.log(ticket.isMixed.value) // true
+
+ticket.unmix()
+console.log(ticket.isMixed.value) // false
+
+ticket.select()
+console.log(ticket.isSelected.value) // true
+```
+
+## Checkbox Tree Example
+
+```vue
+<script setup lang="ts">
+import { createGroup } from '@vuetify/v0'
+
+const permissions = createGroup()
+
+permissions.onboard([
+  { id: 'read-users', value: 'Read Users' },
+  { id: 'write-users', value: 'Write Users' },
+  { id: 'delete-users', value: 'Delete Users' },
+  { id: 'read-posts', value: 'Read Posts' },
+  { id: 'write-posts', value: 'Write Posts' },
+])
+
+function handleSelectAll() {
+  if (permissions.isAllSelected.value) {
+    permissions.unselectAll()
+  } else {
+    permissions.selectAll()
+  }
+}
+</script>
+
+<template>
+  <div>
+    <label>
+      <input 
+        type="checkbox"
+        :checked="permissions.isAllSelected.value"
+        :indeterminate="permissions.isMixed.value"
+        @change="handleSelectAll"
+      >
+      Select All
+    </label>
+    
+    <div v-for="ticket in permissions.values()" :key="ticket.id">
+      <label>
+        <input
+          type="checkbox"
+          :checked="ticket.isSelected.value"
+          :indeterminate="ticket.isMixed.value"
+          @change="ticket.toggle()"
+        >
+        {{ ticket.value }}
+      </label>
+    </div>
+  </div>
+</template>
+```
+
+## Computed State
+
+```ts
+const group = createGroup()
+
+group.onboard([
+  { id: 'item-1', value: 'Item 1' },
+  { id: 'item-2', value: 'Item 2' },
+  { id: 'item-3', value: 'Item 3' },
+])
+
+group.select('item-1')
+
+console.log(group.isNoneSelected.value) // false
+console.log(group.isAllSelected.value) // false
+console.log(group.isMixed.value) // true (some selected)
+
+group.selectAll()
+console.log(group.isAllSelected.value) // true
+console.log(group.isMixed.value) // false
+```
+
+## Batch Operations Performance
+
+```ts
+const group = createGroup()
+
+// Register 1000 items
+const items = Array.from({ length: 1000 }, (_, i) => ({
+  id: `item-${i}`,
+  value: `Item ${i}`
+}))
+group.onboard(items)
+
+// Batch select (efficient)
+const ids = items.slice(0, 500).map(item => item.id)
+group.select(ids) // Single operation
+
+// vs individual selects (less efficient)
+for (const id of ids) {
+  group.select(id) // Multiple operations
+}
+```
+
+## Type Safety
+
+```ts
+interface PermissionTicket extends GroupTicketInput {
+  permission: string
+  scope: 'read' | 'write' | 'admin'
+}
+
+const permissions = createGroup<PermissionTicket>()
+
+const tickets = permissions.onboard([
+  { permission: 'users', scope: 'read' },
+  { permission: 'posts', scope: 'write' },
+])
+
+// Type-safe access
+tickets[0]!.permission // string
+tickets[0]!.scope // 'read' | 'write' | 'admin'
+tickets[0]!.isMixed.value // boolean
+```
+
+## Mixed State Behavior
+
+- `select(id)` clears mixed state before selecting
+- `mix(id)` clears selected state before setting mixed
+- `toggle(id)` on mixed item selects it (resolves indeterminate positively)
+- Mixed state works on disabled items (it's computed state, not user action)
+- Selecting/unselecting clears any mixed state on affected items
+
+## Context Pattern
+
+```ts
+import { createGroupContext } from '@vuetify/v0'
+
+export const [useFilters, provideFilters, filters] = createGroupContext()
+
+// In parent component
+provideFilters()
+
+// In child component
+const filters = useFilters()
+filters.selectAll()
+```
+
+## See Also
+
+- [createSelection](/composables/create-selection) - Base selection system
+- [createSingle](/composables/create-single) - Single-selection variant
+- [createNested](/composables/create-nested) - Hierarchical tree with cascading selection

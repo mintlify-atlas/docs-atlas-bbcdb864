@@ -1,0 +1,235 @@
+---
+title: createQueue
+description: Time-based queue composable for managing collections with automatic timeout-based removal.
+---
+
+## Overview
+
+A queue composable for managing time-based collections with automatic timeout-based removal, pause/resume functionality, and FIFO ordering. Built on top of `createRegistry`, the queue automatically manages timeouts for tickets and ensures only the first ticket in the queue is active at any time.
+
+## Basic Usage
+
+```ts
+import { createQueue } from '@vuetify/v0'
+
+const queue = createQueue({ timeout: 3000 })
+
+// Register with default timeout
+const ticket1 = queue.register({ value: 'First notification' })
+
+// Register with custom timeout
+const ticket2 = queue.register({ 
+  value: 'Second notification', 
+  timeout: 5000 
+})
+
+// Register persistent ticket (must be manually dismissed)
+const ticket3 = queue.register({ 
+  value: 'Important', 
+  timeout: -1 
+})
+
+// Dismiss a ticket
+ticket3.dismiss()
+```
+
+## Function Signature
+
+```ts
+function createQueue<
+  Z extends QueueTicketInput = QueueTicketInput,
+  E extends QueueTicket<Z> = QueueTicket<Z>,
+  R extends QueueContext<Z, E> = QueueContext<Z, E>
+>(options?: QueueOptions): R
+```
+
+### Parameters
+
+<ParamField path="options" type="QueueOptions">
+  Configuration options for the queue
+  
+  <ParamField path="timeout" type="number" default="3000">
+    Default timeout in milliseconds for tickets without explicit timeout
+  </ParamField>
+</ParamField>
+
+### Returns
+
+<ResponseField name="QueueContext" type="object">
+  Queue context with methods and properties
+  
+  <ResponseField name="register" type="function">
+    Register a new ticket in the queue. Returns the registered ticket with `dismiss()` method.
+    
+    ```ts
+    const ticket = queue.register({
+      value: 'Message',
+      timeout: 5000 // Optional, uses default if not provided
+    })
+    ```
+  </ResponseField>
+  
+  <ResponseField name="unregister" type="function">
+    Remove a ticket by ID. If no ID provided, removes the first ticket.
+    
+    ```ts
+    queue.unregister(ticket.id)
+    // or remove first ticket
+    const removed = queue.unregister()
+    ```
+  </ResponseField>
+  
+  <ResponseField name="pause" type="function">
+    Pause the timeout of the first ticket in the queue
+    
+    ```ts
+    const paused = queue.pause()
+    console.log(paused?.isPaused) // true
+    ```
+  </ResponseField>
+  
+  <ResponseField name="resume" type="function">
+    Resume the timeout of the first paused ticket
+    
+    ```ts
+    const resumed = queue.resume()
+    console.log(resumed?.isPaused) // false
+    ```
+  </ResponseField>
+  
+  <ResponseField name="clear" type="function">
+    Remove all tickets and clear all timeouts
+    
+    ```ts
+    queue.clear()
+    console.log(queue.size) // 0
+    ```
+  </ResponseField>
+  
+  <ResponseField name="offboard" type="function">
+    Batch unregister multiple tickets by ID array
+    
+    ```ts
+    queue.offboard([ticket1.id, ticket2.id])
+    ```
+  </ResponseField>
+  
+  <ResponseField name="size" type="number">
+    Current number of tickets in the queue
+  </ResponseField>
+</ResponseField>
+
+## Timeout Behavior
+
+### Default Timeout
+
+Tickets use the default timeout from queue options if not specified:
+
+```ts
+const queue = createQueue({ timeout: 5000 })
+const ticket = queue.register({ value: 'Uses 5s timeout' })
+```
+
+### Custom Timeout
+
+Override timeout per ticket:
+
+```ts
+const ticket = queue.register({ 
+  value: 'Custom timeout',
+  timeout: 3000 
+})
+```
+
+### Persistent Tickets
+
+Use `-1` to prevent automatic removal:
+
+```ts
+const ticket = queue.register({ 
+  value: 'Stays until dismissed',
+  timeout: -1 
+})
+
+// Must manually dismiss
+ticket.dismiss()
+```
+
+## Queue Progression
+
+Only the first ticket's timeout is active. When removed, the next ticket automatically becomes active:
+
+```ts
+const queue = createQueue({ timeout: 1000 })
+
+const ticket1 = queue.register({ value: 'First' })
+const ticket2 = queue.register({ value: 'Second' })
+
+console.log(ticket1.isPaused) // false (active)
+console.log(ticket2.isPaused) // true (paused)
+
+// After 1 second, ticket1 is removed automatically
+// ticket2 becomes active and its timeout starts
+```
+
+## Pause and Resume
+
+Control timeout progression:
+
+```ts
+const queue = createQueue({ timeout: 5000 })
+const ticket = queue.register({ value: 'Pausable' })
+
+// Pause the active ticket
+queue.pause()
+console.log(ticket.isPaused) // true
+
+// Resume when ready
+queue.resume()
+console.log(ticket.isPaused) // false
+```
+
+## Context Pattern
+
+Use dependency injection for global queue access:
+
+```ts
+import { createQueueContext } from '@vuetify/v0'
+
+export const [useQueue, provideQueue, queue] = createQueueContext({
+  timeout: 5000,
+})
+
+// Parent component
+provideQueue()
+
+// Child component
+const queue = useQueue()
+queue.register({ value: 'Notification' })
+```
+
+## TypeScript
+
+### Custom Ticket Types
+
+Extend ticket properties:
+
+```ts
+interface NotificationTicket extends QueueTicketInput {
+  title: string
+  severity: 'info' | 'warning' | 'error'
+}
+
+const queue = createQueue<NotificationTicket>()
+
+const ticket = queue.register({
+  title: 'Error occurred',
+  severity: 'error',
+  value: 'Something went wrong',
+})
+```
+
+## Related
+
+- [createRegistry](/composables/create-registry) - Base registry primitive
+- [createTimeline](/composables/create-timeline) - Undo/redo with bounded history

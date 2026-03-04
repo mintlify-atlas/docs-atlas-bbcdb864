@@ -1,0 +1,404 @@
+---
+title: usePermissions
+description: Permission management composable with support for RBAC and ABAC patterns
+---
+
+Permission management with Role-Based Access Control (RBAC) and Attribute-Based Access Control (ABAC) support.
+
+## Features
+
+- Role-Based Access Control (RBAC)
+- Attribute-Based Access Control (ABAC) with context
+- Functional permission conditions
+- Token-based permission storage
+- Adapter pattern for custom permission systems
+
+## Installation
+
+```ts
+import { createPermissionsPlugin } from '@vuetify/v0'
+
+const app = createApp(App)
+app.use(createPermissionsPlugin({
+  permissions: {
+    admin: [
+      ['read', 'users'],
+      ['write', 'users'],
+      ['delete', 'users'],
+    ],
+    editor: [
+      ['read', 'posts'],
+      ['write', 'posts'],
+    ],
+  },
+}))
+```
+
+## Basic Usage
+
+```vue
+<script setup lang="ts">
+import { usePermissions } from '@vuetify/v0'
+import { ref } from 'vue'
+
+const permissions = usePermissions()
+const userRole = ref('editor')
+
+const canEditPosts = computed(() => 
+  permissions.can(userRole.value, 'write', 'posts')
+)
+</script>
+
+<template>
+  <div>
+    <button v-if="canEditPosts">Edit Post</button>
+  </div>
+</template>
+```
+
+## API Reference
+
+### createPermissionsPlugin()
+
+Creates a permissions plugin.
+
+<ParamField path="options" type="PermissionPluginOptions">
+  Plugin configuration
+  
+  <ParamField path="permissions" type="Record<ID, Permission[]>">
+    Record of roles and their permissions
+    
+    Each permission is a tuple:
+    `[actions, subjects, condition?]`
+    
+    - `actions`: String or array of action names (e.g., 'read', 'write')
+    - `subjects`: String or array of subject names (e.g., 'users', 'posts')
+    - `condition`: Optional boolean or function for conditional permissions
+    
+    Example:
+    ```ts
+    {
+      admin: [
+        [['read', 'write', 'delete'], ['users', 'posts']],
+      ],
+      editor: [
+        ['write', 'posts', (ctx) => ctx.isOwner],
+      ],
+    }
+    ```
+  </ParamField>
+  
+  <ParamField path="adapter" type="PermissionAdapter">
+    Custom permission adapter (defaults to Vuetify0PermissionAdapter)
+  </ParamField>
+  
+  <ParamField path="namespace" type="string" default="'v0:permissions'">
+    The namespace for the permissions context
+  </ParamField>
+</ParamField>
+
+### PermissionContext
+
+<ResponseField name="size" type="number">
+  Number of registered permission entries
+</ResponseField>
+
+<ResponseField name="can" type="(id: ID, action: string, subject: string, context?: Record<string, any>) => boolean">
+  Check if a role has permission to perform an action on a subject
+  
+  Parameters:
+  - `id`: Role identifier (e.g., 'admin', 'editor')
+  - `action`: Action name (e.g., 'read', 'write', 'delete')
+  - `subject`: Subject name (e.g., 'users', 'posts')
+  - `context`: Optional context object for conditional permissions
+  
+  Returns: `true` if permission is granted, `false` otherwise
+  
+  Examples:
+  ```ts
+  permissions.can('admin', 'read', 'users') // true
+  permissions.can('editor', 'delete', 'users') // false
+  permissions.can('owner', 'edit', 'posts', { isOwner: true }) // true
+  ```
+</ResponseField>
+
+<ResponseField name="get" type="(path: string) => PermissionTicket | undefined">
+  Get a permission entry by path
+  
+  Path format: `role.action.subject`
+  
+  Example:
+  ```ts
+  const ticket = permissions.get('admin.read.users')
+  console.log(ticket.value) // true or function
+  ```
+</ResponseField>
+
+<ResponseField name="has" type="(path: string) => boolean">
+  Check if a permission entry exists
+</ResponseField>
+
+## Permission Formats
+
+### Simple RBAC
+
+Basic role-based permissions:
+
+```ts
+app.use(createPermissionsPlugin({
+  permissions: {
+    admin: [
+      ['read', 'users'],
+      ['write', 'users'],
+      ['delete', 'users'],
+    ],
+    viewer: [
+      ['read', 'users'],
+    ],
+  },
+}))
+
+// Usage
+const permissions = usePermissions()
+permissions.can('admin', 'delete', 'users') // true
+permissions.can('viewer', 'delete', 'users') // false
+```
+
+### Multiple Actions
+
+```ts
+permissions: {
+  editor: [
+    [['read', 'write'], 'posts'],
+  ],
+}
+
+// Both actions are granted
+permissions.can('editor', 'read', 'posts') // true
+permissions.can('editor', 'write', 'posts') // true
+```
+
+### Multiple Subjects
+
+```ts
+permissions: {
+  viewer: [
+    ['read', ['posts', 'comments', 'users']],
+  ],
+}
+
+// Can read all subjects
+permissions.can('viewer', 'read', 'posts') // true
+permissions.can('viewer', 'read', 'comments') // true
+permissions.can('viewer', 'read', 'users') // true
+```
+
+### Matrix Permissions
+
+```ts
+permissions: {
+  admin: [
+    [['read', 'write', 'delete'], ['users', 'posts', 'comments']],
+  ],
+}
+
+// All combinations are granted
+permissions.can('admin', 'read', 'users') // true
+permissions.can('admin', 'write', 'posts') // true
+permissions.can('admin', 'delete', 'comments') // true
+```
+
+## Conditional Permissions (ABAC)
+
+### Boolean Conditions
+
+```ts
+permissions: {
+  moderator: [
+    ['delete', 'comments', true], // Always allowed
+    ['delete', 'posts', false],   // Never allowed
+  ],
+}
+```
+
+### Function Conditions
+
+```ts
+permissions: {
+  owner: [
+    ['edit', 'posts', (ctx) => ctx.isOwner === true],
+    ['delete', 'posts', (ctx) => ctx.isOwner === true],
+  ],
+}
+
+// Usage
+const permissions = usePermissions()
+const post = { authorId: 123 }
+const currentUserId = 123
+
+permissions.can('owner', 'edit', 'posts', { 
+  isOwner: post.authorId === currentUserId 
+}) // true
+
+permissions.can('owner', 'edit', 'posts', { 
+  isOwner: false 
+}) // false
+```
+
+### Complex Context
+
+```ts
+permissions: {
+  editor: [
+    ['edit', 'posts', (ctx) => {
+      return ctx.userId === ctx.postAuthorId ||
+             ctx.userRoles.includes('senior-editor')
+    }],
+  ],
+}
+
+// Usage
+permissions.can('editor', 'edit', 'posts', {
+  userId: 123,
+  postAuthorId: 456,
+  userRoles: ['editor', 'senior-editor'],
+}) // true (senior editor)
+```
+
+## Examples
+
+### Role-Based UI
+
+```vue
+<script setup lang="ts">
+import { usePermissions } from '@vuetify/v0'
+import { ref, computed } from 'vue'
+
+const permissions = usePermissions()
+const userRole = ref('editor')
+
+const canCreatePost = computed(() =>
+  permissions.can(userRole.value, 'write', 'posts')
+)
+
+const canDeletePost = computed(() =>
+  permissions.can(userRole.value, 'delete', 'posts')
+)
+</script>
+
+<template>
+  <div>
+    <button v-if="canCreatePost">Create Post</button>
+    <button v-if="canDeletePost">Delete Post</button>
+  </div>
+</template>
+```
+
+### Ownership Check
+
+```vue
+<script setup lang="ts">
+import { usePermissions } from '@vuetify/v0'
+import { ref } from 'vue'
+
+const permissions = usePermissions()
+const currentUser = ref({ id: 123, role: 'editor' })
+const post = ref({ id: 1, authorId: 123 })
+
+const canEdit = computed(() => {
+  return permissions.can(
+    currentUser.value.role,
+    'edit',
+    'posts',
+    { isOwner: post.value.authorId === currentUser.value.id }
+  )
+})
+</script>
+
+<template>
+  <article>
+    <h1>{{ post.title }}</h1>
+    <button v-if="canEdit">Edit</button>
+  </article>
+</template>
+```
+
+### Multi-Role User
+
+```vue
+<script setup lang="ts">
+import { usePermissions } from '@vuetify/v0'
+import { ref } from 'vue'
+
+const permissions = usePermissions()
+const userRoles = ref(['editor', 'moderator'])
+
+const canPerformAction = (action: string, subject: string) => {
+  return userRoles.value.some(role =>
+    permissions.can(role, action, subject)
+  )
+}
+</script>
+
+<template>
+  <div>
+    <button v-if="canPerformAction('write', 'posts')">Edit Post</button>
+    <button v-if="canPerformAction('delete', 'comments')">Delete Comment</button>
+  </div>
+</template>
+```
+
+## Advanced Usage
+
+### Custom Adapter
+
+```ts
+import type { PermissionAdapter } from '@vuetify/v0'
+
+class CaslAdapter implements PermissionAdapter {
+  constructor(private ability: any) {}
+  
+  can(id: ID, action: string, subject: string, context: any, tokens: any) {
+    return this.ability.can(action, subject)
+  }
+}
+
+app.use(createPermissionsPlugin({
+  adapter: new CaslAdapter(ability),
+}))
+```
+
+### Dynamic Permissions
+
+```ts
+const permissions = usePermissions()
+
+// Get permission ticket
+const ticket = permissions.get('admin.read.users')
+
+if (ticket) {
+  console.log('Value:', ticket.value)
+  
+  // For function conditions
+  if (typeof ticket.value === 'function') {
+    const allowed = ticket.value({ userId: 123 })
+    console.log('Allowed:', allowed)
+  }
+}
+```
+
+### Hierarchical Roles
+
+```ts
+const roleHierarchy = {
+  admin: ['editor', 'moderator', 'viewer'],
+  editor: ['viewer'],
+  moderator: ['viewer'],
+  viewer: [],
+}
+
+const hasPermission = (userRole: string, action: string, subject: string) => {
+  const roles = [userRole, ...roleHierarchy[userRole]]
+  return roles.some(role => permissions.can(role, action, subject))
+}
+```

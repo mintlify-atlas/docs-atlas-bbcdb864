@@ -1,0 +1,393 @@
+---
+title: createStep
+description: Navigation composable with first/last/next/prev/step methods and configurable circular or bounded navigation
+---
+
+## Overview
+
+The **createStep** composable extends `createSingle` with navigation methods for sequential traversal. Supports both circular (wrapping) and bounded (stopping at edges) navigation modes.
+
+Perfect for wizards, carousels, pagination, and onboarding flows.
+
+## Signature
+
+```ts
+function createStep<
+  Z extends StepTicketInput = StepTicketInput,
+  E extends StepTicket<Z> = StepTicket<Z>
+>(options?: StepOptions): StepContext<Z, E>
+```
+
+<ParamField path="options" type="StepOptions">
+  Configuration options
+  
+  <Expandable title="properties">
+    <ParamField path="circular" type="boolean" default="false">
+      Enable circular navigation (wrapping at boundaries):
+      - `true`: Navigation wraps around (carousel behavior)
+      - `false`: Navigation stops at boundaries (pagination behavior)
+    </ParamField>
+    
+    <ParamField path="mandatory" type="boolean | 'force'" default="false">
+      Mandatory selection enforcement (inherited from createSingle)
+    </ParamField>
+    
+    <ParamField path="disabled" type="MaybeRefOrGetter<boolean>" default="false">
+      Disable entire stepper
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+<ResponseField name="StepContext" type="object">
+  Step navigation instance
+  
+  <Expandable title="properties">
+    <ResponseField name="first" type="() => void">
+      Select the first non-disabled item
+    </ResponseField>
+    
+    <ResponseField name="last" type="() => void">
+      Select the last non-disabled item
+    </ResponseField>
+    
+    <ResponseField name="next" type="() => void">
+      Move to next item (wraps if circular, stops at end if bounded)
+    </ResponseField>
+    
+    <ResponseField name="prev" type="() => void">
+      Move to previous item (wraps if circular, stops at start if bounded)
+    </ResponseField>
+    
+    <ResponseField name="step" type="(count: number) => void">
+      Move by count positions (negative for backward, positive for forward)
+    </ResponseField>
+    
+    <ResponseField name="selectedId" type="ComputedRef<ID | undefined>">
+      Currently selected item ID (from createSingle)
+    </ResponseField>
+    
+    <ResponseField name="selectedItem" type="ComputedRef<E | undefined>">
+      Currently selected item (from createSingle)
+    </ResponseField>
+    
+    <ResponseField name="selectedIndex" type="ComputedRef<number>">
+      Currently selected item index (from createSingle)
+    </ResponseField>
+    
+    <ResponseField name="selectedValue" type="ComputedRef<E['value'] | undefined>">
+      Currently selected item value (from createSingle)
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+## Usage
+
+### Basic Navigation
+
+```ts
+import { createStep } from '@vuetify/v0'
+
+const wizard = createStep()
+
+wizard.onboard([
+  { id: 'step-1', value: 'Personal Info' },
+  { id: 'step-2', value: 'Address' },
+  { id: 'step-3', value: 'Payment' },
+  { id: 'step-4', value: 'Review' },
+])
+
+wizard.first()
+console.log(wizard.selectedIndex.value) // 0
+
+wizard.next()
+console.log(wizard.selectedIndex.value) // 1
+
+wizard.last()
+console.log(wizard.selectedIndex.value) // 3
+
+wizard.prev()
+console.log(wizard.selectedIndex.value) // 2
+```
+
+### Bounded Navigation (Default)
+
+```ts
+const pagination = createStep({ circular: false })
+
+pagination.onboard([
+  { id: 'page-1', value: 1 },
+  { id: 'page-2', value: 2 },
+  { id: 'page-3', value: 3 },
+])
+
+pagination.first()
+console.log(pagination.selectedIndex.value) // 0
+
+pagination.prev() // Does nothing - already at first
+console.log(pagination.selectedIndex.value) // 0
+
+pagination.last()
+pagination.next() // Does nothing - already at last
+console.log(pagination.selectedIndex.value) // 2
+```
+
+### Circular Navigation
+
+```ts
+const carousel = createStep({ circular: true })
+
+carousel.onboard([
+  { id: 'slide-1', value: 'Slide 1' },
+  { id: 'slide-2', value: 'Slide 2' },
+  { id: 'slide-3', value: 'Slide 3' },
+])
+
+carousel.first()
+console.log(carousel.selectedIndex.value) // 0
+
+carousel.prev() // Wraps to last
+console.log(carousel.selectedIndex.value) // 2
+
+carousel.next() // Wraps to first
+console.log(carousel.selectedIndex.value) // 0
+```
+
+### Step by Count
+
+```ts
+const stepper = createStep()
+
+stepper.onboard([
+  { id: 'step-1', value: 'Step 1' },
+  { id: 'step-2', value: 'Step 2' },
+  { id: 'step-3', value: 'Step 3' },
+  { id: 'step-4', value: 'Step 4' },
+  { id: 'step-5', value: 'Step 5' },
+])
+
+stepper.first()
+stepper.step(2) // Jump forward 2 steps
+console.log(stepper.selectedIndex.value) // 2
+
+stepper.step(-1) // Jump back 1 step
+console.log(stepper.selectedIndex.value) // 1
+```
+
+### Skip Disabled Items
+
+```ts
+const stepper = createStep()
+
+stepper.onboard([
+  { id: 'step-1', value: 'Step 1' },
+  { id: 'step-2', value: 'Step 2', disabled: true },
+  { id: 'step-3', value: 'Step 3', disabled: true },
+  { id: 'step-4', value: 'Step 4' },
+])
+
+stepper.first()
+console.log(stepper.selectedIndex.value) // 0
+
+stepper.next() // Skips disabled items
+console.log(stepper.selectedIndex.value) // 3 (jumped to step-4)
+```
+
+### Wizard Component
+
+```vue
+<script setup lang="ts">
+import { createStep } from '@vuetify/v0'
+
+const wizard = createStep({ mandatory: 'force' })
+
+wizard.onboard([
+  { id: 'step-1', value: 'Account Details' },
+  { id: 'step-2', value: 'Profile Info' },
+  { id: 'step-3', value: 'Preferences' },
+  { id: 'step-4', value: 'Confirmation' },
+])
+
+function isFirstStep() {
+  return wizard.selectedIndex.value === 0
+}
+
+function isLastStep() {
+  return wizard.selectedIndex.value === wizard.size - 1
+}
+</script>
+
+<template>
+  <div class="wizard">
+    <div class="steps">
+      <div 
+        v-for="(step, index) in wizard.values()"
+        :key="step.id"
+        :class="{ 
+          active: step.isSelected.value,
+          completed: index < wizard.selectedIndex.value
+        }"
+      >
+        {{ step.value }}
+      </div>
+    </div>
+    
+    <div class="content">
+      <p>Current step: {{ wizard.selectedValue }}</p>
+    </div>
+    
+    <div class="actions">
+      <button 
+        @click="wizard.prev()" 
+        :disabled="isFirstStep()"
+      >
+        Previous
+      </button>
+      <button 
+        @click="wizard.next()" 
+        :disabled="isLastStep()"
+      >
+        {{ isLastStep() ? 'Finish' : 'Next' }}
+      </button>
+    </div>
+  </div>
+</template>
+```
+
+### Carousel Component
+
+```vue
+<script setup lang="ts">
+import { createStep } from '@vuetify/v0'
+import { onMounted, onUnmounted } from 'vue'
+
+const carousel = createStep({ 
+  circular: true,
+  mandatory: 'force'
+})
+
+carousel.onboard([
+  { id: 'slide-1', value: 'Slide 1' },
+  { id: 'slide-2', value: 'Slide 2' },
+  { id: 'slide-3', value: 'Slide 3' },
+])
+
+// Auto-advance every 3 seconds
+let interval: number
+
+onMounted(() => {
+  interval = setInterval(() => {
+    carousel.next()
+  }, 3000)
+})
+
+onUnmounted(() => {
+  clearInterval(interval)
+})
+</script>
+
+<template>
+  <div class="carousel">
+    <button @click="carousel.prev()">←</button>
+    
+    <div class="slides">
+      <div 
+        v-for="slide in carousel.values()"
+        :key="slide.id"
+        v-show="slide.isSelected.value"
+      >
+        {{ slide.value }}
+      </div>
+    </div>
+    
+    <button @click="carousel.next()">→</button>
+    
+    <div class="indicators">
+      <span
+        v-for="slide in carousel.values()"
+        :key="slide.id"
+        :class="{ active: slide.isSelected.value }"
+        @click="carousel.select(slide.id)"
+      />
+    </div>
+  </div>
+</template>
+```
+
+## Type Safety
+
+```ts
+interface WizardStep extends StepTicketInput {
+  title: string
+  description?: string
+  completed?: boolean
+}
+
+const wizard = createStep<WizardStep>()
+
+wizard.onboard([
+  { title: 'Welcome', description: 'Get started' },
+  { title: 'Setup', description: 'Configure' },
+  { title: 'Done', completed: true },
+])
+
+// Type-safe access
+const currentStep = wizard.selectedItem.value
+if (currentStep) {
+  console.log(currentStep.title) // string
+  console.log(currentStep.completed) // boolean | undefined
+}
+```
+
+## Circular vs Bounded
+
+| Feature | Circular (`true`) | Bounded (`false`, default) |
+|---------|-------------------|---------------------------|
+| `next()` at end | Wraps to first | Stays at last |
+| `prev()` at start | Wraps to last | Stays at first |
+| `step(100)` | Uses modulo wrapping | Stops at boundary |
+| Use case | Carousels, infinite scroll | Wizards, pagination |
+
+## Edge Cases
+
+```ts
+const stepper = createStep()
+
+stepper.onboard([
+  { id: 'step-1', value: 'Step 1', disabled: true },
+  { id: 'step-2', value: 'Step 2' },
+  { id: 'step-3', value: 'Step 3', disabled: true },
+])
+
+// Only one enabled item
+stepper.first()
+console.log(stepper.selectedId.value) // 'step-2'
+
+stepper.next() // Stays at step-2 (no enabled items after)
+console.log(stepper.selectedId.value) // 'step-2'
+```
+
+## Performance
+
+- Navigation operations: O(1) when no disabled items
+- With disabled items: O(n) worst case (must scan for enabled items)
+- Circular wrapping: Uses efficient modulo arithmetic `((index % length) + length) % length`
+
+## Context Pattern
+
+```ts
+import { createStepContext } from '@vuetify/v0'
+
+export const [useWizard, provideWizard, wizard] = createStepContext()
+
+// In parent component
+provideWizard()
+
+// In child component
+const wizard = useWizard()
+wizard.next()
+```
+
+## See Also
+
+- [createSingle](/composables/create-single) - Base single-selection system
+- [createBreadcrumbs](/composables/create-breadcrumbs) - Breadcrumb navigation with path truncation

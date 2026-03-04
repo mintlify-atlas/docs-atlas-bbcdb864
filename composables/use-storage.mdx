@@ -1,0 +1,428 @@
+---
+title: useStorage
+description: Reactive storage composable with adapter pattern for localStorage, sessionStorage, or memory
+---
+
+Reactive storage with automatic synchronization to localStorage, sessionStorage, or memory.
+
+## Features
+
+- Reactive refs that sync with storage
+- localStorage, sessionStorage, and memory adapters
+- Custom serialization support
+- SSR fallback to memory adapter
+- Automatic cleanup on remove/clear
+- Cross-tab synchronization (localStorage only)
+
+## Installation
+
+```ts
+import { createStoragePlugin } from '@vuetify/v0'
+
+const app = createApp(App)
+app.use(createStoragePlugin({
+  prefix: 'app:',
+}))
+```
+
+## Basic Usage
+
+```vue
+<script setup lang="ts">
+import { useStorage } from '@vuetify/v0'
+
+const storage = useStorage()
+
+// Get reactive ref (creates if doesn't exist)
+const username = storage.get('username', 'guest')
+
+// Update value (automatically syncs to storage)
+username.value = 'john'
+
+// Set value directly
+storage.set('theme', 'dark')
+
+// Check if key exists
+if (storage.has('username')) {
+  console.log('Username exists')
+}
+
+// Remove key
+storage.remove('theme')
+
+// Clear all keys
+storage.clear()
+</script>
+
+<template>
+  <div>
+    <p>Welcome, {{ username }}!</p>
+    <input v-model="username" placeholder="Username" />
+  </div>
+</template>
+```
+
+## API Reference
+
+### createStoragePlugin()
+
+Creates a storage plugin.
+
+<ParamField path="options" type="StoragePluginOptions">
+  Plugin configuration
+  
+  <ParamField path="adapter" type="StorageAdapter">
+    The storage adapter to use
+    
+    Defaults to `localStorage` in browser, `MemoryAdapter` in SSR.
+    
+    Built-in adapters:
+    - `window.localStorage`
+    - `window.sessionStorage`
+    - `new MemoryAdapter()` (for SSR)
+  </ParamField>
+  
+  <ParamField path="prefix" type="string" default="'v0:'">
+    The prefix to use for all storage keys
+    
+    Example: With prefix `'app:'`, key `'user'` becomes `'app:user'` in storage.
+  </ParamField>
+  
+  <ParamField path="serializer" type="{ read: (value: string) => unknown, write: (value: unknown) => string }">
+    Custom serializer for reading and writing values
+    
+    Defaults to `JSON.parse` / `JSON.stringify`.
+    
+    Example:
+    ```ts
+    {
+      read: (value) => JSON.parse(value),
+      write: (value) => JSON.stringify(value),
+    }
+    ```
+  </ParamField>
+  
+  <ParamField path="namespace" type="string" default="'v0:storage'">
+    The namespace for the storage context
+  </ParamField>
+</ParamField>
+
+### StorageContext
+
+<ResponseField name="has" type="(key: string) => boolean">
+  Check if a key exists in the cache
+  
+  Note: This checks the in-memory cache, not the storage adapter directly.
+  
+  Example:
+  ```ts
+  if (storage.has('username')) {
+    console.log('Username exists in cache')
+  }
+  ```
+</ResponseField>
+
+<ResponseField name="get" type="<T>(key: string, defaultValue?: T) => Ref<T>">
+  Get a reactive ref for a storage key
+  
+  If the key doesn't exist in cache, reads from storage adapter and caches it.
+  Returns the same ref instance for subsequent calls with the same key.
+  
+  Examples:
+  ```ts
+  const username = storage.get('username', 'guest')
+  const theme = storage.get<'light' | 'dark'>('theme', 'light')
+  const settings = storage.get('settings', { notifications: true })
+  ```
+</ResponseField>
+
+<ResponseField name="set" type="<T>(key: string, value: T) => void">
+  Set a value for a storage key
+  
+  Creates a ref if it doesn't exist, updates existing ref otherwise.
+  
+  Example:
+  ```ts
+  storage.set('username', 'john')
+  storage.set('theme', 'dark')
+  ```
+</ResponseField>
+
+<ResponseField name="remove" type="(key: string) => void">
+  Remove a key from storage
+  
+  Stops the watcher, removes from cache, and deletes from storage adapter.
+  
+  Example:
+  ```ts
+  storage.remove('username')
+  ```
+</ResponseField>
+
+<ResponseField name="clear" type="() => void">
+  Clear all keys from storage
+  
+  Stops all watchers, clears cache, and removes all prefixed keys from storage adapter.
+  
+  Example:
+  ```ts
+  storage.clear()
+  ```
+</ResponseField>
+
+## Storage Adapters
+
+### localStorage (Default in Browser)
+
+```ts
+import { createStoragePlugin } from '@vuetify/v0'
+
+app.use(createStoragePlugin({
+  adapter: window.localStorage, // Default in browser
+  prefix: 'app:',
+}))
+```
+
+### sessionStorage
+
+```ts
+app.use(createStoragePlugin({
+  adapter: window.sessionStorage,
+  prefix: 'session:',
+}))
+```
+
+### Memory (Default in SSR)
+
+```ts
+import { createStoragePlugin, MemoryAdapter } from '@vuetify/v0'
+
+app.use(createStoragePlugin({
+  adapter: new MemoryAdapter(),
+  prefix: 'app:',
+}))
+```
+
+### Custom Adapter
+
+```ts
+import type { StorageAdapter } from '@vuetify/v0'
+
+class IndexedDBAdapter implements StorageAdapter {
+  async getItem(key: string): Promise<string | null> {
+    // Get from IndexedDB
+  }
+  
+  async setItem(key: string, value: string): Promise<void> {
+    // Set in IndexedDB
+  }
+  
+  async removeItem(key: string): Promise<void> {
+    // Remove from IndexedDB
+  }
+}
+
+app.use(createStoragePlugin({
+  adapter: new IndexedDBAdapter(),
+}))
+```
+
+## Examples
+
+### User Preferences
+
+```vue
+<script setup lang="ts">
+import { useStorage } from '@vuetify/v0'
+
+const storage = useStorage()
+
+interface UserPreferences {
+  theme: 'light' | 'dark'
+  language: string
+  notifications: boolean
+}
+
+const preferences = storage.get<UserPreferences>('preferences', {
+  theme: 'light',
+  language: 'en',
+  notifications: true,
+})
+
+const toggleTheme = () => {
+  preferences.value.theme = preferences.value.theme === 'light' ? 'dark' : 'light'
+}
+</script>
+
+<template>
+  <div :class="preferences.theme">
+    <button @click="toggleTheme">Toggle Theme</button>
+    <select v-model="preferences.language">
+      <option value="en">English</option>
+      <option value="es">Español</option>
+    </select>
+    <label>
+      <input v-model="preferences.notifications" type="checkbox" />
+      Enable notifications
+    </label>
+  </div>
+</template>
+```
+
+### Shopping Cart
+
+```vue
+<script setup lang="ts">
+import { useStorage } from '@vuetify/v0'
+
+interface CartItem {
+  id: number
+  name: string
+  quantity: number
+  price: number
+}
+
+const storage = useStorage()
+const cart = storage.get<CartItem[]>('cart', [])
+
+const addItem = (item: CartItem) => {
+  const existing = cart.value.find(i => i.id === item.id)
+  if (existing) {
+    existing.quantity += item.quantity
+  } else {
+    cart.value.push(item)
+  }
+}
+
+const removeItem = (id: number) => {
+  cart.value = cart.value.filter(item => item.id !== id)
+}
+
+const clearCart = () => {
+  cart.value = []
+}
+
+const total = computed(() => 
+  cart.value.reduce((sum, item) => sum + item.price * item.quantity, 0)
+)
+</script>
+
+<template>
+  <div>
+    <h2>Shopping Cart ({{ cart.length }} items)</h2>
+    <div v-for="item in cart" :key="item.id">
+      <p>{{ item.name }} x{{ item.quantity }} - ${{ item.price * item.quantity }}</p>
+      <button @click="removeItem(item.id)">Remove</button>
+    </div>
+    <p>Total: ${{ total }}</p>
+    <button @click="clearCart">Clear Cart</button>
+  </div>
+</template>
+```
+
+### Form Draft Auto-Save
+
+```vue
+<script setup lang="ts">
+import { useStorage } from '@vuetify/v0'
+import { watch, onMounted } from 'vue'
+
+const storage = useStorage()
+const draft = storage.get('post-draft', {
+  title: '',
+  content: '',
+})
+
+// Auto-save on change (with debounce in production)
+watch(draft, () => {
+  console.log('Draft saved')
+}, { deep: true })
+
+const clearDraft = () => {
+  storage.remove('post-draft')
+  draft.value = { title: '', content: '' }
+}
+
+onMounted(() => {
+  if (draft.value.title || draft.value.content) {
+    console.log('Draft restored')
+  }
+})
+</script>
+
+<template>
+  <form>
+    <input v-model="draft.title" placeholder="Title" />
+    <textarea v-model="draft.content" placeholder="Content" />
+    <button type="button" @click="clearDraft">Clear Draft</button>
+  </form>
+</template>
+```
+
+### Null/Undefined Removal
+
+```ts
+const storage = useStorage()
+const username = storage.get('username', 'guest')
+
+// Setting to null or undefined removes from storage
+username.value = null // Removes 'username' key from storage
+username.value = undefined // Also removes from storage
+```
+
+## Cross-Tab Synchronization
+
+When using `localStorage`, changes are automatically synchronized across tabs:
+
+```vue
+<script setup lang="ts">
+import { useStorage } from '@vuetify/v0'
+
+const storage = useStorage()
+const count = storage.get('count', 0)
+
+// Changes in one tab automatically update other tabs
+count.value++
+</script>
+
+<template>
+  <div>
+    <p>Count: {{ count }}</p>
+    <button @click="count++">Increment</button>
+  </div>
+</template>
+```
+
+## Custom Serialization
+
+```ts
+import { createStoragePlugin } from '@vuetify/v0'
+import superjson from 'superjson'
+
+app.use(createStoragePlugin({
+  serializer: {
+    read: (value) => superjson.parse(value),
+    write: (value) => superjson.stringify(value),
+  },
+}))
+
+// Now you can store Dates, Maps, Sets, etc.
+const storage = useStorage()
+const timestamp = storage.get('timestamp', new Date())
+timestamp.value = new Date() // Stored as ISO string, restored as Date
+```
+
+## SSR Safety
+
+The composable is SSR-safe and automatically uses MemoryAdapter during SSR:
+
+```ts
+import { useStorage } from '@vuetify/v0'
+
+// Works in both SSR and browser
+const storage = useStorage()
+const theme = storage.get('theme', 'light')
+
+// In SSR: Uses MemoryAdapter (in-memory storage)
+// In browser: Uses localStorage (persistent storage)
+```

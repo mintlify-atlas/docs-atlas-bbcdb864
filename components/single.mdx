@@ -1,0 +1,551 @@
+---
+title: Single
+description: Headless single-selection component for building custom radio groups, tab lists, and single-select interfaces
+---
+
+# Single
+
+A headless single-selection component that ensures only one item can be selected at a time. Provides the foundation for building custom single-select interfaces like radio groups, tab lists, and exclusive option selectors.
+
+## Features
+
+- **Mutually exclusive**: Only one item selected at a time
+- **Automatic deselection**: Selecting a new item automatically deselects the previous one
+- **Renderless**: No default UI, complete styling control
+- **Flexible constraints**: Optional enrollment, mandatory selection
+- **Type-safe**: Full TypeScript support with generic value types
+
+## Basic Usage
+
+<CodeGroup>
+```vue Basic
+<script setup lang="ts">
+import { Single } from '@vuetify/v0'
+import { ref } from 'vue'
+
+const selected = ref<string>()
+</script>
+
+<template>
+  <Single.Root v-model="selected">
+    <Single.Item value="small" v-slot="{ attrs, isSelected }">
+      <button v-bind="attrs" :class="{ selected: isSelected }">
+        Small
+      </button>
+    </Single.Item>
+    <Single.Item value="medium" v-slot="{ attrs, isSelected }">
+      <button v-bind="attrs" :class="{ selected: isSelected }">
+        Medium
+      </button>
+    </Single.Item>
+    <Single.Item value="large" v-slot="{ attrs, isSelected }">
+      <button v-bind="attrs" :class="{ selected: isSelected }">
+        Large
+      </button>
+    </Single.Item>
+  </Single.Root>
+</template>
+```
+
+```vue With Default
+<script setup lang="ts">
+import { Single } from '@vuetify/v0'
+import { ref } from 'vue'
+
+const size = ref('medium')
+</script>
+
+<template>
+  <Single.Root v-model="size" mandatory>
+    <Single.Item value="small" v-slot="{ attrs, isSelected }">
+      <button v-bind="attrs" :class="{ active: isSelected }">
+        Small
+      </button>
+    </Single.Item>
+    <Single.Item value="medium" v-slot="{ attrs, isSelected }">
+      <button v-bind="attrs" :class="{ active: isSelected }">
+        Medium
+      </button>
+    </Single.Item>
+    <Single.Item value="large" v-slot="{ attrs, isSelected }">
+      <button v-bind="attrs" :class="{ active: isSelected }">
+        Large
+      </button>
+    </Single.Item>
+  </Single.Root>
+</template>
+```
+</CodeGroup>
+
+## Components
+
+### Single.Root
+
+Root component that manages single-selection state and ensures mutual exclusivity.
+
+<ParamField path="modelValue" type="T">
+  Currently selected value
+</ParamField>
+
+<ParamField path="disabled" type="boolean" default="false">
+  Disables all items in the selection
+</ParamField>
+
+<ParamField path="enroll" type="boolean" default="false">
+  Auto-select first non-disabled item on mount
+</ParamField>
+
+<ParamField path="mandatory" type="boolean | 'force'" default="false">
+  - `false`: Selection can be cleared by clicking selected item again
+  - `true`: Selection cannot be cleared (more typical for single-select)
+  - `'force'`: Auto-selects first non-disabled item on mount
+</ParamField>
+
+<ParamField path="namespace" type="string" default="'v0:single'">
+  Context namespace for dependency injection
+</ParamField>
+
+#### Slot Props
+
+<ParamField path="isDisabled" type="boolean">
+  Whether the single-selection is disabled
+</ParamField>
+
+<ParamField path="select" type="(id: ID) => void">
+  Select an item by ID
+</ParamField>
+
+<ParamField path="unselect" type="(id: ID) => void">
+  Unselect an item by ID (if not mandatory)
+</ParamField>
+
+<ParamField path="toggle" type="(id: ID) => void">
+  Toggle an item's selection state by ID
+</ParamField>
+
+<ParamField path="attrs" type="object">
+  Contains `aria-multiselectable="false"`
+</ParamField>
+
+### Single.Item
+
+Represents a selectable item. Automatically registers with parent and unregisters on unmount.
+
+<ParamField path="value" type="unknown" required>
+  Value associated with this item
+</ParamField>
+
+<ParamField path="id" type="string">
+  Unique identifier (auto-generated if not provided)
+</ParamField>
+
+<ParamField path="label" type="string">
+  Optional display label (passed to slot props)
+</ParamField>
+
+<ParamField path="disabled" type="boolean | Ref<boolean>" default="false">
+  Disables this specific item
+</ParamField>
+
+<ParamField path="namespace" type="string" default="'v0:single'">
+  Context namespace (must match Single.Root namespace)
+</ParamField>
+
+#### Slot Props
+
+<ParamField path="isSelected" type="boolean">
+  Whether this item is currently selected
+</ParamField>
+
+<ParamField path="isDisabled" type="boolean">
+  Whether this item is disabled
+</ParamField>
+
+<ParamField path="select" type="() => void">
+  Select this item (deselects others)
+</ParamField>
+
+<ParamField path="unselect" type="() => void">
+  Unselect this item (if not mandatory)
+</ParamField>
+
+<ParamField path="toggle" type="() => void">
+  Toggle this item's selection state
+</ParamField>
+
+<ParamField path="attrs" type="object">
+  Pre-computed attributes:
+  - `aria-selected`: boolean
+  - `aria-disabled`: boolean
+  - `data-selected`, `data-disabled`
+</ParamField>
+
+## Advanced Examples
+
+### Segmented Control
+
+```vue
+<script setup lang="ts">
+import { Single } from '@vuetify/v0'
+import { ref } from 'vue'
+
+const view = ref('grid')
+</script>
+
+<template>
+  <Single.Root v-model="view" mandatory class="segmented-control">
+    <Single.Item value="list" v-slot="{ attrs, isSelected }">
+      <button v-bind="attrs" :class="{ active: isSelected }">
+        <svg class="icon"><!-- list icon --></svg>
+        List
+      </button>
+    </Single.Item>
+    <Single.Item value="grid" v-slot="{ attrs, isSelected }">
+      <button v-bind="attrs" :class="{ active: isSelected }">
+        <svg class="icon"><!-- grid icon --></svg>
+        Grid
+      </button>
+    </Single.Item>
+    <Single.Item value="table" v-slot="{ attrs, isSelected }">
+      <button v-bind="attrs" :class="{ active: isSelected }">
+        <svg class="icon"><!-- table icon --></svg>
+        Table
+      </button>
+    </Single.Item>
+  </Single.Root>
+</template>
+
+<style>
+.segmented-control {
+  display: inline-flex;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.segmented-control button {
+  padding: 8px 16px;
+  border: none;
+  background: white;
+  border-right: 1px solid #ccc;
+  cursor: pointer;
+}
+
+.segmented-control button:last-child {
+  border-right: none;
+}
+
+.segmented-control button.active {
+  background: #4CAF50;
+  color: white;
+}
+</style>
+```
+
+### Tab List
+
+```vue
+<script setup lang="ts">
+import { Single } from '@vuetify/v0'
+import { ref } from 'vue'
+
+const activeTab = ref('profile')
+
+const tabs = [
+  { id: 'profile', label: 'Profile', icon: '👤' },
+  { id: 'settings', label: 'Settings', icon: '⚙️' },
+  { id: 'notifications', label: 'Notifications', icon: '🔔', badge: 3 },
+]
+</script>
+
+<template>
+  <div class="tabs-container">
+    <Single.Root v-model="activeTab" mandatory>
+      <div class="tab-list" role="tablist">
+        <Single.Item 
+          v-for="tab in tabs"
+          :key="tab.id"
+          :value="tab.id"
+          v-slot="{ attrs, isSelected, select }"
+        >
+          <button 
+            v-bind="attrs"
+            @click="select"
+            role="tab"
+            :aria-selected="isSelected"
+            :aria-controls="`panel-${tab.id}`"
+            class="tab"
+            :class="{ active: isSelected }"
+          >
+            <span class="icon">{{ tab.icon }}</span>
+            {{ tab.label }}
+            <span v-if="tab.badge" class="badge">{{ tab.badge }}</span>
+          </button>
+        </Single.Item>
+      </div>
+    </Single.Root>
+
+    <!-- Tab panels -->
+    <div v-for="tab in tabs" :key="tab.id">
+      <div 
+        v-if="activeTab === tab.id"
+        :id="`panel-${tab.id}`"
+        role="tabpanel"
+        class="tab-panel"
+      >
+        Content for {{ tab.label }}
+      </div>
+    </div>
+  </div>
+</template>
+
+<style>
+.tab-list {
+  display: flex;
+  border-bottom: 2px solid #e0e0e0;
+  gap: 4px;
+}
+
+.tab {
+  padding: 12px 24px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+  position: relative;
+}
+
+.tab.active {
+  border-bottom-color: #4CAF50;
+  color: #4CAF50;
+}
+
+.badge {
+  background: #f44336;
+  color: white;
+  border-radius: 10px;
+  padding: 2px 6px;
+  font-size: 12px;
+  margin-left: 8px;
+}
+</style>
+```
+
+### Color Picker
+
+```vue
+<script setup lang="ts">
+import { Single } from '@vuetify/v0'
+import { ref } from 'vue'
+
+const colors = [
+  { value: 'red', hex: '#f44336' },
+  { value: 'blue', hex: '#2196F3' },
+  { value: 'green', hex: '#4CAF50' },
+  { value: 'yellow', hex: '#FFEB3B' },
+  { value: 'purple', hex: '#9C27B0' },
+]
+
+const selectedColor = ref('blue')
+</script>
+
+<template>
+  <div class="color-picker">
+    <Single.Root v-model="selectedColor" mandatory>
+      <div class="color-grid">
+        <Single.Item 
+          v-for="color in colors"
+          :key="color.value"
+          :value="color.value"
+          v-slot="{ attrs, isSelected, select }"
+        >
+          <button 
+            v-bind="attrs"
+            @click="select"
+            class="color-swatch"
+            :style="{ background: color.hex }"
+            :class="{ selected: isSelected }"
+            :title="color.value"
+          >
+            <span v-if="isSelected" class="checkmark">✓</span>
+          </button>
+        </Single.Item>
+      </div>
+    </Single.Root>
+  </div>
+</template>
+
+<style>
+.color-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 8px;
+}
+
+.color-swatch {
+  width: 48px;
+  height: 48px;
+  border: 2px solid transparent;
+  border-radius: 8px;
+  cursor: pointer;
+  position: relative;
+  transition: all 0.2s;
+}
+
+.color-swatch:hover {
+  transform: scale(1.1);
+}
+
+.color-swatch.selected {
+  border-color: #000;
+  box-shadow: 0 0 0 2px white, 0 0 0 4px #000;
+}
+
+.checkmark {
+  color: white;
+  font-weight: bold;
+  font-size: 20px;
+  text-shadow: 0 0 2px rgba(0,0,0,0.5);
+}
+</style>
+```
+
+### Mandatory Selection with Force
+
+```vue
+<script setup lang="ts">
+import { Single } from '@vuetify/v0'
+import { ref } from 'vue'
+
+const tier = ref<string>()
+</script>
+
+<template>
+  <Single.Root v-model="tier" mandatory="force">
+    <p>Choose your subscription tier:</p>
+    
+    <div class="tier-options">
+      <Single.Item value="free" v-slot="{ attrs, isSelected }">
+        <div v-bind="attrs" class="tier-card" :class="{ selected: isSelected }">
+          <h3>Free</h3>
+          <p>$0/month</p>
+        </div>
+      </Single.Item>
+      
+      <Single.Item value="pro" v-slot="{ attrs, isSelected }">
+        <div v-bind="attrs" class="tier-card" :class="{ selected: isSelected }">
+          <h3>Pro</h3>
+          <p>$9/month</p>
+        </div>
+      </Single.Item>
+      
+      <Single.Item value="enterprise" v-slot="{ attrs, isSelected }">
+        <div v-bind="attrs" class="tier-card" :class="{ selected: isSelected }">
+          <h3>Enterprise</h3>
+          <p>Contact sales</p>
+        </div>
+      </Single.Item>
+    </div>
+  </Single.Root>
+</template>
+```
+
+### Disabled Options
+
+```vue
+<script setup lang="ts">
+import { Single } from '@vuetify/v0'
+import { ref } from 'vue'
+
+const plan = ref('starter')
+const isPremium = ref(false)
+</script>
+
+<template>
+  <Single.Root v-model="plan" mandatory>
+    <Single.Item value="starter" v-slot="{ attrs, isSelected }">
+      <button v-bind="attrs" :class="{ selected: isSelected }">
+        Starter Plan
+      </button>
+    </Single.Item>
+    
+    <Single.Item value="professional" v-slot="{ attrs, isSelected }">
+      <button v-bind="attrs" :class="{ selected: isSelected }">
+        Professional Plan
+      </button>
+    </Single.Item>
+    
+    <Single.Item 
+      value="enterprise" 
+      :disabled="!isPremium"
+      v-slot="{ attrs, isSelected, isDisabled }"
+    >
+      <button 
+        v-bind="attrs" 
+        :class="{ selected: isSelected, disabled: isDisabled }"
+      >
+        Enterprise Plan
+        <span v-if="isDisabled" class="badge">Premium only</span>
+      </button>
+    </Single.Item>
+  </Single.Root>
+</template>
+```
+
+## Use Cases
+
+### When to Use Single
+
+- **Mutually exclusive options**: Only one choice should be selected
+- **Custom radio groups**: When Radio component is too constraining
+- **Tab lists**: Building custom tab navigation
+- **View modes**: Switching between different view types (list/grid/table)
+- **Segmented controls**: iOS-style segmented button groups
+
+### When to Use Alternatives
+
+| Component | Use When |
+|-----------|----------|
+| **Radio** | Need standard radio buttons with full keyboard navigation |
+| **Selection** | Need to switch between single and multi-select modes |
+| **Group** | Need multi-selection instead of single-selection |
+
+## Accessibility
+
+- Provides `aria-selected` for selected state
+- Provides `aria-disabled` for disabled items
+- Root includes `aria-multiselectable="false"`
+- No default keyboard navigation (implement in your UI layer)
+
+<Note>
+The Single component is renderless and provides ARIA attributes via slot props. For tab lists, you should add `role="tablist"` to the root and `role="tab"` to items. For other UIs, bind the provided attrs and implement appropriate keyboard navigation.
+</Note>
+
+## Type Safety
+
+Full TypeScript support with generic value types:
+
+```typescript
+import type { 
+  SingleRootProps,
+  SingleItemProps,
+  SingleRootSlotProps,
+  SingleItemSlotProps
+} from '@vuetify/v0'
+
+// Type-safe with specific value types
+const selected = ref<string>()
+```
+
+## Comparison with Radio
+
+| Feature | Single | Radio |
+|---------|--------|-------|
+| **UI** | Fully custom, renderless | Structured with Root/Indicator |
+| **Keyboard** | Manual implementation | Built-in arrow key navigation |
+| **Form** | Manual | Automatic with `name` prop |
+| **Activation** | N/A | Automatic or manual modes |
+| **Use case** | Custom single-select UIs | Standard form radio buttons |
+
+Use **Single** when building custom single-selection interfaces. Use **Radio** for standard form radio buttons with full ARIA radiogroup support.

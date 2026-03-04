@@ -1,0 +1,316 @@
+---
+title: useFeatures
+description: Feature flag system with boolean and token-based features for A/B testing and progressive rollout
+---
+
+Feature flag management with boolean and token-based features, perfect for A/B testing, progressive rollout, and feature toggles.
+
+## Features
+
+- Boolean features (true/false activation)
+- Token features with $variation support
+- Auto-selection of enabled features
+- Multi-select support for feature combinations
+- Adapter pattern for external feature flag services
+- Reactive feature state updates
+
+## Installation
+
+```ts
+import { createFeaturesPlugin } from '@vuetify/v0'
+
+const app = createApp(App)
+app.use(createFeaturesPlugin({
+  features: {
+    'dark-mode': true,
+    'theme-color': { $variation: 'blue' },
+  },
+}))
+```
+
+## Basic Usage
+
+```vue
+<script setup lang="ts">
+import { useFeatures } from '@vuetify/v0'
+
+const features = useFeatures()
+
+const isDarkMode = computed(() => 
+  features.selectedIds.has('dark-mode')
+)
+const themeColor = features.variation('theme-color', 'blue')
+</script>
+
+<template>
+  <div :class="{ dark: isDarkMode }">
+    <p>Theme color: {{ themeColor }}</p>
+  </div>
+</template>
+```
+
+## API Reference
+
+### createFeaturesPlugin()
+
+Creates a features plugin.
+
+<ParamField path="options" type="FeaturePluginOptions">
+  Plugin configuration
+  
+  <ParamField path="features" type="Record<ID, boolean | TokenCollection>">
+    Static feature flags to register
+    
+    Example:
+    ```ts
+    {
+      'dark-mode': true,
+      'beta-feature': false,
+      'theme-variant': { $variation: 'blue' },
+    }
+    ```
+  </ParamField>
+  
+  <ParamField path="adapter" type="FeaturesAdapterInterface | FeaturesAdapterInterface[]">
+    Feature flag adapter(s) for external services
+  </ParamField>
+  
+  <ParamField path="namespace" type="string" default="'v0:features'">
+    The namespace for the features context
+  </ParamField>
+</ParamField>
+
+### FeatureContext
+
+<ResponseField name="size" type="number">
+  Number of registered features
+</ResponseField>
+
+<ResponseField name="collection" type="Map<ID, FeatureTicket>">
+  Map of all registered features
+</ResponseField>
+
+<ResponseField name="selectedIds" type="Set<ID>">
+  Set of currently selected (enabled) feature IDs
+</ResponseField>
+
+<ResponseField name="register" type="(registration: Partial<FeatureTicketInput>) => FeatureTicket">
+  Register a new feature
+  
+  Example:
+  ```ts
+  features.register({
+    id: 'new-feature',
+    value: true,
+  })
+  ```
+</ResponseField>
+
+<ResponseField name="select" type="(id: ID | ID[]) => void">
+  Enable feature(s)
+</ResponseField>
+
+<ResponseField name="unselect" type="(id: ID | ID[]) => void">
+  Disable feature(s)
+</ResponseField>
+
+<ResponseField name="variation" type="(id: ID, fallback?: unknown) => unknown">
+  Get the variation value of a feature
+  
+  For token features with `$variation`, returns the variation value.
+  For boolean features, returns the boolean value.
+  Returns fallback if feature doesn't exist or has no variation.
+</ResponseField>
+
+<ResponseField name="sync" type="(flags: FeaturesAdapterFlags) => void">
+  Sync feature flags from an external source
+  
+  Updates existing flags and registers new ones. Use this when adapter flags change.
+</ResponseField>
+
+<ResponseField name="get" type="(id: ID) => FeatureTicket | undefined">
+  Get a feature by ID
+</ResponseField>
+
+<ResponseField name="has" type="(id: ID) => boolean">
+  Check if a feature exists
+</ResponseField>
+
+## Feature Types
+
+### Boolean Features
+
+Simple on/off feature flags:
+
+```ts
+app.use(createFeaturesPlugin({
+  features: {
+    'dark-mode': true,
+    'beta-feature': false,
+  },
+}))
+
+// In component
+const features = useFeatures()
+const isDarkMode = features.selectedIds.has('dark-mode') // true
+const hasBeta = features.selectedIds.has('beta-feature') // false
+```
+
+### Token Features
+
+Features with variation data:
+
+```ts
+app.use(createFeaturesPlugin({
+  features: {
+    'theme-color': { $variation: 'blue' },
+    'layout-mode': { $variation: 'compact' },
+  },
+}))
+
+// In component
+const features = useFeatures()
+const themeColor = features.variation('theme-color') // 'blue'
+const layoutMode = features.variation('layout-mode') // 'compact'
+```
+
+### Features with Explicit State
+
+```ts
+app.use(createFeaturesPlugin({
+  features: {
+    'premium-feature': {
+      $value: true,
+      $variation: { tier: 'gold', limit: 100 },
+    },
+  },
+}))
+
+// In component
+const features = useFeatures()
+const isEnabled = features.selectedIds.has('premium-feature') // true
+const config = features.variation('premium-feature')
+// { tier: 'gold', limit: 100 }
+```
+
+## Dynamic Features
+
+### Register Features at Runtime
+
+```ts
+const features = useFeatures()
+
+// Register new feature
+features.register({
+  id: 'new-feature',
+  value: true,
+})
+
+// Check if enabled
+if (features.selectedIds.has('new-feature')) {
+  // Feature is enabled
+}
+```
+
+### Toggle Features
+
+```ts
+const features = useFeatures()
+
+// Enable feature
+features.select('dark-mode')
+
+// Disable feature
+features.unselect('dark-mode')
+
+// Enable multiple features
+features.select(['feature-a', 'feature-b'])
+```
+
+## External Adapters
+
+### LaunchDarkly Adapter
+
+```ts
+import { createFeaturesPlugin } from '@vuetify/v0'
+import { LaunchDarklyAdapter } from '@vuetify/v0/features/adapters'
+
+app.use(createFeaturesPlugin({
+  adapter: new LaunchDarklyAdapter({
+    clientId: 'your-client-id',
+    user: { key: 'user-123' },
+  }),
+}))
+```
+
+### PostHog Adapter
+
+```ts
+import { PostHogAdapter } from '@vuetify/v0/features/adapters'
+
+app.use(createFeaturesPlugin({
+  adapter: new PostHogAdapter({
+    apiKey: 'your-api-key',
+    host: 'https://app.posthog.com',
+  }),
+}))
+```
+
+### Custom Adapter
+
+```ts
+import type { FeaturesAdapterInterface } from '@vuetify/v0'
+
+class MyFeatureAdapter implements FeaturesAdapterInterface {
+  setup(onUpdate: (flags: FeaturesAdapterFlags) => void) {
+    // Return initial flags
+    const flags = {
+      'my-feature': true,
+      'theme': { $variation: 'dark' },
+    }
+    
+    // Set up listener for flag updates
+    myService.onFlagsChanged((newFlags) => {
+      onUpdate(newFlags)
+    })
+    
+    return flags
+  }
+  
+  dispose() {
+    // Cleanup
+  }
+}
+
+app.use(createFeaturesPlugin({
+  adapter: new MyFeatureAdapter(),
+}))
+```
+
+### Multiple Adapters
+
+```ts
+app.use(createFeaturesPlugin({
+  adapter: [
+    new LaunchDarklyAdapter({ /* ... */ }),
+    new PostHogAdapter({ /* ... */ }),
+  ],
+}))
+```
+
+## Reactive Updates
+
+```vue
+<script setup lang="ts">
+import { useFeatures } from '@vuetify/v0'
+import { watchEffect } from 'vue'
+
+const features = useFeatures()
+
+watchEffect(() => {
+  if (features.selectedIds.has('beta-ui')) {
+    console.log('Beta UI enabled')
+  }
+})
+</script>
+```

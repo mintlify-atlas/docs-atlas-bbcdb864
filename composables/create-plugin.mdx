@@ -1,0 +1,400 @@
+---
+title: 'createPlugin'
+description: 'Factory for creating Vue plugins with proper context provision'
+---
+
+## Overview
+
+Factory for creating Vue plugins that safely provide dependency injection contexts at the application level. Wraps the provide function in `app.runWithContext()` to ensure proper execution context.
+
+Also exports `createPluginContext` — a higher-level factory that generates the standard **context/plugin/consumer triple** for plugin composables, eliminating boilerplate.
+
+## Signature
+
+```typescript
+function createPlugin<Z extends Plugin = Plugin>(
+  options: PluginOptions
+): Z
+
+function createPluginContext<
+  O extends { namespace?: string } = Record<never, never>,
+  E = unknown,
+>(
+  defaultNamespace: string,
+  factory: (options: Omit<O, 'namespace'>) => E,
+  config?: PluginContextConfig<Omit<O, 'namespace'>, E>
+): readonly [
+  <_E extends E = E>(_options?: O) => ContextTrinity<_E>,
+  (_options?: O) => Plugin,
+  <_E extends E = E>(namespace?: string) => _E
+]
+```
+
+## createPlugin
+
+Creates a Vue plugin with proper context handling.
+
+### Parameters
+
+<ParamField path="options" type="PluginOptions" required>
+  <ParamField path="namespace" type="string" required>
+    Unique identifier for the plugin. Used to prevent duplicate installation.
+  </ParamField>
+  
+  <ParamField path="provide" type="(app: App) => void" required>
+    Function that provides contexts to the Vue app. Called during plugin installation within `app.runWithContext()`.
+  </ParamField>
+  
+  <ParamField path="setup" type="(app: App) => void" optional>
+    Optional setup callback executed once per app after context provision. Use for adapter initialization, global mixins, or side effects.
+  </ParamField>
+</ParamField>
+
+### Return Value
+
+<ResponseField name="plugin" type="Plugin">
+  A Vue plugin object with an `install` method. The plugin ensures:
+  - Context provision runs in proper execution context
+  - Setup callback runs only once per app (duplicate installation guard)
+  - Provide always runs, setup guarded by namespace
+</ResponseField>
+
+### Usage
+
+<CodeGroup>
+
+```typescript Basic Plugin
+import { createPlugin, createContext } from '#v0/composables'
+
+interface LoggerContext {
+  log: (message: string) => void
+  error: (message: string) => void
+}
+
+const [useLogger, provideLogger] = createContext<LoggerContext>('v0:logger')
+
+const logger: LoggerContext = {
+  log: (msg) => console.log(msg),
+  error: (msg) => console.error(msg)
+}
+
+export const LoggerPlugin = createPlugin({
+  namespace: 'v0:logger',
+  provide: (app) => {
+    provideLogger(logger, app)
+  }
+})
+
+// Install in app
+import { createApp } from 'vue'
+const app = createApp({})
+app.use(LoggerPlugin)
+```
+
+```typescript Plugin with Setup
+import { createPlugin, createContext } from '#v0/composables'
+
+const [useTheme, provideTheme] = createContext<ThemeContext>('v0:theme')
+
+export const ThemePlugin = createPlugin({
+  namespace: 'v0:theme',
+  provide: (app) => {
+    const theme = createTheme()
+    provideTheme(theme, app)
+  },
+  setup: (app) => {
+    // Run once per app - register global components, mixins, etc.
+    app.component('VTheme', ThemeComponent)
+    app.config.globalProperties.$theme = theme
+  }
+})
+```
+
+```typescript Duplicate Installation Guard
+import { createApp } from 'vue'
+
+const app = createApp({})
+
+// First install - provide and setup both run
+app.use(MyPlugin)
+
+// Second install - only provide runs, setup is skipped
+app.use(MyPlugin)
+```
+
+</CodeGroup>
+
+## createPluginContext
+
+Higher-level factory that generates the standard **context/plugin/consumer triple** pattern used throughout Vuetify Zero.
+
+### Parameters
+
+<ParamField path="defaultNamespace" type="string" required>
+  Default dependency injection namespace (e.g., `'v0:logger'`). Can be overridden via options.
+</ParamField>
+
+<ParamField path="factory" type="(options: Omit<O, 'namespace'>) => E" required>
+  Function that creates the composable context instance from options.
+</ParamField>
+
+<ParamField path="config" type="PluginContextConfig<O, E>" optional>
+  <ParamField path="setup" type="(context: E, app: App, options: O) => void" optional>
+    Optional setup callback invoked once per app after context provision. Receives the context instance, app, and options.
+  </ParamField>
+  
+  <ParamField path="fallback" type="(namespace: string) => E" optional>
+    Optional fallback factory. When provided, the generated `useX` consumer uses the defensive pattern: returns the fallback when called outside a component instance or when context is not found.
+    
+    Required for composables that may be consumed outside component setup (e.g., `useLogger`, `useLocale`).
+  </ParamField>
+</ParamField>
+
+### Return Value
+
+<ResponseField name="[createXContext, createXPlugin, useX]" type="readonly tuple">
+  A readonly tuple containing three functions:
+  
+  <ResponseField name="createXContext" type="<E>(_options?: O) => ContextTrinity<E>">
+    Creates a context trinity: `[useContext, provideContext, contextInstance]`.
+    
+    See [createTrinity](/composables/create-trinity) for details on the trinity pattern.
+  </ResponseField>
+  
+  <ResponseField name="createXPlugin" type="(_options?: O) => Plugin">
+    Creates a Vue plugin that provides the context at app level.
+  </ResponseField>
+  
+  <ResponseField name="useX" type="<E>(namespace?: string) => E">
+    Consumer function that retrieves the context. Falls back if `fallback` config is provided and no injection context exists.
+  </ResponseField>
+</ResponseField>
+
+### Usage
+
+<CodeGroup>
+
+```typescript Simple Pattern
+import { createPluginContext } from '#v0/composables'
+
+interface StorageContext {
+  get: (key: string) => string | null
+  set: (key: string, value: string) => void
+}
+
+interface StorageOptions {
+  namespace?: string
+  prefix?: string
+}
+
+function createStorage(options: Omit<StorageOptions, 'namespace'>): StorageContext {
+  const prefix = options.prefix ?? 'app'
+  return {
+    get: (key) => localStorage.getItem(`${prefix}:${key}`),
+    set: (key, val) => localStorage.setItem(`${prefix}:${key}`, val)
+  }
+}
+
+// Generate the triple
+export const [createStorageContext, createStoragePlugin, useStorage] =
+  createPluginContext<StorageOptions, StorageContext>(
+    'v0:storage',
+    createStorage
+  )
+
+// Use the plugin
+import { createApp } from 'vue'
+const app = createApp({})
+const plugin = createStoragePlugin({ prefix: 'myapp' })
+app.use(plugin)
+
+// Use in components
+const storage = useStorage()
+storage.set('user', 'alice')
+```
+
+```typescript With Fallback (Safe Outside Components)
+import { createPluginContext } from '#v0/composables'
+import { IN_BROWSER } from '#v0/constants/globals'
+
+interface LoggerContext {
+  log: (msg: string) => void
+  warn: (msg: string) => void
+}
+
+function createLogger(): LoggerContext {
+  return {
+    log: (msg) => console.log(`[APP] ${msg}`),
+    warn: (msg) => console.warn(`[APP] ${msg}`)
+  }
+}
+
+function createFallbackLogger(namespace: string): LoggerContext {
+  return {
+    log: (msg) => console.log(`[${namespace}] ${msg}`),
+    warn: (msg) => console.warn(`[${namespace}] ${msg}`)
+  }
+}
+
+export const [createLoggerContext, createLoggerPlugin, useLogger] =
+  createPluginContext<Record<string, never>, LoggerContext>(
+    'v0:logger',
+    createLogger,
+    {
+      fallback: createFallbackLogger,
+      setup: (context) => {
+        // Expose to window for debugging
+        if (IN_BROWSER) {
+          (window as any).__v0Logger__ = context
+        }
+      }
+    }
+  )
+
+// Can be called outside component setup
+const logger = useLogger() // Returns fallback if no injection context
+logger.log('App started')
+```
+
+```typescript With Setup Callback
+import { createPluginContext } from '#v0/composables'
+
+interface RouterContext {
+  push: (path: string) => void
+  replace: (path: string) => void
+}
+
+interface RouterOptions {
+  namespace?: string
+  routes: Route[]
+}
+
+function createRouter(options: Omit<RouterOptions, 'namespace'>): RouterContext {
+  // ... create router instance
+  return { push, replace }
+}
+
+export const [createRouterContext, createRouterPlugin, useRouter] =
+  createPluginContext<RouterOptions, RouterContext>(
+    'v0:router',
+    createRouter,
+    {
+      setup: (context, app, options) => {
+        // Register global navigation guards
+        app.mixin({
+          beforeRouteEnter() {
+            // ...
+          }
+        })
+      }
+    }
+  )
+```
+
+```typescript Custom Namespace
+import { createStoragePlugin, useStorage } from './storage'
+
+// Create plugin with custom namespace
+const userStoragePlugin = createStoragePlugin({
+  namespace: 'v0:user-storage',
+  prefix: 'user'
+})
+
+app.use(userStoragePlugin)
+
+// Consume with custom namespace
+const storage = useStorage('v0:user-storage')
+```
+
+</CodeGroup>
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Use createPluginContext for plugin composables" icon="cubes">
+    When creating a new composable that will be installed as a plugin, prefer `createPluginContext` over manually wiring up `createContext`, `createPlugin`, and `createTrinity`.
+    
+    ```typescript
+    // ✅ Good - uses createPluginContext
+    export const [createStorageContext, createStoragePlugin, useStorage] =
+      createPluginContext('v0:storage', createStorage)
+    
+    // ❌ Avoid - manual wiring (more boilerplate, error-prone)
+    export const [useStorage, provideStorage] = createContext('v0:storage')
+    export const StoragePlugin = createPlugin({ /* ... */ })
+    ```
+  </Accordion>
+  
+  <Accordion title="Provide fallback for non-component usage" icon="shield">
+    If your composable may be called outside component setup (utility functions, middleware, initialization code), provide a `fallback` to prevent injection errors:
+    
+    ```typescript
+    createPluginContext('v0:logger', createLogger, {
+      fallback: (ns) => createFallbackLogger(ns)
+    })
+    ```
+  </Accordion>
+  
+  <Accordion title="Keep setup side-effect free" icon="sparkles">
+    The `setup` callback should be idempotent and avoid global side effects that could cause issues if the plugin is accidentally installed twice.
+  </Accordion>
+  
+  <Accordion title="Use unique namespaces" icon="fingerprint">
+    Always use the `v0:` prefix for Vuetify Zero plugins, and ensure namespace uniqueness to prevent collisions:
+    
+    ```typescript
+    // ✅ Good - unique namespace
+    'v0:logger'
+    'v0:storage'
+    'v0:theme'
+    
+    // ❌ Avoid - generic names risk collision
+    'logger'
+    'app'
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Type Safety
+
+```typescript
+interface MyOptions {
+  namespace?: string
+  timeout: number
+}
+
+interface MyContext {
+  execute: () => void
+}
+
+const [createMyContext, createMyPlugin, useMyComposable] =
+  createPluginContext<MyOptions, MyContext>(
+    'v0:my-feature',
+    (options) => {
+      // TypeScript knows: options = Omit<MyOptions, 'namespace'>
+      // options.timeout is required, options.namespace is stripped
+      return { execute: () => {} }
+    }
+  )
+
+// ✅ TypeScript enforces required options
+const plugin = createMyPlugin({ timeout: 1000 })
+
+// ❌ TypeScript error: missing 'timeout'
+const plugin = createMyPlugin({})
+
+// ✅ Type-safe consumption
+const composable = useMyComposable()
+composable.execute() // TypeScript knows 'execute' exists
+```
+
+## Related
+
+<CardGroup cols={2}>
+  <Card title="createContext" icon="share-nodes" href="/composables/create-context">
+    Low-level context creation
+  </Card>
+  <Card title="createTrinity" icon="cubes" href="/composables/create-trinity">
+    Trinity pattern for context composables
+  </Card>
+</CardGroup>

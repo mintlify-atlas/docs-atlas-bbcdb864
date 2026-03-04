@@ -1,0 +1,520 @@
+---
+title: Styling
+description: Learn styling approaches for Vuetify Zero - CSS variables, data attributes, Tailwind integration, and theming
+---
+
+# Styling
+
+Vuetify Zero components are completely **unstyled** - they provide functionality and accessibility without any visual design. This gives you complete control over styling.
+
+## CSS Variables
+
+### Theme Variables
+
+Vuetify Zero exposes theme colors as CSS variables with the `--v0-` prefix:
+
+```css
+/* Color tokens */
+--v0-primary
+--v0-secondary
+--v0-accent
+--v0-error
+--v0-info
+--v0-success
+--v0-warning
+
+/* Surface colors */
+--v0-background
+--v0-surface
+--v0-surface-tint
+--v0-surface-variant
+--v0-divider
+
+/* Text colors */
+--v0-on-primary
+--v0-on-secondary
+--v0-on-accent
+--v0-on-error
+--v0-on-info
+--v0-on-success
+--v0-on-warning
+--v0-on-background
+--v0-on-surface
+--v0-on-surface-variant
+```
+
+### Using CSS Variables
+
+Reference variables in your styles:
+
+<CodeGroup>
+
+```css
+.my-button {
+  background: var(--v0-primary);
+  color: var(--v0-on-primary);
+  border: 1px solid var(--v0-divider);
+}
+
+.my-card {
+  background: var(--v0-surface);
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--v0-surface-variant), transparent 50%);
+}
+```
+
+```vue
+<template>
+  <Dialog.Content
+    :style="{
+      background: 'var(--v0-surface)',
+      color: 'var(--v0-on-surface)',
+      borderColor: 'var(--v0-divider)',
+    }"
+  >
+    <!-- Content -->
+  </Dialog.Content>
+</template>
+```
+
+</CodeGroup>
+
+<Tip>
+  Use `color-mix()` for opacity: `color-mix(in srgb, var(--v0-primary), transparent 80%)` creates 20% opacity.
+</Tip>
+
+### Component-Specific Variables
+
+The `@vuetify/paper` package creates scoped CSS variables for components:
+
+```css
+/* Paper component example */
+--v0-paper-bg-color
+--v0-paper-color
+--v0-paper-border-color
+--v0-paper-border-radius
+--v0-paper-padding
+--v0-paper-elevation
+```
+
+These are generated from props and can be overridden:
+
+```vue
+<V0Paper 
+  bg-color="primary"
+  :style="{ '--v0-paper-padding': '2rem' }"
+>
+  Custom styled paper
+</V0Paper>
+```
+
+## Data Attributes
+
+### State Attributes
+
+Components expose state through `data-*` attributes for CSS targeting:
+
+| Attribute | Values | Components |
+|-----------|--------|------------|
+| `data-state` | `checked`, `unchecked`, `indeterminate` | Checkbox, Radio, Switch |
+| `data-selected` | Present when selected | Tabs, Selection, Step, Group |
+| `data-disabled` | Present when disabled | All interactive components |
+
+### Styling with Data Attributes
+
+<CodeGroup>
+
+```css
+/* Checkbox states */
+.checkbox[data-state="checked"] {
+  background: var(--v0-primary);
+  border-color: var(--v0-primary);
+}
+
+.checkbox[data-state="unchecked"] {
+  background: transparent;
+  border-color: var(--v0-on-surface-variant);
+}
+
+.checkbox[data-state="indeterminate"] {
+  background: var(--v0-surface-variant);
+}
+
+/* Tab states */
+.tab[data-selected] {
+  border-bottom: 2px solid var(--v0-primary);
+  color: var(--v0-primary);
+}
+
+.tab[data-disabled] {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+```
+
+```vue
+<template>
+  <Checkbox.Root
+    v-model="checked"
+    class="checkbox w-5 h-5 border-2 rounded
+           data-[state=checked]:bg-primary
+           data-[state=checked]:border-primary
+           data-[state=unchecked]:border-on-surface-variant"
+  >
+    <Checkbox.Indicator class="flex items-center justify-center text-on-primary">
+      ✓
+    </Checkbox.Indicator>
+  </Checkbox.Root>
+</template>
+```
+
+</CodeGroup>
+
+<Warning>
+  Data attributes use boolean presence, not values. Use `[data-selected]` not `[data-selected="true"]`.
+</Warning>
+
+## Tailwind & UnoCSS Integration
+
+### Configure Theme Colors
+
+Map CSS variables to utility classes:
+
+<CodeGroup>
+
+```ts Tailwind
+// tailwind.config.js
+export default {
+  theme: {
+    extend: {
+      colors: {
+        primary: 'var(--v0-primary)',
+        secondary: 'var(--v0-secondary)',
+        accent: 'var(--v0-accent)',
+        surface: 'var(--v0-surface)',
+        background: 'var(--v0-background)',
+        'on-primary': 'var(--v0-on-primary)',
+        'on-surface': 'var(--v0-on-surface)',
+      },
+    },
+  },
+}
+```
+
+```ts UnoCSS
+// uno.config.ts
+import { defineConfig, presetWind } from 'unocss'
+
+export default defineConfig({
+  presets: [presetWind()],
+  theme: {
+    colors: {
+      primary: 'var(--v0-primary)',
+      secondary: 'var(--v0-secondary)',
+      accent: 'var(--v0-accent)',
+      surface: 'var(--v0-surface)',
+      background: 'var(--v0-background)',
+      'on-primary': 'var(--v0-on-primary)',
+      'on-surface': 'var(--v0-on-surface)',
+    },
+  },
+})
+```
+
+</CodeGroup>
+
+### Data Attribute Variants
+
+Both Tailwind and UnoCSS support arbitrary variants:
+
+```vue
+<Tabs.Item
+  class="px-4 py-2 
+         data-[selected]:border-b-2 
+         data-[selected]:border-primary 
+         data-[selected]:text-primary
+         data-[disabled]:opacity-50
+         data-[disabled]:cursor-not-allowed"
+>
+  Tab Label
+</Tabs.Item>
+```
+
+### Complete Example
+
+```vue
+<script setup lang="ts">
+import { Dialog } from '@vuetify/v0'
+import { ref } from 'vue'
+
+const isOpen = ref(false)
+</script>
+
+<template>
+  <Dialog.Root v-model="isOpen">
+    <Dialog.Activator
+      class="px-4 py-2 bg-primary text-on-primary rounded-lg 
+             hover:opacity-90 active:scale-95 transition-all"
+    >
+      Open Dialog
+    </Dialog.Activator>
+
+    <Dialog.Content
+      class="fixed inset-0 z-modal flex items-center justify-center 
+             bg-black/50 backdrop-blur-sm"
+    >
+      <div
+        class="bg-surface text-on-surface rounded-xl shadow-2xl 
+               w-full max-w-md mx-4 p-6 
+               animate-in fade-in zoom-in-95 duration-200"
+      >
+        <Dialog.Title class="text-2xl font-bold mb-2">
+          Dialog Title
+        </Dialog.Title>
+        
+        <Dialog.Description class="text-on-surface-variant mb-4">
+          This is a styled dialog using Tailwind utilities.
+        </Dialog.Description>
+
+        <div class="flex gap-2 justify-end">
+          <Dialog.Close
+            class="px-4 py-2 rounded-lg bg-surface-variant 
+                   hover:opacity-80 transition-opacity"
+          >
+            Cancel
+          </Dialog.Close>
+          <Dialog.Close
+            class="px-4 py-2 rounded-lg bg-primary text-on-primary
+                   hover:opacity-90 transition-opacity"
+          >
+            Confirm
+          </Dialog.Close>
+        </div>
+      </div>
+    </Dialog.Content>
+  </Dialog.Root>
+</template>
+```
+
+## Theming
+
+### Creating a Theme
+
+Define themes by setting CSS variables:
+
+```css
+:root {
+  /* Light theme */
+  --v0-primary: #1976d2;
+  --v0-secondary: #424242;
+  --v0-accent: #82b1ff;
+  --v0-background: #ffffff;
+  --v0-surface: #f5f5f5;
+  --v0-on-primary: #ffffff;
+  --v0-on-surface: #000000;
+}
+
+.dark {
+  /* Dark theme */
+  --v0-primary: #2196f3;
+  --v0-secondary: #90caf9;
+  --v0-accent: #82b1ff;
+  --v0-background: #121212;
+  --v0-surface: #1e1e1e;
+  --v0-on-primary: #000000;
+  --v0-on-surface: #ffffff;
+}
+```
+
+### Dynamic Theme Switching
+
+<CodeGroup>
+
+```vue JavaScript
+<script setup>
+import { ref } from 'vue'
+
+const isDark = ref(false)
+
+function toggleTheme() {
+  isDark.value = !isDark.value
+  document.documentElement.classList.toggle('dark', isDark.value)
+}
+</script>
+
+<template>
+  <button @click="toggleTheme">
+    {{ isDark ? '☀️' : '🌙' }} Toggle Theme
+  </button>
+</template>
+```
+
+```ts TypeScript
+import { useTheme } from '@vuetify/v0'
+
+const theme = useTheme()
+
+// Switch themes
+theme.theme.value = 'dark'
+
+// Or toggle
+theme.theme.value = theme.theme.value === 'dark' ? 'light' : 'dark'
+```
+
+</CodeGroup>
+
+### Using useTheme Composable
+
+```ts
+import { createApp } from 'vue'
+import { createTheme } from '@vuetify/v0'
+
+const app = createApp(App)
+
+app.use(createTheme({
+  themes: {
+    light: {
+      primary: '#1976d2',
+      secondary: '#424242',
+      accent: '#82b1ff',
+      error: '#ff5252',
+      info: '#2196f3',
+      success: '#4caf50',
+      warning: '#fb8c00',
+      background: '#ffffff',
+      surface: '#f5f5f5',
+    },
+    dark: {
+      primary: '#2196f3',
+      secondary: '#90caf9',
+      accent: '#82b1ff',
+      error: '#ff5252',
+      info: '#2196f3',
+      success: '#4caf50',
+      warning: '#fb8c00',
+      background: '#121212',
+      surface: '#1e1e1e',
+    },
+  },
+  defaultTheme: 'light',
+}))
+```
+
+## Scoped Styles
+
+### Component-Scoped Styling
+
+Use Vue's `<style scoped>` for isolated styles:
+
+```vue
+<template>
+  <Checkbox.Root v-model="checked" class="custom-checkbox">
+    <Checkbox.Indicator>✓</Checkbox.Indicator>
+  </Checkbox.Root>
+</template>
+
+<style scoped>
+.custom-checkbox {
+  width: 1.25rem;
+  height: 1.25rem;
+  border: 2px solid var(--v0-on-surface-variant);
+  border-radius: 0.25rem;
+  transition: all 0.2s;
+}
+
+.custom-checkbox[data-state="checked"] {
+  background: var(--v0-primary);
+  border-color: var(--v0-primary);
+}
+
+.custom-checkbox:hover {
+  border-color: var(--v0-primary);
+}
+</style>
+```
+
+### Deep Selectors
+
+Target nested component content with `:deep()`:
+
+```vue
+<style scoped>
+.dialog-content :deep(.dialog-title) {
+  font-size: 1.5rem;
+  font-weight: bold;
+}
+
+.tabs-list :deep([data-selected]) {
+  color: var(--v0-primary);
+}
+</style>
+```
+
+## Best Practices
+
+<Steps>
+
+### Use CSS Variables for Theming
+
+Always use `--v0-*` variables instead of hardcoded colors for theme consistency:
+
+```css
+/* Good */
+background: var(--v0-primary);
+
+/* Avoid */
+background: #1976d2;
+```
+
+### Leverage Data Attributes
+
+Data attributes are more semantic than classes for state:
+
+```css
+/* Good - semantic and automatic */
+.tab[data-selected] { ... }
+
+/* Avoid - requires manual class management */
+.tab.is-selected { ... }
+```
+
+### Combine with Utility Classes
+
+Mix utility classes with data attribute variants:
+
+```vue
+<Tabs.Item
+  class="base-styles data-[selected]:selected-styles"
+>
+  Tab
+</Tabs.Item>
+```
+
+### Create Reusable Style Components
+
+Wrap primitives in styled components:
+
+```vue
+<!-- MyCheckbox.vue -->
+<template>
+  <Checkbox.Root v-bind="$attrs" class="my-checkbox">
+    <Checkbox.Indicator class="my-checkbox-indicator">
+      <slot />
+    </Checkbox.Indicator>
+  </Checkbox.Root>
+</template>
+
+<style scoped>
+.my-checkbox { /* base styles */ }
+.my-checkbox[data-state="checked"] { /* checked styles */ }
+.my-checkbox-indicator { /* indicator styles */ }
+</style>
+```
+
+</Steps>
+
+## Next Steps
+
+- [Building Components](/guides/building-components) - Learn component patterns
+- [TypeScript Guide](/guides/typescript) - Type-safe styling
+- [Theme API](/composables/plugins/use-theme) - Advanced theming

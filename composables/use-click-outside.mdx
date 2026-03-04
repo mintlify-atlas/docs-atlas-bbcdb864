@@ -1,0 +1,168 @@
+---
+title: useClickOutside
+description: Detect clicks outside specified elements with automatic cleanup
+---
+
+## Overview
+
+Detects clicks outside of specified element(s) with automatic cleanup. Uses two-phase detection (pointerdown → pointerup) to prevent drag-out false positives.
+
+## Features
+
+- Two-phase detection prevents false positives from drag gestures
+- Touch scroll threshold ignores swipes/scrolls on mobile
+- Capture phase listeners work with stopPropagation
+- Pause/resume/stop functionality
+- Optional iframe focus detection
+- SSR-safe (no-op when not in browser)
+- Support for multiple target elements
+- Ignore specific elements via refs or CSS selectors
+- Bounds detection mode for native dialog elements
+
+## Function Signature
+
+```ts
+function useClickOutside(
+  target: MaybeArray<ClickOutsideTarget>,
+  handler: (event: PointerEvent | FocusEvent) => void,
+  options?: UseClickOutsideOptions
+): UseClickOutsideReturn
+```
+
+## Parameters
+
+<ParamField path="target" type="MaybeArray<ClickOutsideTarget>">
+  Element ref(s) to detect clicks outside of. Accepts a single ref/getter or array of refs/getters.
+</ParamField>
+
+<ParamField path="handler" type="(event: PointerEvent | FocusEvent) => void">
+  Callback invoked when a click outside is detected.
+</ParamField>
+
+<ParamField path="options" type="UseClickOutsideOptions">
+  <ParamField path="capture" type="boolean" default="true">
+    Use capture phase for event listeners. Ensures detection works even when inner elements call stopPropagation.
+  </ParamField>
+
+  <ParamField path="touchScrollThreshold" type="number" default="30">
+    Touch movement threshold in pixels. If finger moves more than this distance, it's treated as a scroll, not a tap.
+  </ParamField>
+
+  <ParamField path="detectIframe" type="boolean" default="false">
+    Detect focus moving to iframes as an outside click.
+  </ParamField>
+
+  <ParamField path="ignore" type="MaybeRefOrGetter<ClickOutsideIgnoreTarget[]>">
+    Elements to ignore when detecting outside clicks. Accepts element refs, getters, or CSS selector strings.
+  </ParamField>
+
+  <ParamField path="bounds" type="boolean" default="false">
+    Use bounding rect instead of DOM containment. When true, checks if click coordinates are outside the element's bounding box. Useful for native `<dialog>` elements.
+  </ParamField>
+</ParamField>
+
+## Return Value
+
+<ResponseField name="isActive" type="Readonly<Ref<boolean>>">
+  Whether the listener is currently active.
+</ResponseField>
+
+<ResponseField name="isPaused" type="Readonly<Ref<boolean>>">
+  Whether the listener is currently paused.
+</ResponseField>
+
+<ResponseField name="pause" type="() => void">
+  Pause listening (stops detection but keeps state).
+</ResponseField>
+
+<ResponseField name="resume" type="() => void">
+  Resume listening.
+</ResponseField>
+
+<ResponseField name="stop" type="() => void">
+  Stop listening and clean up.
+</ResponseField>
+
+## Examples
+
+### Native element ref
+
+```ts
+import { useTemplateRef } from 'vue'
+import { useClickOutside } from '@vuetify/v0'
+
+const menuRef = useTemplateRef<HTMLElement>('menu')
+const isOpen = ref(false)
+
+useClickOutside(menuRef, () => {
+  isOpen.value = false
+})
+```
+
+### Component ref
+
+```ts
+import { useTemplateRef } from 'vue'
+import { useClickOutside } from '@vuetify/v0'
+
+const atomRef = useTemplateRef<AtomExpose>('atom')
+
+// Pass the exposed element TemplateRef via getter
+useClickOutside(
+  () => atomRef.value?.element,
+  () => { isOpen.value = false }
+)
+```
+
+### Multiple targets
+
+```ts
+const popoverRef = useTemplateRef<AtomExpose>('popover')
+const anchorRef = useTemplateRef<HTMLElement>('anchor')
+
+useClickOutside(
+  [() => popoverRef.value?.element, anchorRef],
+  () => { isOpen.value = false }
+)
+```
+
+### Ignoring elements
+
+```ts
+useClickOutside(
+  () => navRef.value?.element,
+  () => { isOpen.value = false },
+  { ignore: ['[data-app-bar]'] }
+)
+```
+
+### Native dialog with bounds detection
+
+```ts
+// For native <dialog> elements, use bounds mode to detect backdrop clicks
+const dialogRef = useTemplateRef<HTMLDialogElement>('dialog')
+
+useClickOutside(
+  dialogRef,
+  () => { dialogRef.value?.close() },
+  { bounds: true }
+)
+```
+
+### Pause and resume
+
+```ts
+const { pause, resume, isPaused } = useClickOutside(menuRef, closeMenu)
+
+// Temporarily disable
+pause()
+
+// Re-enable
+resume()
+```
+
+## Notes
+
+- For accessible components (dialogs, popovers, menus), pair with `useHotkey` for Escape key dismissal per WCAG/APG requirements
+- CSS selectors cannot match across Shadow DOM boundaries due to browser limitations. Use element refs instead when ignoring shadow hosts
+- The composable uses capture phase by default to work with elements that call stopPropagation

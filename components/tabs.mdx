@@ -1,0 +1,491 @@
+---
+title: Tabs
+description: Accessible tab interface with keyboard navigation and ARIA support
+---
+
+## Overview
+
+Tabs provides an accessible tab interface with full keyboard navigation support, roving tabindex, and both automatic and manual activation modes. It supports horizontal and vertical orientations.
+
+## Sub-Components
+
+- **Tabs.Root**: Renderless container that manages tab state
+- **Tabs.List**: Container for tab triggers with tablist role
+- **Tabs.Item**: Individual tab trigger with keyboard navigation
+- **Tabs.Panel**: Content panel associated with a tab
+
+## Usage
+
+```vue
+<script lang="ts" setup>
+import { ref } from 'vue'
+import { Tabs } from '@vuetify/v0'
+
+const selected = ref('profile')
+</script>
+
+<template>
+  <Tabs.Root v-model="selected">
+    <Tabs.List label="Account settings">
+      <Tabs.Item value="profile">Profile</Tabs.Item>
+      <Tabs.Item value="password">Password</Tabs.Item>
+      <Tabs.Item value="billing" disabled>Billing</Tabs.Item>
+    </Tabs.List>
+
+    <Tabs.Panel value="profile">Profile content</Tabs.Panel>
+    <Tabs.Panel value="password">Password content</Tabs.Panel>
+    <Tabs.Panel value="billing">Billing content</Tabs.Panel>
+  </Tabs.Root>
+</template>
+```
+
+## Tabs.Root
+
+### Props
+
+<ParamField path="namespace" type="string" default="'v0:tabs'">
+  Namespace for dependency injection (must match child namespace)
+</ParamField>
+
+<ParamField path="disabled" type="boolean" default="false">
+  Disables the entire tabs instance
+</ParamField>
+
+<ParamField path="enroll" type="boolean" default="false">
+  Auto-select non-disabled items on registration
+</ParamField>
+
+<ParamField path="mandatory" type="boolean | 'force'" default="'force'">
+  Controls mandatory tab behavior:
+  - `false`: No mandatory tab enforcement
+  - `true`: Prevents deselecting the last selected item
+  - `'force'` (default): Automatically selects the first non-disabled tab
+</ParamField>
+
+<ParamField path="circular" type="boolean" default="true">
+  Whether arrow key navigation wraps around
+</ParamField>
+
+<ParamField path="orientation" type="'horizontal' | 'vertical'" default="'horizontal'">
+  Tab orientation for keyboard navigation
+</ParamField>
+
+<ParamField path="activation" type="'automatic' | 'manual'" default="'automatic'">
+  Activation mode:
+  - `automatic`: Tab activates on focus (arrow keys)
+  - `manual`: Tab activates on Enter/Space only
+</ParamField>
+
+### Model
+
+<ParamField path="v-model" type="T | T[]">
+  Current tab value(s)
+</ParamField>
+
+### Slot Props
+
+<ParamField path="isDisabled" type="boolean">
+  Whether the tabs instance is disabled
+</ParamField>
+
+<ParamField path="orientation" type="'horizontal' | 'vertical'">
+  Current orientation
+</ParamField>
+
+<ParamField path="activation" type="'automatic' | 'manual'">
+  Current activation mode
+</ParamField>
+
+<ParamField path="first" type="() => void">
+  Select the first tab
+</ParamField>
+
+<ParamField path="last" type="() => void">
+  Select the last tab
+</ParamField>
+
+<ParamField path="next" type="() => void">
+  Select the next tab
+</ParamField>
+
+<ParamField path="prev" type="() => void">
+  Select the previous tab
+</ParamField>
+
+<ParamField path="step" type="(count: number) => void">
+  Step forward or backward by a specific count
+</ParamField>
+
+<ParamField path="select" type="(id: ID) => void">
+  Select a tab by ID
+</ParamField>
+
+<ParamField path="unselect" type="(id: ID) => void">
+  Unselect a tab by ID
+</ParamField>
+
+<ParamField path="toggle" type="(id: ID) => void">
+  Toggle a tab's selection state by ID
+</ParamField>
+
+<ParamField path="attrs" type="object">
+  Attributes including aria-multiselectable: false
+</ParamField>
+
+## Tabs.List
+
+### Props
+
+<ParamField path="as" type="DOMElement | null" default="'div'">
+  The HTML element to render as
+</ParamField>
+
+<ParamField path="label" type="string">
+  Accessible label for the tab list
+</ParamField>
+
+### Slot Props
+
+<ParamField path="orientation" type="'horizontal' | 'vertical'">
+  Current orientation
+</ParamField>
+
+<ParamField path="attrs" type="object">
+  Attributes including role="tablist" and aria-orientation
+</ParamField>
+
+## Tabs.Item
+
+### Props
+
+<ParamField path="as" type="DOMElement | null" default="'button'">
+  The HTML element to render as
+</ParamField>
+
+<ParamField path="id" type="ID">
+  Unique identifier (auto-generated if not provided)
+</ParamField>
+
+<ParamField path="value" type="V">
+  Value associated with this tab (used to match with TabsPanel)
+</ParamField>
+
+<ParamField path="disabled" type="MaybeRef<boolean>">
+  Disables this specific tab
+</ParamField>
+
+<ParamField path="namespace" type="string" default="'v0:tabs'">
+  Namespace for dependency injection
+</ParamField>
+
+<ParamField path="ariaLabel" type="string">
+  Accessible label for this tab
+</ParamField>
+
+<ParamField path="ariaLabelledby" type="string">
+  ID of element that labels this tab
+</ParamField>
+
+<ParamField path="ariaDescribedby" type="string">
+  ID of element that describes this tab
+</ParamField>
+
+### Slot Props
+
+<ParamField path="id" type="string">
+  Unique identifier
+</ParamField>
+
+<ParamField path="isSelected" type="boolean">
+  Whether this tab is currently selected
+</ParamField>
+
+<ParamField path="isDisabled" type="boolean">
+  Whether this tab is disabled
+</ParamField>
+
+<ParamField path="select" type="() => void">
+  Select this tab
+</ParamField>
+
+<ParamField path="attrs" type="object">
+  Attributes including role, tabindex, aria-selected, aria-controls, event handlers, etc.
+</ParamField>
+
+## Tabs.Panel
+
+### Props
+
+<ParamField path="as" type="DOMElement | null" default="'div'">
+  The HTML element to render as
+</ParamField>
+
+<ParamField path="value" type="V">
+  Value that matches this panel with a Tabs.Item
+</ParamField>
+
+<ParamField path="namespace" type="string" default="'v0:tabs'">
+  Namespace for dependency injection
+</ParamField>
+
+### Slot Props
+
+<ParamField path="isSelected" type="boolean">
+  Whether this panel is currently visible
+</ParamField>
+
+<ParamField path="attrs" type="object">
+  Attributes including role="tabpanel", aria-labelledby, and tabindex
+</ParamField>
+
+## Examples
+
+<Tabs>
+  <Tab title="Basic">
+    ```vue
+    <script setup>
+    import { ref } from 'vue'
+    import { Tabs } from '@vuetify/v0'
+
+    const selected = ref('profile')
+    </script>
+
+    <template>
+      <Tabs.Root v-model="selected">
+        <Tabs.List label="Account settings">
+          <Tabs.Item value="profile">Profile</Tabs.Item>
+          <Tabs.Item value="password">Password</Tabs.Item>
+        </Tabs.List>
+
+        <Tabs.Panel value="profile">
+          Profile content
+        </Tabs.Panel>
+
+        <Tabs.Panel value="password">
+          Password content
+        </Tabs.Panel>
+      </Tabs.Root>
+    </template>
+    ```
+  </Tab>
+
+  <Tab title="Vertical">
+    ```vue
+    <script setup>
+    import { ref } from 'vue'
+    import { Tabs } from '@vuetify/v0'
+
+    const selected = ref('profile')
+    </script>
+
+    <template>
+      <Tabs.Root v-model="selected" orientation="vertical">
+        <Tabs.List label="Account settings">
+          <Tabs.Item value="profile">Profile</Tabs.Item>
+          <Tabs.Item value="password">Password</Tabs.Item>
+        </Tabs.List>
+
+        <Tabs.Panel value="profile">
+          Profile content
+        </Tabs.Panel>
+
+        <Tabs.Panel value="password">
+          Password content
+        </Tabs.Panel>
+      </Tabs.Root>
+    </template>
+    ```
+  </Tab>
+
+  <Tab title="Manual Activation">
+    ```vue
+    <script setup>
+    import { ref } from 'vue'
+    import { Tabs } from '@vuetify/v0'
+
+    const selected = ref('profile')
+    </script>
+
+    <template>
+      <!-- Requires Enter/Space to activate -->
+      <Tabs.Root v-model="selected" activation="manual">
+        <Tabs.List label="Account settings">
+          <Tabs.Item value="profile">Profile</Tabs.Item>
+          <Tabs.Item value="password">Password</Tabs.Item>
+        </Tabs.List>
+
+        <Tabs.Panel value="profile">
+          Profile content
+        </Tabs.Panel>
+
+        <Tabs.Panel value="password">
+          Password content
+        </Tabs.Panel>
+      </Tabs.Root>
+    </template>
+    ```
+  </Tab>
+
+  <Tab title="With Disabled Tab">
+    ```vue
+    <script setup>
+    import { ref } from 'vue'
+    import { Tabs } from '@vuetify/v0'
+
+    const selected = ref('profile')
+    </script>
+
+    <template>
+      <Tabs.Root v-model="selected">
+        <Tabs.List label="Account settings">
+          <Tabs.Item value="profile">Profile</Tabs.Item>
+          <Tabs.Item value="password">Password</Tabs.Item>
+          <Tabs.Item value="billing" disabled>Billing</Tabs.Item>
+        </Tabs.List>
+
+        <Tabs.Panel value="profile">
+          Profile content
+        </Tabs.Panel>
+
+        <Tabs.Panel value="password">
+          Password content
+        </Tabs.Panel>
+
+        <Tabs.Panel value="billing">
+          Billing content
+        </Tabs.Panel>
+      </Tabs.Root>
+    </template>
+    ```
+  </Tab>
+
+  <Tab title="With Slot Props">
+    ```vue
+    <script setup>
+    import { ref } from 'vue'
+    import { Tabs } from '@vuetify/v0'
+
+    const selected = ref('profile')
+    </script>
+
+    <template>
+      <Tabs.Root v-model="selected">
+        <Tabs.List label="Account settings">
+          <Tabs.Item value="profile" v-slot="{ isSelected }">
+            <span :class="{ 'border-b-2 border-blue-500': isSelected }">
+              Profile
+            </span>
+          </Tabs.Item>
+
+          <Tabs.Item value="password" v-slot="{ isSelected }">
+            <span :class="{ 'border-b-2 border-blue-500': isSelected }">
+              Password
+            </span>
+          </Tabs.Item>
+        </Tabs.List>
+
+        <Tabs.Panel value="profile" v-slot="{ isSelected }">
+          <div v-if="isSelected">
+            Profile content
+          </div>
+        </Tabs.Panel>
+
+        <Tabs.Panel value="password" v-slot="{ isSelected }">
+          <div v-if="isSelected">
+            Password content
+          </div>
+        </Tabs.Panel>
+      </Tabs.Root>
+    </template>
+    ```
+  </Tab>
+
+  <Tab title="Non-Circular">
+    ```vue
+    <script setup>
+    import { ref } from 'vue'
+    import { Tabs } from '@vuetify/v0'
+
+    const selected = ref('profile')
+    </script>
+
+    <template>
+      <!-- Navigation doesn't wrap around -->
+      <Tabs.Root v-model="selected" :circular="false">
+        <Tabs.List label="Account settings">
+          <Tabs.Item value="profile">Profile</Tabs.Item>
+          <Tabs.Item value="password">Password</Tabs.Item>
+        </Tabs.List>
+
+        <Tabs.Panel value="profile">
+          Profile content
+        </Tabs.Panel>
+
+        <Tabs.Panel value="password">
+          Password content
+        </Tabs.Panel>
+      </Tabs.Root>
+    </template>
+    ```
+  </Tab>
+</Tabs>
+
+## Keyboard Navigation
+
+### Horizontal (default)
+
+- **ArrowRight**: Move to next tab
+- **ArrowLeft**: Move to previous tab
+- **Home**: Move to first tab
+- **End**: Move to last tab
+- **Enter/Space**: Activate tab (manual mode only)
+
+### Vertical
+
+- **ArrowDown**: Move to next tab
+- **ArrowUp**: Move to previous tab
+- **Home**: Move to first tab
+- **End**: Move to last tab
+- **Enter/Space**: Activate tab (manual mode only)
+
+## Accessibility
+
+- Tabs.List has `role="tablist"` and `aria-orientation`
+- Tabs.Item has `role="tab"`, roving `tabindex`, and `aria-selected`
+- Tabs.Panel has `role="tabpanel"` and `aria-labelledby` pointing to its tab
+- Focus management with keyboard navigation
+- Disabled tabs are skipped in navigation
+
+```vue
+<template>
+  <Tabs.Root v-model="selected">
+    <Tabs.List label="Settings">
+      <Tabs.Item value="profile" aria-label="Profile settings">
+        Profile
+      </Tabs.Item>
+    </Tabs.List>
+
+    <Tabs.Panel value="profile">
+      Profile content
+    </Tabs.Panel>
+  </Tabs.Root>
+</template>
+```
+
+## SSR
+
+Tabs is fully compatible with SSR. The Root component is renderless by default:
+
+```vue
+<template>
+  <Tabs.Root v-model="selected">
+    <Tabs.List label="Account settings">
+      <Tabs.Item value="profile">Profile</Tabs.Item>
+      <Tabs.Item value="password">Password</Tabs.Item>
+    </Tabs.List>
+
+    <Tabs.Panel value="profile">Profile content</Tabs.Panel>
+    <Tabs.Panel value="password">Password content</Tabs.Panel>
+  </Tabs.Root>
+</template>
+```

@@ -1,0 +1,340 @@
+---
+title: V0 Adapter
+description: Built-in console logger adapter for Vuetify Zero
+---
+
+# V0 Adapter (Vuetify0LoggerAdapter)
+
+The `Vuetify0LoggerAdapter` is the default console-based logger adapter for Vuetify Zero. It provides formatted, colorized console output for development and production environments.
+
+## Import
+
+```typescript
+import { Vuetify0LoggerAdapter } from '@vuetify/v0/logger/adapters/v0'
+```
+
+## Basic Usage
+
+```typescript
+import { createApp } from 'vue'
+import { createLoggerPlugin } from '@vuetify/v0/logger'
+import { Vuetify0LoggerAdapter } from '@vuetify/v0/logger/adapters/v0'
+
+const adapter = new Vuetify0LoggerAdapter({
+  prefix: 'app',
+  colors: true,
+  timestamps: true
+})
+
+const app = createApp(App)
+app.use(createLoggerPlugin({ adapter }))
+```
+
+<Note>
+The `Vuetify0LoggerAdapter` is the **default adapter** when no adapter is specified:
+
+```typescript
+app.use(createLoggerPlugin()) // Uses Vuetify0LoggerAdapter automatically
+```
+</Note>
+
+## Using in Components
+
+```vue
+<script setup lang="ts">
+import { useLogger } from '@vuetify/v0/logger'
+
+const logger = useLogger()
+
+function handleClick() {
+  logger.debug('Button clicked')
+  logger.info('Processing action')
+  logger.warn('This might take a while')
+}
+
+function handleError(error: Error) {
+  logger.error('Operation failed', error)
+}
+</script>
+```
+
+## Log Levels
+
+```typescript
+import { useLogger } from '@vuetify/v0/logger'
+
+const logger = useLogger()
+
+logger.trace('Trace message')   // Gray (browser only)
+logger.debug('Debug message')   // Blue
+logger.info('Info message')     // Green
+logger.warn('Warning message')  // Orange
+logger.error('Error message')   // Red
+logger.fatal('Fatal message')   // Bold red
+```
+
+## Configuration Options
+
+```typescript
+interface Vuetify0LoggerOptions {
+  prefix?: string      // Log prefix (default: 'v0')
+  colors?: boolean     // Enable colors (default: true)
+  timestamps?: boolean // Show timestamps (default: true)
+}
+```
+
+### Custom Prefix
+
+```typescript
+import { Vuetify0LoggerAdapter } from '@vuetify/v0/logger/adapters/v0'
+
+const adapter = new Vuetify0LoggerAdapter({
+  prefix: 'myapp'
+})
+
+// Logs: [myapp info] Message
+```
+
+### Disable Colors
+
+```typescript
+const adapter = new Vuetify0LoggerAdapter({
+  prefix: 'app',
+  colors: false  // Disable color formatting
+})
+
+// Logs: [app info] Message (no colors)
+```
+
+### Disable Timestamps
+
+```typescript
+const adapter = new Vuetify0LoggerAdapter({
+  prefix: 'app',
+  timestamps: false  // Hide timestamps
+})
+
+// Logs: [app info] Message
+```
+
+## Output Format
+
+### Browser
+
+```typescript
+logger.info('User logged in', { userId: 123 })
+// Output: 14:23:45 [v0 info] User logged in { userId: 123 }
+//         ^-------^ ^------^ ^--------------^ ^-------------^
+//         timestamp  prefix     message         args
+```
+
+### Node.js
+
+```typescript
+logger.info('Server started')
+// Output: 2024-03-04T14:23:45.678Z [v0 info] Server started
+//         ^-----------------------^ ^------^ ^-------------^
+//         ISO timestamp              prefix   message
+```
+
+## Color Scheme
+
+In browser environments, logs are colorized:
+
+| Level | Color | Hex |
+|-------|-------|-----|
+| `trace` | Gray | `#64748b` |
+| `debug` | Blue | `#3b82f6` |
+| `info` | Green | `#10b981` |
+| `warn` | Orange | `#f59e0b` |
+| `error` | Red | `#ef4444` |
+| `fatal` | Bold Red | `#dc2626` |
+
+## Timestamp Format
+
+### Browser
+
+```typescript
+// Format: HH:MM:SS
+14:23:45 [v0 info] Message
+```
+
+### Node.js
+
+```typescript
+// Format: ISO 8601
+2024-03-04T14:23:45.678Z [v0 info] Message
+```
+
+## Environment-Specific Configuration
+
+```typescript
+import { Vuetify0LoggerAdapter } from '@vuetify/v0/logger/adapters/v0'
+
+const isDev = import.meta.env.DEV
+
+const adapter = new Vuetify0LoggerAdapter({
+  prefix: isDev ? 'dev' : 'prod',
+  colors: isDev,      // Colors only in dev
+  timestamps: true
+})
+```
+
+## Multiple Loggers
+
+```typescript
+import { createLogger } from '@vuetify/v0/logger'
+import { Vuetify0LoggerAdapter } from '@vuetify/v0/logger/adapters/v0'
+
+const authLogger = createLogger({
+  adapter: new Vuetify0LoggerAdapter({ prefix: 'auth' })
+})
+
+const apiLogger = createLogger({
+  adapter: new Vuetify0LoggerAdapter({ prefix: 'api' })
+})
+
+authLogger.info('Login successful')
+// Output: 14:23:45 [auth info] Login successful
+
+apiLogger.error('Request failed')
+// Output: 14:23:45 [api error] Request failed
+```
+
+## SSR Support
+
+The adapter automatically adapts to server-side rendering:
+
+```typescript
+import { Vuetify0LoggerAdapter } from '@vuetify/v0/logger/adapters/v0'
+
+const adapter = new Vuetify0LoggerAdapter()
+
+// In browser:
+logger.info('Message') 
+// Output: 14:23:45 [v0 info] Message (with colors)
+
+// In Node.js:
+logger.info('Message')
+// Output: 2024-03-04T14:23:45.678Z [v0 info] Message (no colors)
+```
+
+## Logging with Arguments
+
+```typescript
+import { useLogger } from '@vuetify/v0/logger'
+
+const logger = useLogger()
+
+// Multiple arguments
+logger.info('User action', { userId: 123 }, { action: 'click' })
+// Output: 14:23:45 [v0 info] User action { userId: 123 } { action: 'click' }
+
+// Error objects
+try {
+  throw new Error('Something went wrong')
+} catch (error) {
+  logger.error('Error caught', error)
+  // Output: 14:23:45 [v0 error] Error caught Error: Something went wrong
+  //         at ... (stack trace)
+}
+```
+
+## TypeScript
+
+```typescript
+import { Vuetify0LoggerAdapter } from '@vuetify/v0/logger/adapters/v0'
+import type { LogLevel } from '@vuetify/v0/logger'
+
+const adapter = new Vuetify0LoggerAdapter({
+  prefix: 'app',
+  colors: true,
+  timestamps: true
+})
+
+// Fully typed methods
+adapter.debug('Debug message', { data: 123 })
+adapter.info('Info message')
+adapter.warn('Warning message')
+adapter.error('Error message', new Error('failed'))
+adapter.trace('Trace message')
+adapter.fatal('Fatal message')
+```
+
+## Performance
+
+<Note>
+The `Vuetify0LoggerAdapter` is lightweight and optimized for development:
+
+- **Minimal overhead** - Direct console API calls
+- **No dependencies** - Pure JavaScript implementation
+- **Browser-optimized** - Uses console styling APIs
+- **SSR-safe** - Adapts to Node.js and browser environments
+</Note>
+
+## Comparison with Other Adapters
+
+| Feature | V0Adapter | ConsolaAdapter | PinoAdapter |
+|---------|-----------|----------------|-------------|
+| Setup | Zero config | Requires Consola | Requires Pino |
+| Colors | Built-in | Built-in | Via pino-pretty |
+| Timestamps | Built-in | Via config | Via config |
+| Structured logs | No | Yes | Yes |
+| Performance | Good | Good | Excellent |
+| Best for | Development | Development | Production |
+
+## API Reference
+
+### Constructor
+
+```typescript
+class Vuetify0LoggerAdapter implements LoggerAdapter
+
+constructor(options?: {
+  prefix?: string
+  colors?: boolean
+  timestamps?: boolean
+})
+```
+
+### Options
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `prefix` | `string` | `'v0'` | Log message prefix |
+| `colors` | `boolean` | `true` | Enable color formatting |
+| `timestamps` | `boolean` | `true` | Show timestamps |
+
+### Methods
+
+| Method | Description |
+|--------|-------------|
+| `debug(message, ...args)` | Log debug message |
+| `info(message, ...args)` | Log info message |
+| `warn(message, ...args)` | Log warning message |
+| `error(message, ...args)` | Log error message |
+| `trace(message, ...args)` | Log trace message |
+| `fatal(message, ...args)` | Log fatal message |
+
+## When to Use
+
+<CardGroup cols={3}>
+  <Card title="V0 Adapter" icon="terminal">
+    **Development**
+    Quick setup, formatted console output
+  </Card>
+  <Card title="Consola Adapter" icon="code">
+    **Development**
+    Fancy formatting, custom reporters
+  </Card>
+  <Card title="Pino Adapter" icon="zap">
+    **Production**
+    High performance, structured logging
+  </Card>
+</CardGroup>
+
+## See Also
+
+- [Consola Adapter](/adapters/logger-consola) - Consola logger integration
+- [Pino Adapter](/adapters/logger-pino) - Pino structured logging
+- [useLogger](/composables/use-logger) - Logger composable

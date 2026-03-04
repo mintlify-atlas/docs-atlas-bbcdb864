@@ -1,0 +1,779 @@
+---
+title: Composables System
+description: Deep dive into Vuetify Zero's composable system - how composables are organized, how they work together, and patterns for using them effectively.
+---
+
+# Composables System
+
+Composables are the heart of Vuetify Zero. They provide reusable, composable logic that can be used directly or through wrapper components. Understanding the composable system is key to mastering v0.
+
+## What Are Composables?
+
+In Vue 3, composables are functions that use Vue's Composition API to encapsulate and reuse stateful logic:
+
+```typescript
+import { ref, computed } from 'vue'
+
+// A simple composable
+function useCounter() {
+  const count = ref(0)
+  const doubled = computed(() => count.value * 2)
+  
+  function increment() {
+    count.value++
+  }
+  
+  return { count, doubled, increment }
+}
+```
+
+Vuetify Zero takes this concept further with **factory composables** that create stateful instances:
+
+```typescript
+import { createSelection } from '@vuetify/v0/composables'
+
+// Factory returns a stateful instance
+const selection = createSelection({ multiple: true })
+
+selection.register({ id: 'a', value: 'Apple' })
+selection.select('a')
+selection.selectedIds // Set { 'a' }
+```
+
+## Composable Categories
+
+Vuetify Zero's composables are organized into categories by function:
+
+### Foundation
+
+Core factories that create other composables:
+
+```typescript
+import { 
+  createContext,   // Type-safe provide/inject
+  createTrinity,   // [use, provide, context] pattern
+  createPlugin     // Vue plugin factory
+} from '@vuetify/v0/composables'
+```
+
+**When to use**: Building custom composables or plugins
+
+### Registration
+
+Collection management primitives:
+
+```typescript
+import { 
+  createRegistry,   // Base collection with lookup
+  createTokens,     // Design token aliases
+  createQueue,      // Time-based queue
+  createTimeline    // Undo/redo history
+} from '@vuetify/v0/composables'
+```
+
+**When to use**: Managing collections of items, design systems, notifications
+
+### Selection
+
+State management for selection patterns:
+
+```typescript
+import { 
+  createSelection,  // Multi-select base
+  createSingle,     // Single selection (tabs, radio)
+  createGroup,      // Checkboxes with tri-state
+  createStep        // Wizard, stepper, carousel
+} from '@vuetify/v0/composables'
+```
+
+**When to use**: Any UI that involves selecting items
+
+### Forms
+
+Form state and validation:
+
+```typescript
+import { createForm } from '@vuetify/v0/composables'
+
+const form = createForm()
+
+form.register({
+  id: 'email',
+  rules: [
+    v => !!v || 'Email is required',
+    v => /.+@.+\..+/.test(v) || 'Email must be valid'
+  ]
+})
+```
+
+**When to use**: Form validation, dirty tracking
+
+### Reactivity
+
+Reactive proxy utilities:
+
+```typescript
+import { 
+  useProxyModel,      // Bridge selection ↔ v-model
+  useProxyRegistry    // Registry to reactive object
+} from '@vuetify/v0/composables'
+```
+
+**When to use**: Connecting composables to v-model, making registries reactive
+
+### Plugins
+
+App-level features installable via `app.use()`:
+
+```typescript
+import { 
+  useTheme,          // Dark/light mode
+  useLocale,         // i18n, RTL
+  useBreakpoints,    // Responsive queries
+  useStorage,        // Persistent state
+  useLogger,         // Logging adapter
+  useDate,           // Date manipulation
+  usePermissions,    // RBAC/ABAC
+  useFeatures,       // Feature flags
+  useStack,          // Overlay z-index
+  useHydration       // SSR helpers
+} from '@vuetify/v0/composables'
+```
+
+**When to use**: App-wide singletons, cross-cutting concerns
+
+### Data
+
+Data manipulation utilities:
+
+```typescript
+import { 
+  createFilter,      // Array filtering
+  createPagination,  // Page navigation
+  createVirtual,     // Virtual scrolling
+  createDataTable    // Complete data table
+} from '@vuetify/v0/composables'
+```
+
+**When to use**: Working with lists and tables
+
+### System
+
+Browser APIs and observers:
+
+```typescript
+import { 
+  useClickOutside,           // Click outside detection
+  useEventListener,          // Managed event listeners
+  useHotkey,                 // Keyboard shortcuts
+  useIntersectionObserver,   // Intersection observer
+  useLazy,                   // Deferred rendering
+  useMediaQuery,             // Media query matching
+  useMutationObserver,       // DOM mutation observer
+  useResizeObserver,         // Resize observer
+  useToggleScope             // Conditional effect scopes
+} from '@vuetify/v0/composables'
+```
+
+**When to use**: Browser API integration, performance optimization
+
+### Transformers
+
+Data transformation utilities:
+
+```typescript
+import { 
+  toArray,      // Array normalization
+  toReactive    // Reactive conversion
+} from '@vuetify/v0/composables'
+```
+
+**When to use**: Normalizing inputs, reactive wrappers
+
+## Usage Patterns
+
+### Direct Factory Call
+
+For standalone instances in a single component:
+
+```vue
+<script setup lang="ts">
+  import { createSelection } from '@vuetify/v0/composables'
+  
+  const selection = createSelection({ multiple: true })
+  
+  const items = [
+    { id: 'apple', label: 'Apple' },
+    { id: 'banana', label: 'Banana' },
+    { id: 'cherry', label: 'Cherry' }
+  ]
+  
+  // Register items
+  items.forEach(item => {
+    selection.register({ id: item.id, value: item })
+  })
+</script>
+
+<template>
+  <div>
+    <button
+      v-for="item in items"
+      :key="item.id"
+      @click="selection.toggle(item.id)"
+      :class="{ 'active': selection.selectedIds.has(item.id) }"
+    >
+      {{ item.label }}
+    </button>
+  </div>
+</template>
+```
+
+### Context Injection
+
+For sharing state across component trees:
+
+```vue
+<!-- Parent.vue -->
+<script setup lang="ts">
+  import { createSelectionContext } from '@vuetify/v0/composables'
+  
+  const [useSelection, provideSelection] = createSelectionContext({
+    namespace: 'v0:my-selection',
+    multiple: true
+  })
+  
+  provideSelection()
+</script>
+
+<template>
+  <div>
+    <ChildA />
+    <ChildB />
+  </div>
+</template>
+```
+
+```vue
+<!-- ChildA.vue -->
+<script setup lang="ts">
+  import { useContext } from '@vuetify/v0/composables'
+  
+  const selection = useContext('v0:my-selection')
+  
+  selection.register({ id: 'item-a', value: 'A' })
+</script>
+```
+
+```vue
+<!-- ChildB.vue -->
+<script setup lang="ts">
+  import { useContext } from '@vuetify/v0/composables'
+  
+  const selection = useContext('v0:my-selection')
+  
+  // Same instance as ChildA
+  console.log(selection.selectedIds)
+</script>
+```
+
+### Plugin Installation
+
+For app-wide singletons:
+
+```typescript
+// main.ts
+import { createApp } from 'vue'
+import { createThemePlugin } from '@vuetify/v0/composables'
+import App from './App.vue'
+
+const app = createApp(App)
+
+app.use(
+  createThemePlugin({
+    default: 'light',
+    themes: {
+      light: {
+        colors: {
+          primary: '#1976d2',
+          secondary: '#424242'
+        }
+      },
+      dark: {
+        colors: {
+          primary: '#2196f3',
+          secondary: '#616161'
+        }
+      }
+    }
+  })
+)
+
+app.mount('#app')
+```
+
+```vue
+<!-- Any component in the app -->
+<script setup lang="ts">
+  import { useTheme } from '@vuetify/v0/composables'
+  
+  const theme = useTheme()
+</script>
+
+<template>
+  <div>
+    <p>Current theme: {{ theme.current.value }}</p>
+    <button @click="theme.cycle()">Toggle Theme</button>
+  </div>
+</template>
+```
+
+### Trinity Pattern
+
+Most complex composables export a trinity:
+
+```typescript
+import { createThemeContext } from '@vuetify/v0/composables'
+
+// Returns: [useTheme, provideTheme, defaultTheme]
+const [useTheme, provideTheme, theme] = createThemeContext({
+  default: 'light',
+  themes: { /* ... */ }
+})
+
+// 1. useTheme() - inject from ancestor
+const themeFromContext = useTheme()
+
+// 2. provideTheme() - provide to descendants
+provideTheme()              // Use default
+provideTheme(customTheme)   // Provide custom
+
+// 3. theme - direct access (no DI)
+theme.cycle()  // Works anywhere, even outside Vue components
+```
+
+## Composing Composables
+
+Composables are designed to work together:
+
+```typescript
+import { 
+  createSelection, 
+  createFilter, 
+  createPagination 
+} from '@vuetify/v0/composables'
+import { ref, computed } from 'vue'
+
+// 1. Create selection
+const selection = createSelection({ multiple: true })
+
+// 2. Create filter
+const query = ref('')
+const items = ref([
+  { id: '1', name: 'Apple', category: 'fruit' },
+  { id: '2', name: 'Banana', category: 'fruit' },
+  { id: '3', name: 'Carrot', category: 'vegetable' }
+])
+
+const filter = createFilter()
+const filtered = computed(() => {
+  return filter.apply(items.value, query.value, item => item.name)
+})
+
+// 3. Create pagination
+const pagination = createPagination({
+  size: () => filtered.value.length,
+  itemsPerPage: 10
+})
+
+// 4. Combine them
+const visibleItems = computed(() => {
+  const start = pagination.pageStart.value
+  const end = pagination.pageStop.value
+  return filtered.value.slice(start, end)
+})
+
+// 5. Register visible items for selection
+watchEffect(() => {
+  visibleItems.value.forEach(item => {
+    if (!selection.has(item.id)) {
+      selection.register({ id: item.id, value: item })
+    }
+  })
+})
+```
+
+## Advanced Patterns
+
+### Custom Composable with Registry
+
+Extend the registry system:
+
+```typescript
+import { createRegistry } from '@vuetify/v0/composables'
+import type { RegistryTicketInput, RegistryTicket } from '@vuetify/v0/composables'
+import { ref, computed } from 'vue'
+
+interface TodoInput extends RegistryTicketInput {
+  text: string
+  completed?: boolean
+}
+
+type TodoTicket = RegistryTicket & TodoInput & {
+  completed: boolean
+  toggleComplete: () => void
+}
+
+function createTodoList() {
+  const registry = createRegistry<TodoInput, TodoTicket>()
+  
+  // Override register to add custom methods
+  const originalRegister = registry.register.bind(registry)
+  registry.register = (input: Partial<TodoInput>) => {
+    const ticket = originalRegister({
+      ...input,
+      completed: input.completed ?? false
+    }) as TodoTicket
+    
+    // Add custom method
+    ticket.toggleComplete = () => {
+      registry.upsert(ticket.id, {
+        completed: !ticket.completed
+      })
+    }
+    
+    return ticket
+  }
+  
+  // Add computed properties
+  const todos = computed(() => registry.values())
+  const completed = computed(() => 
+    todos.value.filter(t => t.completed)
+  )
+  const remaining = computed(() => 
+    todos.value.filter(t => !t.completed)
+  )
+  
+  return {
+    ...registry,
+    todos,
+    completed,
+    remaining
+  }
+}
+```
+
+### Adapter Pattern
+
+Many plugin composables use adapters for flexibility:
+
+```typescript
+import { createLoggerContext } from '@vuetify/v0/composables'
+
+// Console adapter (default)
+const [useLogger] = createLoggerContext({
+  adapter: 'console'
+})
+
+// Custom adapter
+import pino from 'pino'
+
+const [useLogger] = createLoggerContext({
+  adapter: {
+    debug: (...args) => pino.debug(...args),
+    info: (...args) => pino.info(...args),
+    warn: (...args) => pino.warn(...args),
+    error: (...args) => pino.error(...args)
+  }
+})
+```
+
+### Batch Operations
+
+Optimize bulk operations with batching:
+
+```typescript
+import { createRegistry } from '@vuetify/v0/composables'
+
+const registry = createRegistry({ events: true, reactive: true })
+
+// Without batch: N cache invalidations + N events
+for (const item of largeArray) {
+  registry.register(item)
+}
+
+// With batch: 1 cache invalidation + N events (deferred)
+const tickets = registry.batch(() => {
+  return largeArray.map(item => registry.register(item))
+})
+
+// Or use onboard (uses batch internally)
+const tickets = registry.onboard(largeArray)
+```
+
+### Conditional Reactivity
+
+Use `useToggleScope` for conditional effects:
+
+```typescript
+import { useToggleScope, useEventListener } from '@vuetify/v0/composables'
+import { ref } from 'vue'
+
+const isListening = ref(false)
+
+// Effects only run when isListening is true
+useToggleScope(isListening, () => {
+  useEventListener(window, 'resize', () => {
+    console.log('Window resized')
+  })
+  
+  useEventListener(window, 'scroll', () => {
+    console.log('Window scrolled')
+  })
+})
+
+// Enable/disable listeners
+isListening.value = true  // Start listening
+isListening.value = false // Stop listening and clean up
+```
+
+## TypeScript Integration
+
+All composables are fully typed with generic support:
+
+```typescript
+import { createSelection } from '@vuetify/v0/composables'
+import type { SelectionTicketInput } from '@vuetify/v0/composables'
+
+// Define custom ticket type
+interface MyItem extends SelectionTicketInput {
+  label: string
+  category: string
+  disabled?: boolean
+}
+
+// Type-safe selection
+const selection = createSelection<MyItem>()
+
+selection.register({
+  id: 'item-1',
+  label: 'Apple',
+  category: 'fruit',
+  disabled: false
+})
+
+// Type-safe access
+const ticket = selection.get('item-1')
+if (ticket) {
+  ticket.label    // string
+  ticket.category // string
+  ticket.disabled // boolean | undefined
+}
+```
+
+## Performance Considerations
+
+### Minimal Reactivity
+
+v0 uses minimal reactivity by default:
+
+```typescript
+const registry = createRegistry()
+
+// Collections are NOT reactive by default
+const items = registry.values() // Snapshot
+
+// Make reactive if needed
+const registry = createRegistry({ reactive: true })
+```
+
+### Selection State is Always Reactive
+
+```typescript
+const selection = createSelection()
+
+// These are always reactive
+selection.selectedIds      // Reactive Set
+selection.selectedItems    // Computed ref
+selection.selectedValues   // Computed ref
+
+// Use in templates
+```vue
+<template>
+  <div>Selected: {{ selection.selectedIds.size }}</div>
+</template>
+```
+```
+
+### Lazy Evaluation
+
+Use `useLazy` for deferred rendering:
+
+```typescript
+import { useLazy } from '@vuetify/v0/composables'
+
+const isOpen = ref(false)
+const { shouldMount, shouldRender } = useLazy(isOpen)
+
+// shouldMount: true once opened (never false again)
+// shouldRender: mirrors isOpen
+```
+
+```vue
+<template>
+  <!-- Only mount after first open -->
+  <ExpensiveComponent v-if="shouldMount" v-show="shouldRender" />
+</template>
+```
+
+## Common Use Cases
+
+<Tabs items={["Tabs", "Checkbox Group", "Data Table", "Wizard"]}>
+  <Tab value="Tabs">
+    ```typescript
+    import { createSingle } from '@vuetify/v0/composables'
+    
+    const tabs = createSingle({
+      mandatory: true  // Must have one selected
+    })
+    
+    tabs.onboard([
+      { id: 'home', value: 'Home' },
+      { id: 'about', value: 'About' },
+      { id: 'contact', value: 'Contact' }
+    ])
+    
+    tabs.select('home')
+    ```
+  </Tab>
+  
+  <Tab value="Checkbox Group">
+    ```typescript
+    import { createGroup } from '@vuetify/v0/composables'
+    
+    const checkboxes = createGroup()
+    
+    checkboxes.onboard([
+      { id: 'apple', value: 'Apple' },
+      { id: 'banana', value: 'Banana' },
+      { id: 'cherry', value: 'Cherry' }
+    ])
+    
+    // Tri-state
+    checkboxes.selectAll()
+    checkboxes.isMixed.value    // false
+    checkboxes.select(['apple'])
+    checkboxes.isMixed.value    // true
+    ```
+  </Tab>
+  
+  <Tab value="Data Table">
+    ```typescript
+    import { createDataTable } from '@vuetify/v0/composables'
+    
+    const table = createDataTable({
+      items: ref([...]),
+      columns: [
+        { key: 'name', label: 'Name', sortable: true },
+        { key: 'email', label: 'Email', sortable: true },
+        { key: 'role', label: 'Role', sortable: false }
+      ],
+      itemsPerPage: 10,
+      sortBy: 'name'
+    })
+    
+    // Features
+    table.sort('email')           // Sort by column
+    table.filter('john')          // Filter rows
+    table.selection.select('id')  // Select row
+    table.nextPage()              // Pagination
+    ```
+  </Tab>
+  
+  <Tab value="Wizard">
+    ```typescript
+    import { createStep } from '@vuetify/v0/composables'
+    
+    const wizard = createStep()
+    
+    wizard.onboard([
+      { id: 'account', value: 'Account Info' },
+      { id: 'billing', value: 'Billing' },
+      { id: 'confirm', value: 'Confirmation' }
+    ])
+    
+    wizard.first()     // Go to first step
+    wizard.next()      // Advance
+    wizard.prev()      // Go back
+    wizard.last()      // Jump to end
+    ```
+  </Tab>
+</Tabs>
+
+## Best Practices
+
+<Accordion title="Choose the right composable">
+  Match the composable to your use case:
+  
+  - **Single selection** → `createSingle`
+  - **Multi-selection** → `createSelection` or `createGroup`
+  - **Navigation** → `createStep`
+  - **Form validation** → `createForm`
+  - **Design tokens** → `createTokens`
+</Accordion>
+
+<Accordion title="Use context for shared state">
+  When multiple components need access to the same state:
+  
+  ```typescript
+  // ✅ Good - shared via context
+  const [useSelection, provideSelection] = createSelectionContext()
+  provideSelection()
+  
+  // ❌ Bad - separate instances
+  const selection1 = createSelection()
+  const selection2 = createSelection()
+  ```
+</Accordion>
+
+<Accordion title="Prefer composition over extension">
+  Combine composables instead of extending them:
+  
+  ```typescript
+  // ✅ Good - compose
+  const selection = createSelection()
+  const filter = createFilter()
+  const pagination = createPagination()
+  
+  // ❌ Bad - extend (brittle)
+  class CustomSelection extends Selection { /* ... */ }
+  ```
+</Accordion>
+
+<Accordion title="Clean up when needed">
+  Most composables clean up automatically, but be explicit when necessary:
+  
+  ```typescript
+  import { onUnmounted } from 'vue'
+  
+  const registry = createRegistry({ events: true })
+  
+  onUnmounted(() => {
+    registry.dispose()  // Clean up listeners
+  })
+  ```
+</Accordion>
+
+## Summary
+
+Vuetify Zero's composable system provides:
+
+- **Foundation** - Core factories for building composables
+- **Registry** - Enhanced Map for collection management
+- **Selection** - Specialized selection patterns
+- **Plugins** - App-wide features
+- **Utilities** - Data manipulation and browser APIs
+- **Composition** - Combine composables for complex behavior
+- **Type Safety** - Full TypeScript support
+- **Performance** - Minimal reactivity and lazy evaluation
+
+Composables can be used standalone, shared via context, or installed as plugins. They're designed to compose together for building complex UIs.

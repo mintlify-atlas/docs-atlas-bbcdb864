@@ -1,0 +1,521 @@
+---
+title: useTheme
+description: Theme management composable with token resolution and CSS variable injection
+---
+
+Theme management with single-selection theme switching, token alias resolution, and CSS variable generation.
+
+## Features
+
+- Single-selection theme switching
+- Token alias resolution via useTokens
+- Lazy theme loading (compute colors only when selected)
+- CSS variable generation via adapter pattern
+- SSR support with head integration
+- Theme cycling
+
+## Installation
+
+```ts
+import { createThemePlugin } from '@vuetify/v0'
+
+const app = createApp(App)
+app.use(createThemePlugin({
+  default: 'light',
+  themes: {
+    light: {
+      dark: false,
+      colors: {
+        primary: '#1976d2',
+        secondary: '#424242',
+      },
+    },
+    dark: {
+      dark: true,
+      colors: {
+        primary: '#90caf9',
+        secondary: '#ffffff',
+      },
+    },
+  },
+}))
+```
+
+## Basic Usage
+
+```vue
+<script setup lang="ts">
+import { useTheme } from '@vuetify/v0'
+
+const theme = useTheme()
+
+const toggleTheme = () => {
+  theme.cycle(['light', 'dark'])
+}
+</script>
+
+<template>
+  <div>
+    <p v-if="theme.isDark.value">Dark mode is active</p>
+    <button @click="toggleTheme">Toggle Theme</button>
+    <button @click="theme.select('light')">Light</button>
+    <button @click="theme.select('dark')">Dark</button>
+  </div>
+</template>
+```
+
+## API Reference
+
+### createThemePlugin()
+
+Creates a theme plugin.
+
+<ParamField path="options" type="ThemePluginOptions">
+  Plugin configuration
+  
+  <ParamField path="default" type="ID">
+    Default theme ID to select on initialization
+  </ParamField>
+  
+  <ParamField path="themes" type="Record<ID, ThemeRecord>">
+    Record of themes to register
+    
+    Each theme has:
+    - `dark`: Boolean indicating if theme is dark
+    - `lazy`: Boolean for lazy loading (compute colors only when selected)
+    - `colors`: Record of color values or token aliases
+    
+    Example:
+    ```ts
+    {
+      light: {
+        dark: false,
+        colors: {
+          primary: '#1976d2',
+          secondary: '#424242',
+        },
+      },
+      dark: {
+        dark: true,
+        lazy: true,
+        colors: {
+          primary: '#90caf9',
+          secondary: '#ffffff',
+        },
+      },
+    }
+    ```
+  </ParamField>
+  
+  <ParamField path="palette" type="TokenCollection">
+    Collection of tokens to use for resolving theme colors
+    
+    Example:
+    ```ts
+    {
+      blue: {
+        500: '#3b82f6',
+        600: '#2563eb',
+      },
+    }
+    ```
+  </ParamField>
+  
+  <ParamField path="target" type="string | HTMLElement | null">
+    Target element or selector to apply theme classes to
+    
+    If `null`, no classes will be applied.
+    Defaults to `document.body`.
+  </ParamField>
+  
+  <ParamField path="adapter" type="ThemeAdapter">
+    Theme adapter for CSS generation (defaults to Vuetify0ThemeAdapter)
+  </ParamField>
+  
+  <ParamField path="namespace" type="string" default="'v0:theme'">
+    The namespace for the theme context
+  </ParamField>
+</ParamField>
+
+### ThemeContext
+
+<ResponseField name="size" type="number">
+  Number of registered themes
+</ResponseField>
+
+<ResponseField name="selectedId" type="Ref<ID | undefined>">
+  Currently selected theme ID
+</ResponseField>
+
+<ResponseField name="colors" type="ComputedRef<Record<string, Colors>>">
+  Resolved colors for all themes (or only selected if lazy)
+  
+  Colors are resolved by replacing token aliases with actual values.
+  
+  Example:
+  ```ts
+  {
+    light: {
+      primary: '#1976d2',
+      secondary: '#424242',
+    },
+    dark: {
+      primary: '#90caf9',
+      secondary: '#ffffff',
+    },
+  }
+  ```
+</ResponseField>
+
+<ResponseField name="isDark" type="Readonly<Ref<boolean>>">
+  Whether the current theme is dark
+  
+  Returns `true` if current theme has `dark: true`, otherwise `false`.
+</ResponseField>
+
+<ResponseField name="select" type="(id: ID) => void">
+  Select a theme
+  
+  Example:
+  ```ts
+  theme.select('dark')
+  ```
+</ResponseField>
+
+<ResponseField name="cycle" type="(themes?: ID[]) => void">
+  Cycle through provided themes in order
+  
+  If no themes provided, cycles through all registered themes.
+  
+  Examples:
+  ```ts
+  theme.cycle(['light', 'dark'])
+  theme.cycle() // Cycles through all themes
+  ```
+</ResponseField>
+
+<ResponseField name="register" type="(registration: Partial<ThemeTicketInput>) => ThemeTicket">
+  Register a new theme
+  
+  Example:
+  ```ts
+  theme.register({
+    id: 'high-contrast',
+    dark: false,
+    value: {
+      primary: '#000000',
+      secondary: '#ffffff',
+    },
+  })
+  ```
+</ResponseField>
+
+<ResponseField name="get" type="(id: ID) => ThemeTicket | undefined">
+  Get a theme by ID
+</ResponseField>
+
+<ResponseField name="has" type="(id: ID) => boolean">
+  Check if a theme exists
+</ResponseField>
+
+## Theme Configuration
+
+### Basic Theme
+
+```ts
+themes: {
+  light: {
+    dark: false,
+    colors: {
+      primary: '#1976d2',
+      secondary: '#424242',
+      error: '#f44336',
+      success: '#4caf50',
+    },
+  },
+}
+```
+
+### Theme with Token Aliases
+
+```ts
+palette: {
+  blue: {
+    500: '#3b82f6',
+    600: '#2563eb',
+  },
+  gray: {
+    100: '#f3f4f6',
+    900: '#111827',
+  },
+}
+
+themes: {
+  light: {
+    dark: false,
+    colors: {
+      primary: '{palette.blue.500}',
+      background: '{palette.gray.100}',
+    },
+  },
+  dark: {
+    dark: true,
+    colors: {
+      primary: '{palette.blue.600}',
+      background: '{palette.gray.900}',
+    },
+  },
+}
+```
+
+### Lazy Loading
+
+```ts
+themes: {
+  light: {
+    dark: false,
+    colors: { /* ... */ },
+  },
+  dark: {
+    dark: true,
+    lazy: true, // Only compute colors when selected
+    colors: { /* ... */ },
+  },
+}
+```
+
+## Examples
+
+### Theme Switcher
+
+```vue
+<script setup lang="ts">
+import { useTheme } from '@vuetify/v0'
+
+const theme = useTheme()
+
+const themes = [
+  { id: 'light', name: 'Light' },
+  { id: 'dark', name: 'Dark' },
+  { id: 'high-contrast', name: 'High Contrast' },
+]
+</script>
+
+<template>
+  <div>
+    <select @change="theme.select($event.target.value)">
+      <option 
+        v-for="t in themes" 
+        :key="t.id"
+        :value="t.id"
+        :selected="theme.selectedId.value === t.id"
+      >
+        {{ t.name }}
+      </option>
+    </select>
+  </div>
+</template>
+```
+
+### Theme Toggle
+
+```vue
+<script setup lang="ts">
+import { useTheme } from '@vuetify/v0'
+
+const theme = useTheme()
+
+const toggleTheme = () => {
+  theme.cycle(['light', 'dark'])
+}
+</script>
+
+<template>
+  <button @click="toggleTheme">
+    {{ theme.isDark.value ? '🌞' : '🌙' }}
+  </button>
+</template>
+```
+
+### CSS Variables
+
+```vue
+<script setup lang="ts">
+import { useTheme } from '@vuetify/v0'
+
+const theme = useTheme()
+</script>
+
+<template>
+  <div class="card">
+    <h2>Card Title</h2>
+    <p>Card content</p>
+  </div>
+</template>
+
+<style>
+.card {
+  background: var(--v0-background);
+  color: var(--v0-text);
+  border: 1px solid var(--v0-border);
+}
+</style>
+```
+
+### Dynamic Theme Registration
+
+```vue
+<script setup lang="ts">
+import { useTheme } from '@vuetify/v0'
+import { ref } from 'vue'
+
+const theme = useTheme()
+
+const customColors = ref({
+  primary: '#ff0000',
+  secondary: '#00ff00',
+})
+
+const createCustomTheme = () => {
+  theme.register({
+    id: 'custom',
+    dark: false,
+    value: customColors.value,
+  })
+  theme.select('custom')
+}
+</script>
+
+<template>
+  <div>
+    <input v-model="customColors.primary" type="color" />
+    <input v-model="customColors.secondary" type="color" />
+    <button @click="createCustomTheme">Apply Custom Theme</button>
+  </div>
+</template>
+```
+
+### Persistent Theme Selection
+
+```vue
+<script setup lang="ts">
+import { useTheme, useStorage } from '@vuetify/v0'
+import { watch, onMounted } from 'vue'
+
+const theme = useTheme()
+const storage = useStorage()
+const savedTheme = storage.get('theme', 'light')
+
+// Restore saved theme
+onMounted(() => {
+  if (savedTheme.value) {
+    theme.select(savedTheme.value)
+  }
+})
+
+// Save theme changes
+watch(() => theme.selectedId.value, (newTheme) => {
+  if (newTheme) {
+    savedTheme.value = newTheme
+  }
+})
+</script>
+```
+
+## CSS Variable Naming
+
+By default, theme colors are injected as CSS variables with the `--v0-` prefix:
+
+```css
+/* Light theme */
+[data-theme="light"] {
+  --v0-primary: #1976d2;
+  --v0-secondary: #424242;
+  color-scheme: light;
+}
+
+/* Dark theme */
+[data-theme="dark"] {
+  --v0-primary: #90caf9;
+  --v0-secondary: #ffffff;
+  color-scheme: dark;
+}
+```
+
+Use these variables in your CSS:
+
+```css
+.button {
+  background: var(--v0-primary);
+  color: var(--v0-on-primary);
+}
+
+.card {
+  background: var(--v0-surface);
+  border: 1px solid var(--v0-border);
+}
+```
+
+## Advanced Usage
+
+### Custom Adapter
+
+```ts
+import type { ThemeAdapter } from '@vuetify/v0'
+
+class TailwindThemeAdapter implements ThemeAdapter {
+  prefix = 'tw'
+  stylesheetId = 'tw-theme-styles'
+  
+  setup(app, context, target) {
+    // Custom setup logic
+  }
+  
+  update(theme, colors, isDark) {
+    // Custom update logic
+  }
+  
+  generate(colors, isDark) {
+    // Generate Tailwind-compatible CSS
+    return Object.entries(colors)
+      .map(([name, colorMap]) => `
+        [data-theme="${name}"] {
+          ${Object.entries(colorMap)
+            .map(([key, value]) => `--tw-${key}: ${value};`)
+            .join('\n          ')}
+          color-scheme: ${isDark ? 'dark' : 'light'};
+        }
+      `)
+      .join('\n')
+  }
+}
+
+app.use(createThemePlugin({
+  adapter: new TailwindThemeAdapter(),
+  themes: { /* ... */ },
+}))
+```
+
+### Multiple Theme Contexts
+
+```ts
+import { createThemeContext } from '@vuetify/v0'
+
+const [useAppTheme, provideAppTheme] = createThemeContext({
+  namespace: 'app:theme',
+  themes: { /* ... */ },
+})
+
+const [useEditorTheme, provideEditorTheme] = createThemeContext({
+  namespace: 'editor:theme',
+  themes: { /* ... */ },
+})
+
+// In root component
+provideAppTheme()
+
+// In editor component
+provideEditorTheme()
+```
+
+## Generated Plugin composable pages successfully

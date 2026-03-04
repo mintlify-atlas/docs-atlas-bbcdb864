@@ -1,0 +1,262 @@
+---
+title: useToggleScope
+description: Conditionally manage an effect scope based on a reactive boolean
+---
+
+## Overview
+
+Conditionally manages an effect scope based on a reactive boolean condition. When the source becomes true, creates and runs an effect scope. When false, stops the scope.
+
+## Features
+
+- Uses Vue's effectScope for efficient reactive effect lifecycle management
+- Automatic cleanup when condition becomes false
+- Supports optional reset callback for scope restart capability
+- Handles rapid toggling and parent scope disposal safely
+- SSR-safe (effectScope is part of Vue core)
+
+## Function Signature
+
+```ts
+function useToggleScope(
+  source: WatchSource<boolean>,
+  fn: (() => void) | ((controls: ToggleScopeControls) => void)
+): ToggleScopeControls
+```
+
+## Parameters
+
+<ParamField path="source" type="WatchSource<boolean>">
+  A reactive boolean value or getter that controls the scope lifecycle.
+</ParamField>
+
+<ParamField path="fn" type="(() => void) | ((controls: ToggleScopeControls) => void)">
+  The function to run within the effect scope. Can optionally receive controls for manual scope management.
+</ParamField>
+
+## Return Value
+
+<ResponseField name="isActive" type="Readonly<Ref<boolean>>">
+  Whether the scope is currently active (created and running).
+</ResponseField>
+
+<ResponseField name="start" type="() => void">
+  Start the scope (creates and runs effects).
+</ResponseField>
+
+<ResponseField name="stop" type="() => void">
+  Stop the scope (destroys and cleans up all effects).
+</ResponseField>
+
+<ResponseField name="reset" type="() => void">
+  Reset the scope (stops and immediately restarts).
+</ResponseField>
+
+## Examples
+
+### Basic usage
+
+```ts
+import { ref } from 'vue'
+import { useToggleScope } from '@vuetify/v0'
+
+const isEnabled = ref(false)
+
+const { isActive } = useToggleScope(isEnabled, () => {
+  // This code runs when isEnabled becomes true
+  const unwatch = watch(someRef, () => {
+    console.log('Watching...')
+  })
+  
+  // Cleanup happens automatically when isEnabled becomes false
+})
+
+// Toggle the scope on/off
+isEnabled.value = true  // Starts the scope
+console.log(isActive.value) // true
+
+isEnabled.value = false // Stops and cleans up
+console.log(isActive.value) // false
+```
+
+### With manual controls
+
+```ts
+const isEnabled = ref(true)
+
+useToggleScope(isEnabled, (controls) => {
+  // Access controls inside the scope
+  console.log('Active:', controls.isActive.value)
+  
+  // Manually reset the scope if needed
+  someEvent.on('reset', () => controls.reset())
+})
+```
+
+### Feature flag
+
+```ts
+const featureEnabled = ref(false)
+
+useToggleScope(featureEnabled, () => {
+  // Only run expensive watchers when feature is enabled
+  watch(expensiveComputation, (value) => {
+    console.log('Feature value:', value)
+  })
+  
+  // API polling
+  const interval = setInterval(() => {
+    fetchData()
+  }, 5000)
+  
+  onScopeDispose(() => {
+    clearInterval(interval)
+  })
+})
+```
+
+### Conditional API polling
+
+```ts
+import { ref, onScopeDispose } from 'vue'
+import { useToggleScope } from '@vuetify/v0'
+
+const isPolling = ref(false)
+
+useToggleScope(isPolling, () => {
+  const interval = setInterval(async () => {
+    const data = await fetchUpdates()
+    updateStore(data)
+  }, 3000)
+  
+  onScopeDispose(() => {
+    clearInterval(interval)
+  })
+})
+
+// Start polling
+isPolling.value = true
+
+// Stop polling (cleanup happens automatically)
+isPolling.value = false
+```
+
+### Debug mode
+
+```ts
+const isDebugMode = ref(false)
+
+useToggleScope(isDebugMode, () => {
+  // Only log in debug mode
+  watch(state, (newState) => {
+    console.log('State changed:', newState)
+  }, { deep: true })
+  
+  // Track performance
+  const observer = new PerformanceObserver((list) => {
+    console.log('Performance:', list.getEntries())
+  })
+  observer.observe({ entryTypes: ['measure'] })
+  
+  onScopeDispose(() => {
+    observer.disconnect()
+  })
+})
+```
+
+### Manual start/stop
+
+```ts
+const isEnabled = ref(false)
+
+const { start, stop, isActive } = useToggleScope(isEnabled, () => {
+  console.log('Scope started')
+  
+  onScopeDispose(() => {
+    console.log('Scope stopped')
+  })
+})
+
+// Manual control (bypasses source)
+start()  // Creates scope even though isEnabled is false
+stop()   // Stops scope
+```
+
+### Reset scope
+
+```ts
+const isActive = ref(true)
+
+const { reset } = useToggleScope(isActive, () => {
+  const startTime = Date.now()
+  
+  watch(data, () => {
+    console.log('Time since start:', Date.now() - startTime)
+  })
+})
+
+// Reset timer by restarting scope
+function resetTimer() {
+  reset()
+}
+```
+
+### Reactive watchers
+
+```vue
+<script setup>
+import { ref } from 'vue'
+import { useToggleScope } from '@vuetify/v0'
+
+const isMonitoring = ref(false)
+const events = ref<Event[]>([])
+
+useToggleScope(isMonitoring, () => {
+  const handleClick = (e: MouseEvent) => {
+    events.value.push({
+      type: 'click',
+      x: e.clientX,
+      y: e.clientY,
+      timestamp: Date.now()
+    })
+  }
+  
+  window.addEventListener('click', handleClick)
+  
+  onScopeDispose(() => {
+    window.removeEventListener('click', handleClick)
+  })
+})
+</script>
+
+<template>
+  <div>
+    <button @click="isMonitoring = !isMonitoring">
+      {{ isMonitoring ? 'Stop' : 'Start' }} Monitoring
+    </button>
+    <ul>
+      <li v-for="(event, i) in events" :key="i">
+        {{ event.type }} at ({{ event.x }}, {{ event.y }})
+      </li>
+    </ul>
+  </div>
+</template>
+```
+
+## Use Cases
+
+- **Feature flags**: Only run effects when a feature is enabled
+- **Conditional polling**: Start/stop API polling based on user activity
+- **Debug mode**: Enable detailed logging and monitoring conditionally
+- **Performance optimization**: Defer expensive watchers until needed
+- **User preferences**: Respect user settings for animations, tracking, etc.
+- **Development tools**: Toggle dev-only functionality
+
+## Notes
+
+- All reactive effects created within the function are automatically cleaned up when the scope stops
+- The scope is automatically cleaned up when the parent component unmounts
+- Rapid toggling is handled safely - each deactivation fully cleans up before reactivation
+- Use `onScopeDispose` within the function for custom cleanup logic
+- Manual `start`/`stop` bypasses the reactive source
+- `reset` stops and immediately restarts the scope, useful for refreshing state

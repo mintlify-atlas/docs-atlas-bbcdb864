@@ -1,0 +1,244 @@
+---
+title: useIntersectionObserver
+description: IntersectionObserver composable with lifecycle management
+---
+
+## Overview
+
+IntersectionObserver composable for detecting when an element is visible in the viewport. Perfect for lazy loading, infinite scroll, and visibility detection.
+
+## Features
+
+- IntersectionObserver API wrapper
+- Pause/resume/stop functionality
+- Automatic cleanup on unmount
+- SSR-safe (checks SUPPORTS_INTERSECTION_OBSERVER)
+- Hydration-aware
+- Immediate callback option
+- Configurable threshold and root margin
+
+## Function Signature
+
+```ts
+function useIntersectionObserver(
+  target: MaybeElementRef,
+  callback: (entries: IntersectionObserverEntry[]) => void,
+  options?: IntersectionObserverOptions
+): UseIntersectionObserverReturn
+```
+
+## Parameters
+
+<ParamField path="target" type="MaybeElementRef">
+  The element to observe.
+</ParamField>
+
+<ParamField path="callback" type="(entries: IntersectionObserverEntry[]) => void">
+  The callback to execute when the element's intersection changes.
+</ParamField>
+
+<ParamField path="options" type="IntersectionObserverOptions">
+  <ParamField path="immediate" type="boolean" default="false">
+    Call the callback immediately with synthetic data.
+  </ParamField>
+
+  <ParamField path="once" type="boolean" default="false">
+    Stop observing after first intersection.
+  </ParamField>
+
+  <ParamField path="root" type="Element | null">
+    The element used as the viewport. Defaults to browser viewport.
+  </ParamField>
+
+  <ParamField path="rootMargin" type="string" default="'0px'">
+    Margin around the root. Can be CSS margin values.
+  </ParamField>
+
+  <ParamField path="threshold" type="number | number[]" default="0">
+    Percentage of target visibility at which to trigger callback.
+  </ParamField>
+</ParamField>
+
+## Return Value
+
+<ResponseField name="isIntersecting" type="Readonly<Ref<boolean>>">
+  Whether the target element is currently intersecting with the viewport.
+</ResponseField>
+
+<ResponseField name="isActive" type="Readonly<Ref<boolean>>">
+  Whether the observer is currently active.
+</ResponseField>
+
+<ResponseField name="isPaused" type="Readonly<Ref<boolean>>">
+  Whether the observer is currently paused.
+</ResponseField>
+
+<ResponseField name="pause" type="() => void">
+  Pause observation.
+</ResponseField>
+
+<ResponseField name="resume" type="() => void">
+  Resume observation.
+</ResponseField>
+
+<ResponseField name="stop" type="() => void">
+  Stop observation and clean up.
+</ResponseField>
+
+## Examples
+
+### Basic visibility detection
+
+```ts
+import { ref } from 'vue'
+import { useIntersectionObserver } from '@vuetify/v0'
+
+const target = ref<HTMLElement>()
+const isVisible = ref(false)
+
+const { isIntersecting, pause, resume } = useIntersectionObserver(
+  target,
+  (entries) => {
+    const entry = entries[0]
+    if (entry) {
+      isVisible.value = entry.isIntersecting
+    }
+  },
+  { threshold: 0.5 }
+)
+```
+
+### Lazy loading images
+
+```ts
+const imageRef = ref<HTMLImageElement>()
+const imageSrc = ref('')
+
+useIntersectionObserver(
+  imageRef,
+  (entries) => {
+    if (entries[0]?.isIntersecting) {
+      imageSrc.value = imageRef.value?.dataset.src || ''
+    }
+  },
+  { once: true }
+)
+```
+
+### Infinite scroll
+
+```ts
+const sentinelRef = ref<HTMLElement>()
+
+useIntersectionObserver(
+  sentinelRef,
+  (entries) => {
+    if (entries[0]?.isIntersecting) {
+      loadMoreItems()
+    }
+  },
+  { rootMargin: '100px' }
+)
+```
+
+### Multiple thresholds
+
+```ts
+const elementRef = ref<HTMLElement>()
+
+useIntersectionObserver(
+  elementRef,
+  (entries) => {
+    const ratio = entries[0]?.intersectionRatio || 0
+    console.log(`${Math.round(ratio * 100)}% visible`)
+  },
+  { threshold: [0, 0.25, 0.5, 0.75, 1] }
+)
+```
+
+### Custom scroll container
+
+```ts
+const scrollContainer = ref<HTMLElement>()
+const itemRef = ref<HTMLElement>()
+
+useIntersectionObserver(
+  itemRef,
+  handleIntersection,
+  { root: scrollContainer.value }
+)
+```
+
+## Convenience Function: useElementIntersection
+
+```ts
+function useElementIntersection(
+  target: MaybeElementRef,
+  options?: IntersectionObserverOptions
+): UseElementIntersectionReturn
+```
+
+Returns reactive refs for intersection state:
+
+<ResponseField name="isIntersecting" type="Readonly<Ref<boolean>>">
+  Whether the element is currently intersecting.
+</ResponseField>
+
+<ResponseField name="intersectionRatio" type="Readonly<Ref<number>>">
+  The intersection ratio (0.0 to 1.0).
+</ResponseField>
+
+### Example
+
+```ts
+import { useElementIntersection } from '@vuetify/v0'
+
+const myElement = ref<HTMLElement>()
+const { isIntersecting, intersectionRatio } = useElementIntersection(
+  myElement,
+  { threshold: 0.5 }
+)
+
+watchEffect(() => {
+  if (isIntersecting.value) {
+    console.log('Visible:', intersectionRatio.value)
+  }
+})
+```
+
+## Entry Properties
+
+<ResponseField name="boundingClientRect" type="DOMRectReadOnly">
+  The bounding rectangle of the target element.
+</ResponseField>
+
+<ResponseField name="intersectionRatio" type="number">
+  The ratio of the intersectionRect to the boundingClientRect.
+</ResponseField>
+
+<ResponseField name="intersectionRect" type="DOMRectReadOnly">
+  The rectangle representing the intersection area.
+</ResponseField>
+
+<ResponseField name="isIntersecting" type="boolean">
+  Whether the target is intersecting with the root.
+</ResponseField>
+
+<ResponseField name="rootBounds" type="DOMRectReadOnly | null">
+  The bounding rectangle of the root element.
+</ResponseField>
+
+<ResponseField name="target" type="Element">
+  The target element being observed.
+</ResponseField>
+
+<ResponseField name="time" type="number">
+  The time at which the intersection was recorded.
+</ResponseField>
+
+## Notes
+
+- Automatically stops observing when `once: true` and element intersects
+- Hydration-aware: defers setup until client-side hydration completes
+- SSR-safe: returns valid API with `isActive: false` when IntersectionObserver is not supported
+- `immediate` option provides synthetic data on first mount
