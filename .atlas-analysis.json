@@ -1,0 +1,315 @@
+{
+  "projectType": "framework",
+  "projectName": "Vuetify Zero",
+  "projectDescription": "Headless Vue 3 UI primitives and composables for building modern applications and design systems",
+  "theme": "palm",
+  "primaryColor": "#040404",
+  "lightColor": "#1495f5",
+  "darkColor": "#1a65c3",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": [
+              "introduction",
+              "installation",
+              "quickstart"
+            ]
+          },
+          {
+            "group": "Core Concepts",
+            "pages": [
+              "concepts/architecture",
+              "concepts/headless-components",
+              "concepts/composables",
+              "concepts/trinity-pattern",
+              "concepts/design-principles"
+            ]
+          },
+          {
+            "group": "Guides",
+            "pages": [
+              "guides/building-components",
+              "guides/styling",
+              "guides/typescript",
+              "guides/ssr"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Components",
+        "groups": [
+          {
+            "group": "Base",
+            "pages": [
+              "components/atom",
+              "components/avatar"
+            ]
+          },
+          {
+            "group": "Navigation",
+            "pages": [
+              "components/breadcrumbs",
+              "components/pagination",
+              "components/step",
+              "components/tabs"
+            ]
+          },
+          {
+            "group": "Forms",
+            "pages": [
+              "components/checkbox",
+              "components/radio",
+              "components/switch"
+            ]
+          },
+          {
+            "group": "Selection",
+            "pages": [
+              "components/group",
+              "components/selection",
+              "components/single"
+            ]
+          },
+          {
+            "group": "Overlays",
+            "pages": [
+              "components/dialog",
+              "components/popover",
+              "components/scrim"
+            ]
+          },
+          {
+            "group": "Layout",
+            "pages": [
+              "components/expansion-panel"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Composables",
+        "groups": [
+          {
+            "group": "Foundation",
+            "pages": [
+              "composables/create-context",
+              "composables/create-plugin",
+              "composables/create-trinity"
+            ]
+          },
+          {
+            "group": "Registry",
+            "pages": [
+              "composables/create-registry",
+              "composables/use-proxy-registry"
+            ]
+          },
+          {
+            "group": "Selection",
+            "pages": [
+              "composables/create-selection",
+              "composables/create-single",
+              "composables/create-group",
+              "composables/create-step",
+              "composables/create-breadcrumbs",
+              "composables/create-nested"
+            ]
+          },
+          {
+            "group": "Data Structures",
+            "pages": [
+              "composables/create-queue",
+              "composables/create-timeline",
+              "composables/create-tokens",
+              "composables/create-data-table"
+            ]
+          },
+          {
+            "group": "Forms",
+            "pages": [
+              "composables/create-form"
+            ]
+          },
+          {
+            "group": "Reactivity",
+            "pages": [
+              "composables/use-proxy-model",
+              "composables/to-reactive",
+              "composables/to-array"
+            ]
+          },
+          {
+            "group": "Utilities",
+            "pages": [
+              "composables/use-filter",
+              "composables/use-pagination",
+              "composables/use-virtual",
+              "composables/use-overflow"
+            ]
+          },
+          {
+            "group": "System",
+            "pages": [
+              "composables/use-click-outside",
+              "composables/use-event-listener",
+              "composables/use-hotkey",
+              "composables/use-intersection-observer",
+              "composables/use-lazy",
+              "composables/use-media-query",
+              "composables/use-mutation-observer",
+              "composables/use-resize-observer",
+              "composables/use-toggle-scope"
+            ]
+          },
+          {
+            "group": "Plugins",
+            "pages": [
+              "composables/use-breakpoints",
+              "composables/use-date",
+              "composables/use-features",
+              "composables/use-hydration",
+              "composables/use-locale",
+              "composables/use-logger",
+              "composables/use-permissions",
+              "composables/use-stack",
+              "composables/use-storage",
+              "composables/use-theme"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Adapters",
+        "groups": [
+          {
+            "group": "Overview",
+            "pages": [
+              "adapters/introduction"
+            ]
+          },
+          {
+            "group": "Data Table",
+            "pages": [
+              "adapters/data-table-client",
+              "adapters/data-table-server",
+              "adapters/data-table-virtual"
+            ]
+          },
+          {
+            "group": "Features",
+            "pages": [
+              "adapters/features-flagsmith",
+              "adapters/features-launchdarkly",
+              "adapters/features-posthog"
+            ]
+          },
+          {
+            "group": "Logger",
+            "pages": [
+              "adapters/logger-consola",
+              "adapters/logger-pino",
+              "adapters/logger-v0"
+            ]
+          },
+          {
+            "group": "Other Adapters",
+            "pages": [
+              "adapters/locale-v0",
+              "adapters/permissions-v0",
+              "adapters/storage-memory",
+              "adapters/theme-v0"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "Reference",
+            "pages": [
+              "api/types",
+              "api/utilities",
+              "api/constants"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Headless components with no styling constraints",
+    "40+ composables for building complex UIs",
+    "Plugin system with adapter pattern",
+    "Full TypeScript support with generics",
+    "SSR-safe with hydration helpers",
+    "Tree-shakeable subpath exports",
+    "Comprehensive accessibility features",
+    "Date manipulation with adapter pattern"
+  ],
+  "publicApiSurface": [
+    "Atom",
+    "Avatar",
+    "Breadcrumbs",
+    "Checkbox",
+    "Dialog",
+    "ExpansionPanel",
+    "Group",
+    "Pagination",
+    "Popover",
+    "Radio",
+    "Scrim",
+    "Selection",
+    "Single",
+    "Step",
+    "Switch",
+    "Tabs",
+    "createContext",
+    "createTrinity",
+    "createPlugin",
+    "createRegistry",
+    "createSelection",
+    "createSingle",
+    "createGroup",
+    "createStep",
+    "createBreadcrumbs",
+    "createNested",
+    "createQueue",
+    "createTimeline",
+    "createTokens",
+    "createDataTable",
+    "createForm",
+    "useProxyModel",
+    "useProxyRegistry",
+    "useFilter",
+    "usePagination",
+    "useVirtual",
+    "useOverflow",
+    "useClickOutside",
+    "useEventListener",
+    "useHotkey",
+    "useIntersectionObserver",
+    "useLazy",
+    "useMediaQuery",
+    "useMutationObserver",
+    "useResizeObserver",
+    "useToggleScope",
+    "useBreakpoints",
+    "useDate",
+    "useFeatures",
+    "useHydration",
+    "useLocale",
+    "useLogger",
+    "usePermissions",
+    "useStack",
+    "useStorage",
+    "useTheme",
+    "toArray",
+    "toReactive"
+  ]
+}
