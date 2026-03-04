@@ -157,7 +157,8 @@
             "pages": [
               "composables/use-proxy-model",
               "composables/to-reactive",
-              "composables/to-array"
+              "composables/to-array",
+              "composables/to-element"
             ]
           },
           {

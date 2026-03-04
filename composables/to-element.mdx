@@ -1,0 +1,271 @@
+---
+title: toElement
+description: Resolve various element reference types to a DOM Element
+---
+
+# toElement
+
+Utility function to resolve various element reference types (refs, getters, raw DOM elements, or Vue component instances) to a plain DOM Element.
+
+## Overview
+
+Normalizes different ways of referencing DOM elements in Vue applications into a plain Element. Handles refs, getter functions, raw DOM elements, and Vue component instances. Uses structural typing to avoid cross-version Vue compatibility issues.
+
+**Key Features:**
+- Resolves `Ref<Element>` and `ShallowRef<Element>`
+- Handles getter functions `() => Element`
+- Extracts `$el` from Vue component instances
+- Pass-through for raw DOM elements
+- Returns `undefined` for null/undefined inputs
+- Structural typing for Vue version compatibility
+
+## Type Definition
+
+```ts
+export type MaybeElementRef =
+  | { readonly value: MaybeElementValue }
+  | (() => MaybeElementValue)
+  | MaybeElementValue
+
+type MaybeElementValue = HTMLElement | SVGElement | ComponentPublicInstance | Element | null | undefined
+```
+
+## Signature
+
+```ts
+function toElement(target: MaybeElementRef): Element | undefined
+```
+
+## Parameters
+
+<ParamField path="target" type="MaybeElementRef" required>
+  The element reference to resolve. Can be:
+  - A Vue ref containing an element
+  - A getter function returning an element
+  - A Vue component instance (extracts `$el`)
+  - A raw DOM element
+  - `null` or `undefined`
+</ParamField>
+
+## Return Value
+
+<ResponseField name="element" type="Element | undefined">
+  - The resolved DOM Element if available
+  - `undefined` if the input is null/undefined or cannot be resolved
+</ResponseField>
+
+## Basic Usage
+
+### With Refs
+
+```ts
+import { toElement } from '@vuetify/v0'
+import { ref, shallowRef } from 'vue'
+
+// Ref<HTMLElement>
+const buttonRef = ref<HTMLElement | null>(null)
+const button = toElement(buttonRef) // HTMLElement | undefined
+
+// ShallowRef<HTMLDivElement>
+const divRef = shallowRef<HTMLDivElement | null>(null)
+const div = toElement(divRef) // Element | undefined
+```
+
+### With Component Instances
+
+```ts
+import { toElement } from '@vuetify/v0'
+import { ref } from 'vue'
+import type { ComponentPublicInstance } from 'vue'
+
+const componentRef = ref<ComponentPublicInstance>()
+const element = toElement(componentRef) // Element | undefined (from $el)
+```
+
+### With Getter Functions
+
+```ts
+import { toElement } from '@vuetify/v0'
+
+const getButton = () => document.querySelector('button')
+const button = toElement(getButton) // Element | undefined
+```
+
+### With Raw Elements
+
+```ts
+import { toElement } from '@vuetify/v0'
+
+const button = document.querySelector('button')
+const element = toElement(button) // Element | undefined (pass-through)
+```
+
+## Use Cases
+
+### Click Outside Detection
+
+```vue
+<script setup lang="ts">
+import { toElement } from '@vuetify/v0'
+import { ref, onMounted, onBeforeUnmount } from 'vue'
+
+const containerRef = ref<HTMLElement>()
+
+function handleClickOutside(event: MouseEvent) {
+  const container = toElement(containerRef)
+  if (!container) return
+  
+  if (!container.contains(event.target as Node)) {
+    console.log('Clicked outside')
+  }
+}
+
+onMounted(() => {
+  document.addEventListener('click', handleClickOutside)
+})
+
+onBeforeUnmount(() => {
+  document.removeEventListener('click', handleClickOutside)
+})
+</script>
+
+<template>
+  <div ref="containerRef">
+    Click outside this element
+  </div>
+</template>
+```
+
+### Focus Management
+
+```ts
+import { toElement } from '@vuetify/v0'
+import { ref, watchEffect } from 'vue'
+
+const inputRef = ref<HTMLInputElement>()
+const shouldFocus = ref(false)
+
+watchEffect(() => {
+  if (shouldFocus.value) {
+    const input = toElement(inputRef)
+    if (input instanceof HTMLInputElement) {
+      input.focus()
+    }
+  }
+})
+```
+
+### Measuring Element Dimensions
+
+```ts
+import { toElement } from '@vuetify/v0'
+import { ref, computed } from 'vue'
+
+const elementRef = ref<HTMLElement>()
+
+const dimensions = computed(() => {
+  const element = toElement(elementRef)
+  if (!element) return { width: 0, height: 0 }
+  
+  const rect = element.getBoundingClientRect()
+  return {
+    width: rect.width,
+    height: rect.height
+  }
+})
+```
+
+## Advanced Usage
+
+### Type Guards
+
+```ts
+import { toElement } from '@vuetify/v0'
+import { ref } from 'vue'
+
+const elementRef = ref<HTMLElement>()
+
+function processElement() {
+  const element = toElement(elementRef)
+  
+  // Type narrowing
+  if (element instanceof HTMLInputElement) {
+    console.log('Input value:', element.value)
+  } else if (element instanceof HTMLButtonElement) {
+    console.log('Button text:', element.textContent)
+  }
+}
+```
+
+### With Component Libraries
+
+```vue
+<script setup lang="ts">
+import { toElement } from '@vuetify/v0'
+import { ref } from 'vue'
+import { Dialog } from '@vuetify/v0'
+
+const dialogRef = ref()
+
+function scrollToTop() {
+  const dialogElement = toElement(dialogRef)
+  if (dialogElement) {
+    dialogElement.scrollTop = 0
+  }
+}
+</script>
+
+<template>
+  <Dialog.Root>
+    <Dialog.Content ref="dialogRef">
+      <button @click="scrollToTop">Scroll to top</button>
+      <!-- Long content -->
+    </Dialog.Content>
+  </Dialog.Root>
+</template>
+```
+
+## Edge Cases
+
+### Null/Undefined Handling
+
+```ts
+import { toElement } from '@vuetify/v0'
+
+// Returns undefined for null/undefined
+toElement(null) // undefined
+toElement(undefined) // undefined
+
+// Safe to call before ref is assigned
+const ref = shallowRef<HTMLElement | null>(null)
+toElement(ref) // undefined (until ref.value is set)
+```
+
+### Structural Typing
+
+The `MaybeElementRef` type uses structural typing (`{ readonly value: T }`) instead of nominal typing (`Ref<T>`) to avoid Vue version incompatibilities:
+
+```ts
+// Works with any Vue version
+import { toElement, type MaybeElementRef } from '@vuetify/v0'
+
+// Even if your app uses Vue 3.4 and the library uses Vue 3.5,
+// the structural type will match
+function myComposable(target: MaybeElementRef) {
+  return toElement(target)
+}
+```
+
+## Performance
+
+- **Zero overhead**: Direct property access for refs, single function call for getters
+- **Type-safe**: Full TypeScript support with type narrowing
+- **Memory efficient**: No closures or subscriptions created
+- **Side-effect free**: Pure function with no observable effects
+
+## Related
+
+- [toArray](/composables/to-array) - Convert values to arrays
+- [toReactive](/composables/to-reactive) - Convert values to reactive objects
+- [useClickOutside](/composables/use-click-outside) - Click outside detection
+- [useResizeObserver](/composables/use-resize-observer) - Element resize observation
